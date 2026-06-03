@@ -1,7 +1,4 @@
 {
   "version": 2,
-  "buildCommand": "cd packages/frontend && npm install -g pnpm && pnpm install && pnpm run build",
-  "outputDirectory": "packages/frontend/.next",
-  "installCommand": "cd packages/frontend && npm install -g pnpm && pnpm install",
-  "devCommand": "cd packages/frontend && pnpm dev"
+  "root": "packages/frontend"
 }
