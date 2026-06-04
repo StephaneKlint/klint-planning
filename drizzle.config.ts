@@ -1,4 +1,8 @@
 import { defineConfig } from "drizzle-kit";
+import { loadEnvConfig } from "@next/env";
+
+// Charge .env.local (comme Next.js) pour que drizzle-kit ait DATABASE_URL
+loadEnvConfig(process.cwd());
 
 export default defineConfig({
   schema: "./lib/db/schema.ts",
