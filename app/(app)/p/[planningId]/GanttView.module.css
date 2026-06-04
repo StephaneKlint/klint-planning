@@ -8,9 +8,9 @@
 
 .ganttOuter {
   flex: 1;
-  min-height: 0;       /* ← empêche le débordement flex */
+  min-height: 0;
   padding: 12px 16px 16px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  /* position:relative requis pour que le Gantt en position:absolute;inset:0 fonctionne */
+  position: relative;
 }
