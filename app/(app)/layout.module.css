@@ -8,9 +8,8 @@
 }
 
 .main {
-  /* height: 100% works because parent grid row is 1fr with a definite height */
+  height: 100%;          /* ← CRITICAL: explicite pour que la chaîne height fonctionne */
   overflow: hidden;
   position: relative;
-  /* Pages with internal scrolling (Gantt) use their own overflow management.
-     Pages that need normal scroll can override with overflow-y: auto. */
+  min-height: 0;         /* ← CRITICAL: évite que le grid item enfle en flex child */
 }
