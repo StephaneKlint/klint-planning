@@ -61,6 +61,14 @@ export function TimelineBody({
   const statusByCode = Object.fromEntries(statuses.map((s) => [s.code, s]));
   const msTypeByCode = Object.fromEntries(milestoneTypes.map((t) => [t.code, t]));
 
+  // Fallback labels quand phase.label est null : type code → libellé affiché
+  const PHASE_TYPE_LABELS: Record<string, string> = {
+    cadrage: "Cadrage", dev: "Développement", recette: "Recette",
+    formation: "Formation", custom: "Personnalisé",
+  };
+  const phaseLabel = (phase: PhaseRow) =>
+    phase.label ?? PHASE_TYPE_LABELS[phase.type] ?? phase.type;
+
   const phasesByLot = phases.reduce<Record<string, PhaseRow[]>>((acc, p) => {
     (acc[p.lotId] ??= []).push(p);
     return acc;
@@ -207,7 +215,7 @@ export function TimelineBody({
               width={width}
               top={pillTop}
               height={PILL_H}
-              label={phase.label ?? undefined}
+              label={phaseLabel(phase)}
               progress={phase.progress}
               bg={bg}
               fg={fg}
