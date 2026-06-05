@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import Link from "next/link";
 import { createPlanning } from "@/lib/actions/plannings";
 import styles from "./NewPlanning.module.css";
 
@@ -85,7 +86,7 @@ export default function NouveauPlanningPage() {
         </div>
 
         <div className={styles.actions}>
-          <a href="/p" className={styles.cancelBtn}>Annuler</a>
+          <Link href="/p" className={styles.cancelBtn}>Annuler</Link>
           <button type="submit" className={styles.submitBtn}>
             Créer le planning
           </button>

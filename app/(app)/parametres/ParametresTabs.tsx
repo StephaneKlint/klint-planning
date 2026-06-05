@@ -341,7 +341,7 @@ export function ParametresTabs({ data }: { data: GanttData }) {
             </tbody>
           </table>
           <p className={styles.tabDesc} style={{ marginTop: 12 }}>
-            Les statuts sont synchronisés avec le système. L'édition libre arrive dans une prochaine version.
+            Les statuts sont synchronisés avec le système. L&apos;édition libre arrive dans une prochaine version.
           </p>
         </div>
       )}

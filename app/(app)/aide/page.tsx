@@ -6,7 +6,7 @@ export default function AidePage() {
         <dt style={{ fontWeight: 600, marginTop: 12 }}>Naviguer dans le Gantt</dt>
         <dd style={{ margin: 0, color: "#6B7280" }}>Molette horizontale ou trackpad. Boutons ‹ › dans la toolbar pour avancer/reculer par période.</dd>
         <dt style={{ fontWeight: 600, marginTop: 12 }}>Éditer une phase</dt>
-        <dd style={{ margin: 0, color: "#6B7280" }}>Cliquez sur une phase dans le Gantt pour ouvrir le panneau d'édition.</dd>
+        <dd style={{ margin: 0, color: "#6B7280" }}>Cliquez sur une phase dans le Gantt pour ouvrir le panneau d&apos;édition.</dd>
         <dt style={{ fontWeight: 600, marginTop: 12 }}>Éditer un jalon</dt>
         <dd style={{ margin: 0, color: "#6B7280" }}>Cliquez sur le drapeau ou le losange du jalon dans le Gantt.</dd>
         <dt style={{ fontWeight: 600, marginTop: 12 }}>Sélection multiple</dt>
