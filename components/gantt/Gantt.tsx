@@ -36,7 +36,7 @@ export function Gantt({
   viewEnd,
   referenceDate,
 }: GanttProps) {
-  const { zoom, density, colorMode, showWeekends, showDomainBands } = useGanttStore();
+  const { zoom, density, colorMode, showWeekends, showDomainBands, panelMode, scrollRequest, requestScroll } = useGanttStore();
 
   const ppd = PPD[zoom];
   const rowH = ROW_H[density];
@@ -44,17 +44,17 @@ export function Gantt({
   const totalW = timelineWidth(viewStart, viewEnd, ppd);
 
   // Refs for scroll sync
-  const sideRef = useRef<HTMLDivElement>(null);
+  const sideRowsRef = useRef<HTMLDivElement>(null); // points to GanttSide's .rowsOuter
   const headerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const syncing = useRef(false);
 
-  // Vertical sync: body → side
+  // Vertical sync: body → side rows
   const onBodyScroll = useCallback(() => {
     if (syncing.current) return;
     syncing.current = true;
-    if (sideRef.current && bodyRef.current) {
-      sideRef.current.scrollTop = bodyRef.current.scrollTop;
+    if (sideRowsRef.current && bodyRef.current) {
+      sideRowsRef.current.scrollTop = bodyRef.current.scrollTop;
     }
     if (headerRef.current && bodyRef.current) {
       headerRef.current.scrollLeft = bodyRef.current.scrollLeft;
@@ -79,6 +79,24 @@ export function Gantt({
     body.scrollLeft = target;
     if (header) header.scrollLeft = target;
   }, [zoom, ppd, referenceDate, viewStart]);
+
+  // Consume scroll requests from the Toolbar prev/next/today buttons
+  useEffect(() => {
+    if (!scrollRequest || !bodyRef.current) return;
+    const body = bodyRef.current;
+    const header = headerRef.current;
+    if (scrollRequest === "today") {
+      const containerW = body.clientWidth || 800;
+      const target = todayScrollLeft(referenceDate, viewStart, ppd, containerW);
+      body.scrollLeft = target;
+      if (header) header.scrollLeft = target;
+    } else {
+      const step = body.clientWidth * 0.8; // scroll by 80% of visible width
+      body.scrollLeft += scrollRequest === "next" ? step : -step;
+      if (header) header.scrollLeft = body.scrollLeft;
+    }
+    requestScroll(null);
+  }, [scrollRequest, ppd, referenceDate, viewStart, requestScroll]);
 
   // Derive lot-level stats
   const phasesByLot = phases.reduce<Record<string, typeof phases>>((acc, p) => {
@@ -117,22 +135,24 @@ export function Gantt({
 
   return (
     <div className={styles.gantt}>
-      {/* LEFT — Side panel */}
-      <div
-        ref={sideRef}
-        className={styles.sideScroll}
-        style={{ width: SIDE_W, minWidth: SIDE_W }}
-      >
-        <GanttSide
-          rows={rows}
-          totalH={totalH}
-          domains={domains}
-          lots={lots}
-          lotProgress={lotProgress}
-          lotStatus={lotStatus}
-          width={SIDE_W}
-        />
-      </div>
+      {/* LEFT — Side panel (hidden when panelMode === "hidden") */}
+      {panelMode !== "hidden" && (
+        <div
+          className={styles.sideScroll}
+          style={{ width: SIDE_W, minWidth: SIDE_W }}
+        >
+          <GanttSide
+            rows={rows}
+            totalH={totalH}
+            domains={domains}
+            lots={lots}
+            lotProgress={lotProgress}
+            lotStatus={lotStatus}
+            width={SIDE_W}
+            rowsRef={sideRowsRef}
+          />
+        </div>
+      )}
 
       {/* RIGHT — Timeline */}
       <div className={styles.timelineWrapper}>

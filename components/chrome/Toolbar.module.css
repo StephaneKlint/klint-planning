@@ -105,3 +105,38 @@
   outline: 2px solid var(--klint-mint, #5CD696);
   outline-offset: 2px;
 }
+
+/* Active state for toggle buttons (e.g. panel hidden) */
+.btnActive {
+  background: var(--klint-paper, #FAFBFC);
+  border-color: var(--klint-line, #E6E8EE);
+  color: var(--klint-navy, #001036);
+}
+
+/* Prev / Next navigation arrows */
+.navArrows {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 2px;
+}
+
+.arrowBtn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--klint-line, #E6E8EE);
+  background: transparent;
+  color: #6B7280;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms, color 120ms;
+}
+
+.arrowBtn:hover {
+  background: var(--klint-paper, #FAFBFC);
+  color: var(--klint-navy, #001036);
+}

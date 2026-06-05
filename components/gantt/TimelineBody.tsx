@@ -256,7 +256,7 @@ export function TimelineBody({
         });
 
         return (
-          <div key={`lot-${row.id}`} style={{ position: "absolute", top: 0, left: 0, width: totalW, height: totalH }}>
+          <div key={`lot-${row.id}`} style={{ position: "absolute", top: 0, left: 0, width: totalW, height: totalH, pointerEvents: "none" }}>
             {pills}
             {flags}
           </div>

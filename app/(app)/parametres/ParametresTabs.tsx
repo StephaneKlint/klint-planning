@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./Parametres.module.css";
 import type { GanttData } from "@/lib/db/queries";
 import {
@@ -30,6 +31,7 @@ const PRESET_COLORS = [
 ];
 
 export function ParametresTabs({ data }: { data: GanttData }) {
+  const router = useRouter();
   const [active, setActive] = useState<Tab>("general");
   const [isPending, startTransition] = useTransition();
   const { planning, settings, domains, phaseTypes, milestoneTypes, statuses } = data;
@@ -74,6 +76,7 @@ export function ParametresTabs({ data }: { data: GanttData }) {
                   autoCloseAfterMepDays: Number(fd.get("autoCloseAfterMepDays")),
                   notifyOnLate: fd.get("notifyOnLate") === "on",
                 });
+                router.refresh();
               });
             }}
           >
@@ -184,6 +187,7 @@ export function ParametresTabs({ data }: { data: GanttData }) {
                         if (confirm(`Supprimer le type "${pt.label}" ?`)) {
                           startTransition(async () => {
                             await deletePhaseType(pt.id, planning.id);
+                            router.refresh();
                           });
                         }
                       }}
@@ -205,6 +209,7 @@ export function ParametresTabs({ data }: { data: GanttData }) {
                 await addPhaseType({ planningId: planning.id, code: newPTCode.trim(), label: newPTLabel.trim() });
                 setNewPTCode("");
                 setNewPTLabel("");
+                router.refresh();
               });
             }}
           >
@@ -255,6 +260,7 @@ export function ParametresTabs({ data }: { data: GanttData }) {
                         if (confirm(`Supprimer le type jalon "${mt.label}" ?`)) {
                           startTransition(async () => {
                             await deleteMilestoneType(mt.id, planning.id);
+                            router.refresh();
                           });
                         }
                       }}
@@ -276,6 +282,7 @@ export function ParametresTabs({ data }: { data: GanttData }) {
                 await addMilestoneType({ planningId: planning.id, code: newMTCode.trim(), label: newMTLabel.trim(), color: newMTColor });
                 setNewMTCode("");
                 setNewMTLabel("");
+                router.refresh();
               });
             }}
           >

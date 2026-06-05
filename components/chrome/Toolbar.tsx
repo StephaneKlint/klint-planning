@@ -13,11 +13,14 @@ interface ToolbarProps {
   onZoomChange?: (zoom: ZoomLevel) => void;
   onTodayClick?: () => void;
   onTogglePanel?: () => void;
+  onScrollPrev?: () => void;
+  onScrollNext?: () => void;
   onVisibilityClick?: () => void;
   onColorModeClick?: () => void;
   onSearchClick?: () => void;
   colorModeLabel?: string;
   presenceStack?: React.ReactNode;
+  panelVisible?: boolean;
 }
 
 const ZOOM_LEVELS: ZoomLevel[] = ["1m", "3m", "6m", "12m"];
@@ -27,19 +30,22 @@ export function Toolbar({
   onZoomChange,
   onTodayClick,
   onTogglePanel,
+  onScrollPrev,
+  onScrollNext,
   onVisibilityClick,
   onColorModeClick,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onSearchClick: _onSearchClick,
   colorModeLabel = "Domaine",
   presenceStack,
+  panelVisible = true,
 }: ToolbarProps) {
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Barre d'outils du planning">
       {/* Groupe gauche — Navigation */}
       <div className={styles.group}>
         <button
-          className={styles.btn}
+          className={`${styles.btn} ${!panelVisible ? styles.btnActive : ""}`}
           onClick={onTogglePanel}
           aria-label="Masquer/Afficher le panneau"
           title="Masquer/Afficher le panneau ([)"
@@ -70,6 +76,28 @@ export function Toolbar({
             </button>
           ))}
         </div>
+
+        {/* Prev / Next navigation — visible for zooms < 12m */}
+        {zoom !== "12m" && (
+          <div className={styles.navArrows}>
+            <button
+              className={styles.arrowBtn}
+              onClick={onScrollPrev}
+              aria-label="Période précédente"
+              title="Période précédente"
+            >
+              ‹
+            </button>
+            <button
+              className={styles.arrowBtn}
+              onClick={onScrollNext}
+              aria-label="Période suivante"
+              title="Période suivante"
+            >
+              ›
+            </button>
+          </div>
+        )}
       </div>
 
       <div className={styles.divider} aria-hidden />
@@ -102,7 +130,12 @@ export function Toolbar({
       {/* Groupe droite — Présence + tri */}
       <div className={`${styles.group} ${styles.groupRight}`}>
         {presenceStack}
-        <button className={styles.btn} aria-label="Tri" title="Trier les lots">
+        <button
+          className={styles.btn}
+          aria-label="Trier les lots"
+          title="Trier les lots (prochainement)"
+          style={{ opacity: 0.4, cursor: "not-allowed" }}
+        >
           <Icon name="sort" size={14} />
         </button>
       </div>

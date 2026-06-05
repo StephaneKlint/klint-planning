@@ -84,6 +84,7 @@ export function MilestoneFlag({
           borderRadius: 2,
           flexShrink: 0,
           cursor: onClick ? "pointer" : "default",
+          pointerEvents: "auto",
         }}
         aria-hidden
       />
@@ -132,6 +133,7 @@ export function MilestoneFlag({
           letterSpacing: "0.01em",
           cursor: onClick ? "pointer" : "default",
           transition: "filter 120ms",
+          pointerEvents: "auto",
         }}
         title={label}
         onMouseEnter={onClick ? (e) => { (e.currentTarget as HTMLElement).style.filter = "brightness(1.15)"; } : undefined}

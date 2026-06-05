@@ -29,6 +29,8 @@ interface GanttState {
   hiddenLotIds: Set<string>;
   // Command palette
   commandPaletteOpen: boolean;
+  // Scroll intent (set by Toolbar buttons, consumed by Gantt)
+  scrollRequest: "today" | "prev" | "next" | null;
   // Actions
   setZoom: (z: ZoomLevel) => void;
   setDensity: (d: Density) => void;
@@ -43,6 +45,7 @@ interface GanttState {
   clearSelection: () => void;
   toggleLotVisibility: (lotId: string) => void;
   setCommandPaletteOpen: (open: boolean) => void;
+  requestScroll: (req: "today" | "prev" | "next" | null) => void;
 }
 
 export const useGanttStore = create<GanttState>((set) => ({
@@ -57,6 +60,7 @@ export const useGanttStore = create<GanttState>((set) => ({
   selectedPhaseIds: new Set(),
   hiddenLotIds: new Set(),
   commandPaletteOpen: false,
+  scrollRequest: null,
 
   setZoom: (zoom) => set({ zoom }),
   setDensity: (density) => set({ density }),
@@ -93,4 +97,5 @@ export const useGanttStore = create<GanttState>((set) => ({
     }),
 
   setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
+  requestScroll: (scrollRequest) => set({ scrollRequest }),
 }));

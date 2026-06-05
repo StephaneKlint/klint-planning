@@ -279,6 +279,13 @@
 }
 .memberChip:hover { opacity: 0.85; }
 
+.memberChipInactive {
+  background: var(--klint-paper, #FAFBFC) !important;
+  color: #9CA3AF;
+  border: 1px solid var(--klint-line, #E6E8EE);
+  padding: 3px 6px;
+}
+
 .memberName {
   font-weight: 500;
 }

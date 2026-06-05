@@ -8,7 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { phases, lots, milestones, activityLog, planningMembers, users } from "@/lib/db/schema";
+import { phases, lots, milestones, activityLog, planningMembers, users, phaseAssignees } from "@/lib/db/schema";
 import { eq, inArray, gte, and } from "drizzle-orm";
 import { getGanttData } from "@/lib/db/queries";
 import type { GanttData } from "@/lib/db/queries";
@@ -115,6 +115,26 @@ export async function updatePhaseDates(input: z.infer<typeof UpdatePhaseDatesSch
 
   await logActivity(data.planningId, "moved", "phase", data.phaseId,
     `Déplacé : ${data.startDate} → ${data.endDate}`);
+
+  revalidatePath(`/p/${data.planningId}`);
+  return updated;
+}
+
+const UpdatePhaseLabelSchema = z.object({
+  phaseId: z.string().uuid(),
+  planningId: z.string().uuid(),
+  label: z.string().max(200).nullable(),
+});
+
+export async function updatePhaseLabel(input: z.infer<typeof UpdatePhaseLabelSchema>) {
+  const data = UpdatePhaseLabelSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  const [updated] = await db
+    .update(phases)
+    .set({ label: data.label })
+    .where(eq(phases.id, data.phaseId))
+    .returning({ id: phases.id, label: phases.label });
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
@@ -257,6 +277,36 @@ export async function updateMilestone(input: z.infer<typeof UpdateMilestoneSchem
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
+}
+
+// ---------------------------------------------------------------------------
+// Phase assignee toggle
+// ---------------------------------------------------------------------------
+
+const TogglePhaseAssigneeSchema = z.object({
+  phaseId: z.string().uuid(),
+  memberId: z.string().uuid(),
+  planningId: z.string().uuid(),
+});
+
+export async function togglePhaseAssignee(input: z.infer<typeof TogglePhaseAssigneeSchema>) {
+  const data = TogglePhaseAssigneeSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  const existing = await db
+    .select()
+    .from(phaseAssignees)
+    .where(and(eq(phaseAssignees.phaseId, data.phaseId), eq(phaseAssignees.memberId, data.memberId)));
+
+  if (existing.length > 0) {
+    await db
+      .delete(phaseAssignees)
+      .where(and(eq(phaseAssignees.phaseId, data.phaseId), eq(phaseAssignees.memberId, data.memberId)));
+  } else {
+    await db.insert(phaseAssignees).values({ phaseId: data.phaseId, memberId: data.memberId });
+  }
+
+  revalidatePath(`/p/${data.planningId}`);
 }
 
 // ---------------------------------------------------------------------------

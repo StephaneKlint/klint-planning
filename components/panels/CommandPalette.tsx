@@ -27,11 +27,12 @@ export function CommandPalette({ data }: CommandPaletteProps) {
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // ⌘K / Ctrl+K global shortcut
+  // ⌘K / Ctrl+K global shortcut — capture phase so it fires before Vercel toolbar
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
+        e.stopPropagation();
         setCommandPaletteOpen(!commandPaletteOpen);
         setQuery("");
       }
@@ -39,8 +40,8 @@ export function CommandPalette({ data }: CommandPaletteProps) {
         setCommandPaletteOpen(false);
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, { capture: true });
+    return () => window.removeEventListener("keydown", handler, { capture: true });
   }, [commandPaletteOpen, setCommandPaletteOpen]);
 
   useEffect(() => {

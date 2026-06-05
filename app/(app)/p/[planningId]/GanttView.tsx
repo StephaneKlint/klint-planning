@@ -23,7 +23,14 @@ interface GanttViewProps extends GanttProps {
 }
 
 export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProps) {
-  const { zoom, setZoom, colorMode, setColorMode, setCommandPaletteOpen } = useGanttStore();
+  const {
+    zoom, setZoom,
+    colorMode, setColorMode,
+    panelMode, setPanelMode,
+    setCommandPaletteOpen,
+    requestScroll,
+    toggleDomainBands,
+  } = useGanttStore();
 
   // Données en live — polling 10s
   const { data } = usePlanning(props.planningId, initialData);
@@ -42,15 +49,25 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     setColorMode(next[colorMode]);
   };
 
+  const handleTogglePanel = () => {
+    setPanelMode(panelMode === "hidden" ? "compact" : "hidden");
+  };
+
   return (
     <div className={styles.view}>
       <Toolbar
         zoom={zoom}
         onZoomChange={setZoom}
+        onTodayClick={() => requestScroll("today")}
+        onScrollPrev={() => requestScroll("prev")}
+        onScrollNext={() => requestScroll("next")}
+        onTogglePanel={handleTogglePanel}
+        onVisibilityClick={toggleDomainBands}
         onSearchClick={() => setCommandPaletteOpen(true)}
         onColorModeClick={handleColorMode}
         colorModeLabel={colorModeLabel}
         presenceStack={<PresenceStack members={activeMembers} />}
+        panelVisible={panelMode !== "hidden"}
       />
       <div className={styles.ganttOuter}>
         <Gantt

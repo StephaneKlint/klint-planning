@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Topbar } from "./Topbar";
 import { useGanttStore } from "@/store/ganttStore";
 import styles from "./PlanningSelector.module.css";
@@ -14,15 +14,17 @@ interface PlanningItem {
 
 interface TopbarWrapperProps {
   plannings: PlanningItem[];
-  activePlanningId?: string;
 }
 
-export function TopbarWrapper({ plannings, activePlanningId }: TopbarWrapperProps) {
+export function TopbarWrapper({ plannings }: TopbarWrapperProps) {
   const { setCommandPaletteOpen } = useGanttStore();
   const [selectorOpen, setSelectorOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
-  const active = plannings.find((p) => p.id === activePlanningId) ?? plannings[0];
+  // Detect active planning from the current URL path (/p/[planningId]/...)
+  const pathPlanningId = pathname.startsWith("/p/") ? pathname.split("/")[2] : undefined;
+  const active = plannings.find((p) => p.id === pathPlanningId) ?? plannings[0];
 
   const planningStats = active
     ? `${active.year}`
@@ -62,7 +64,7 @@ export function TopbarWrapper({ plannings, activePlanningId }: TopbarWrapperProp
             {plannings.map((p) => (
               <button
                 key={p.id}
-                className={`${styles.planningItem} ${p.id === activePlanningId ? styles.planningItemActive : ""}`}
+                className={`${styles.planningItem} ${p.id === pathPlanningId ? styles.planningItemActive : ""}`}
                 onClick={() => {
                   setSelectorOpen(false);
                   router.push(`/p/${p.id}`);

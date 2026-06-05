@@ -11,7 +11,8 @@ import type { StatusCode } from "@/components/ui/StatusPill";
 import type { GanttData } from "@/lib/db/queries";
 import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
-  updatePhaseDates, updatePhaseColor, updateMilestone,
+  updatePhaseDates, updatePhaseColor, updatePhaseLabel,
+  updateMilestone, togglePhaseAssignee,
 } from "@/lib/actions/planning";
 import { useOptimisticPhase } from "@/lib/queries/usePlanning";
 import styles from "./EditPanel.module.css";
@@ -121,9 +122,9 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               defaultValue={phase.label ?? PHASE_TYPE_LABELS[phase.type] ?? phase.type}
               placeholder="Libellé de la phase…"
               onBlur={(e) => {
-                const val = e.target.value.trim();
-                patchPhase(planningId, phase.id, { label: val || null });
-                save(() => updatePhaseNote({ phaseId: phase.id, planningId, note: phase.note ?? null }));
+                const val = e.target.value.trim() || null;
+                patchPhase(planningId, phase.id, { label: val });
+                save(() => updatePhaseLabel({ phaseId: phase.id, planningId, label: val }));
               }}
             />
           </div>
@@ -252,24 +253,36 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             </div>
           </div>
 
-          {/* Assignés */}
+          {/* Assignés — filtrés par phase, toggle via click */}
           <div className={styles.fieldRow}>
             <span className={styles.fieldLabel}>Assigné·es</span>
             <div className={styles.assignees}>
-              {data.members.map((m) => (
-                <button
-                  key={m.id}
-                  className={styles.memberChip}
-                  title={m.userName}
-                  style={{ background: m.color ?? "#001D63" }}
-                >
-                  {m.initials ?? "?"}
-                  <span className={styles.memberName}>{m.userName.split(" ")[0]}</span>
-                </button>
-              ))}
-              <button className={styles.addMember} aria-label="Ajouter un assigné">
-                <Icon name="plus" size={12} />
-              </button>
+              {data.members.map((m) => {
+                const isAssigned = data.phaseAssignees.some(
+                  (a) => a.phaseId === phase.id && a.memberId === m.id
+                );
+                return (
+                  <button
+                    key={m.id}
+                    className={`${styles.memberChip} ${isAssigned ? "" : styles.memberChipInactive}`}
+                    title={isAssigned ? `Désassigner ${m.userName}` : `Assigner ${m.userName}`}
+                    style={{ background: isAssigned ? (m.color ?? "#001D63") : undefined }}
+                    disabled={isPending}
+                    onClick={() => {
+                      save(() => togglePhaseAssignee({
+                        phaseId: phase.id,
+                        memberId: m.id,
+                        planningId,
+                      }));
+                    }}
+                  >
+                    {m.initials ?? "?"}
+                    {isAssigned && (
+                      <span className={styles.memberName}>{m.userName.split(" ")[0]}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -299,7 +312,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             <Icon name="close" size={12} />
             Annuler
           </Button>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" style={{ opacity: 0.45, cursor: "not-allowed" }} title="Dépendances — disponible au Jalon 6">
             <Icon name="link" size={12} />
             Dépendances
           </Button>

@@ -37,6 +37,7 @@ export function PhasePill({
     borderRadius: 999,
     cursor: "pointer",
     overflow: "hidden",
+    pointerEvents: "auto",
     display: "flex",
     alignItems: "center",
     fontSize: 10,
