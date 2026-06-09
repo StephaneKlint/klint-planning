@@ -30,6 +30,8 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     setCommandPaletteOpen,
     requestScroll,
     toggleDomainBands,
+    filterDateStart, filterDateEnd,
+    setFilterDates, clearFilterDates,
   } = useGanttStore();
 
   // Données en live — polling 10s
@@ -68,10 +70,16 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         colorModeLabel={colorModeLabel}
         presenceStack={<PresenceStack members={activeMembers} />}
         panelVisible={panelMode !== "hidden"}
+        filterStart={filterDateStart}
+        filterEnd={filterDateEnd}
+        onFilterDatesChange={setFilterDates}
+        onClearFilter={clearFilterDates}
       />
       <div className={styles.ganttOuter}>
         <Gantt
           {...props}
+          viewStart={filterDateStart ?? props.viewStart}
+          viewEnd={filterDateEnd ?? props.viewEnd}
           domains={liveData.domains}
           lots={liveData.lots}
           phases={liveData.phases}

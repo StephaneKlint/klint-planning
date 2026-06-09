@@ -293,54 +293,169 @@
 }
 
 /* ── Assignés ── */
-.assignees {
+.assigneesWrapper {
   display: flex;
+  flex-direction: column;
   gap: 6px;
+  width: 100%;
+}
+
+.assigneesChips {
+  display: flex;
+  gap: 5px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.memberChip {
-  display: flex;
+/* Chip assigné (avec × pour retirer) */
+.memberChipAssigned {
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 10px 3px 6px;
+  gap: 4px;
+  padding: 2px 4px 2px 3px;
   border-radius: 999px;
-  border: none;
-  cursor: pointer;
+  background: var(--klint-navy, #001036);
   font-size: 11px;
   font-weight: 600;
   font-family: var(--font-display, system-ui);
   color: #ffffff;
-  transition: opacity 120ms;
-}
-.memberChip:hover { opacity: 0.85; }
-
-.memberChipInactive {
-  background: var(--klint-paper, #FAFBFC) !important;
-  color: #9CA3AF;
-  border: 1px solid var(--klint-line, #E6E8EE);
-  padding: 3px 6px;
 }
 
-.memberName {
-  font-weight: 500;
-}
-
-.addMember {
-  width: 28px;
-  height: 28px;
+.memberChipAvatar {
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  border: 1.5px dashed var(--klint-line, #E6E8EE);
-  background: transparent;
-  color: #9CA3AF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.memberChipNameText {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0 2px;
+}
+
+.memberChipRemoveBtn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.25);
+  color: white;
+  font-size: 13px;
+  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 120ms, color 120ms;
+  padding: 0;
+  transition: background 100ms;
+  flex-shrink: 0;
 }
-.addMember:hover { border-color: #9CA3AF; color: var(--klint-navy, #001036); }
+.memberChipRemoveBtn:hover { background: rgba(255,255,255,0.45); }
+
+/* Bouton + Ajouter */
+.addMemberBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--klint-line, #E6E8EE);
+  background: transparent;
+  color: #9CA3AF;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 120ms, color 120ms, background 120ms;
+  flex-shrink: 0;
+}
+.addMemberBtn:hover {
+  border-color: var(--klint-navy, #001036);
+  color: var(--klint-navy, #001036);
+  background: var(--klint-paper, #FAFBFC);
+  border-style: solid;
+}
+
+/* Dropdown recherche membres */
+.assigneeDropdown {
+  border: 1px solid var(--klint-line, #E6E8EE);
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.assigneeSearchInput {
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid var(--klint-line, #E6E8EE);
+  font-size: 12px;
+  font-family: var(--font-display, system-ui);
+  color: var(--klint-navy, #001036);
+  outline: none;
+  background: var(--klint-paper, #FAFBFC);
+  box-sizing: border-box;
+}
+.assigneeSearchInput::placeholder { color: #9CA3AF; }
+.assigneeSearchInput:focus { background: #fff; }
+
+.assigneeDropdownList {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.assigneeDropdownRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-display, system-ui);
+  color: var(--klint-navy, #001036);
+  text-align: left;
+  transition: background 100ms;
+}
+.assigneeDropdownRow:hover { background: var(--klint-paper, #FAFBFC); }
+.assigneeDropdownRow:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.assigneeDropdownAvatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.assigneeDropdownEmpty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #9CA3AF;
+  text-align: center;
+}
+
+/* Kept for backwards compatibility if referenced anywhere */
+.assignees { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.memberChip { display: flex; align-items: center; gap: 5px; padding: 3px 10px 3px 6px; border-radius: 999px; border: none; cursor: pointer; font-size: 11px; font-weight: 600; font-family: var(--font-display, system-ui); color: #ffffff; }
+.memberChipInactive { background: var(--klint-paper, #FAFBFC) !important; color: #9CA3AF; border: 1px solid var(--klint-line, #E6E8EE); padding: 3px 6px; }
+.memberName { font-weight: 500; }
+.addMember { width: 28px; height: 28px; border-radius: 50%; border: 1.5px dashed var(--klint-line, #E6E8EE); background: transparent; color: #9CA3AF; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
 /* ── Note ── */
 .textarea {

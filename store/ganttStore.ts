@@ -31,6 +31,9 @@ interface GanttState {
   commandPaletteOpen: boolean;
   // Scroll intent (set by Toolbar buttons, consumed by Gantt)
   scrollRequest: "today" | "prev" | "next" | null;
+  // Date range filter (null = use planning default)
+  filterDateStart: string | null;
+  filterDateEnd: string | null;
   // Actions
   setZoom: (z: ZoomLevel) => void;
   setDensity: (d: Density) => void;
@@ -46,6 +49,8 @@ interface GanttState {
   toggleLotVisibility: (lotId: string) => void;
   setCommandPaletteOpen: (open: boolean) => void;
   requestScroll: (req: "today" | "prev" | "next" | null) => void;
+  setFilterDates: (start: string | null, end: string | null) => void;
+  clearFilterDates: () => void;
 }
 
 export const useGanttStore = create<GanttState>((set) => ({
@@ -61,6 +66,8 @@ export const useGanttStore = create<GanttState>((set) => ({
   hiddenLotIds: new Set(),
   commandPaletteOpen: false,
   scrollRequest: null,
+  filterDateStart: null,
+  filterDateEnd: null,
 
   setZoom: (zoom) => set({ zoom }),
   setDensity: (density) => set({ density }),
@@ -98,4 +105,6 @@ export const useGanttStore = create<GanttState>((set) => ({
 
   setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
   requestScroll: (scrollRequest) => set({ scrollRequest }),
+  setFilterDates: (filterDateStart, filterDateEnd) => set({ filterDateStart, filterDateEnd }),
+  clearFilterDates: () => set({ filterDateStart: null, filterDateEnd: null }),
 }));

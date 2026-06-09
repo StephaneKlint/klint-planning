@@ -278,3 +278,279 @@
   color: #9ca3af;
   font-size: var(--text-13);
 }
+
+/* ── Attribuer button ── */
+.attributeBtn {
+  padding: 5px 12px;
+  border-radius: var(--radius-btn, 8px);
+  border: 1px solid var(--klint-line);
+  background: var(--klint-paper);
+  color: var(--klint-navy);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-display);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms, border-color 120ms;
+}
+.attributeBtn:hover {
+  background: var(--klint-navy);
+  color: white;
+  border-color: var(--klint-navy);
+}
+
+/* ── Attribution modal ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 10, 40, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 620px;
+  max-height: calc(100vh - 80px);
+  background: var(--klint-white);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 10, 40, 0.3);
+  animation: modalIn 160ms ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--klint-line);
+  flex-shrink: 0;
+}
+
+.modalAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: var(--text-14);
+  font-weight: var(--weight-bold);
+  flex-shrink: 0;
+}
+
+.modalHeaderInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.modalHeaderName {
+  font-size: var(--text-16);
+  font-weight: var(--weight-bold);
+  color: var(--klint-navy);
+}
+
+.modalHeaderSub {
+  font-size: var(--text-12);
+  color: #6b7280;
+}
+
+.modalCloseBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--klint-line);
+  background: transparent;
+  color: #9ca3af;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 100ms, color 100ms;
+}
+.modalCloseBtn:hover { background: var(--klint-paper); color: var(--klint-navy); }
+
+.modalBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalDomain {
+  border: 1px solid var(--klint-line);
+  border-radius: var(--radius-input, 8px);
+  overflow: hidden;
+}
+
+.modalDomainHeader {
+  padding: 6px 12px;
+  font-size: var(--text-11);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modalLot {
+  border-top: 1px solid var(--klint-line);
+}
+
+.modalLotHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--klint-paper);
+}
+
+.modalLotName {
+  flex: 1;
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+  color: var(--klint-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modalLotCount {
+  font-size: var(--text-11);
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.assignLotBtn {
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--klint-line);
+  background: var(--klint-white);
+  color: #6b7280;
+  font-size: var(--text-11);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-display);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 100ms, color 100ms, border-color 100ms;
+}
+.assignLotBtn:hover {
+  background: var(--klint-navy);
+  color: white;
+  border-color: var(--klint-navy);
+}
+.assignLotBtnActive {
+  background: #FEE2E2;
+  color: #DC2626;
+  border-color: #FECACA;
+}
+.assignLotBtnActive:hover {
+  background: #DC2626;
+  color: white;
+  border-color: #DC2626;
+}
+.assignLotBtnPartial {
+  background: #EEF2FF;
+  color: #4338CA;
+  border-color: #C7D2FE;
+}
+
+.modalPhaseList {
+  display: flex;
+  flex-direction: column;
+}
+
+.modalPhaseRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border-top: 1px solid var(--klint-line);
+  transition: background 100ms;
+}
+.modalPhaseRow:hover { background: var(--klint-paper); }
+.modalPhaseRowAssigned { background: #F0FDF4; }
+.modalPhaseRowAssigned:hover { background: #DCFCE7; }
+
+.modalCheckbox {
+  accent-color: var(--klint-navy);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modalPhaseTypePill {
+  font-size: var(--text-10);
+  font-weight: var(--weight-bold);
+  color: white;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill, 999px);
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.modalPhaseName {
+  flex: 1;
+  font-size: var(--text-12);
+  font-weight: var(--weight-medium);
+  color: var(--klint-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modalPhaseDates {
+  font-size: var(--text-11);
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.modalFooter {
+  padding: 12px 24px;
+  border-top: 1px solid var(--klint-line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.modalCount {
+  flex: 1;
+  font-size: var(--text-13);
+  color: #6b7280;
+}
+
+.modalCloseFooterBtn {
+  padding: 7px 18px;
+  border-radius: var(--radius-btn, 8px);
+  border: 1px solid var(--klint-line);
+  background: var(--klint-white);
+  color: var(--klint-navy);
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-display);
+  cursor: pointer;
+  transition: background 120ms;
+}
+.modalCloseFooterBtn:hover { background: var(--klint-paper); }

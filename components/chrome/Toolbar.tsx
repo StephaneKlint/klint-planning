@@ -21,6 +21,11 @@ interface ToolbarProps {
   colorModeLabel?: string;
   presenceStack?: React.ReactNode;
   panelVisible?: boolean;
+  // Date range filter
+  filterStart?: string | null;
+  filterEnd?: string | null;
+  onFilterDatesChange?: (start: string | null, end: string | null) => void;
+  onClearFilter?: () => void;
 }
 
 const ZOOM_LEVELS: ZoomLevel[] = ["1m", "3m", "6m", "12m"];
@@ -39,7 +44,12 @@ export function Toolbar({
   colorModeLabel = "Domaine",
   presenceStack,
   panelVisible = true,
+  filterStart,
+  filterEnd,
+  onFilterDatesChange,
+  onClearFilter,
 }: ToolbarProps) {
+  const hasFilter = !!(filterStart || filterEnd);
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Barre d'outils du planning">
       {/* Groupe gauche — Navigation */}
@@ -123,6 +133,35 @@ export function Toolbar({
           <Icon name="filter" size={14} />
           <span>{colorModeLabel}</span>
         </button>
+
+        <div className={`${styles.dateFilterGroup} ${hasFilter ? styles.dateFilterGroupActive : ""}`}>
+          <span className={styles.dateFilterLabel}>Du</span>
+          <input
+            type="date"
+            className={styles.dateFilterInput}
+            value={filterStart ?? ""}
+            title="Début de la période affichée"
+            onChange={(e) => onFilterDatesChange?.(e.target.value || null, filterEnd ?? null)}
+          />
+          <span className={styles.dateFilterLabel}>au</span>
+          <input
+            type="date"
+            className={styles.dateFilterInput}
+            value={filterEnd ?? ""}
+            title="Fin de la période affichée"
+            onChange={(e) => onFilterDatesChange?.(filterStart ?? null, e.target.value || null)}
+          />
+          {hasFilter && (
+            <button
+              className={styles.clearFilterBtn}
+              onClick={onClearFilter}
+              title="Effacer le filtre de dates"
+              aria-label="Effacer le filtre de dates"
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={styles.divider} aria-hidden />

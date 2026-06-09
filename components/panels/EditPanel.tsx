@@ -3,7 +3,7 @@
  * EditPanel — panneau flottant 420px, mode phase complet.
  * Champs : Type, Libellé, Début, Fin, Statut, Avancement, Couleur, Assignés, Note.
  */
-import { useTransition, useState } from "react";
+import { useTransition, useState, useRef, useEffect } from "react";
 import { useGanttStore } from "@/store/ganttStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { Icon } from "@/components/ui/Icon";
@@ -48,6 +48,30 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   const [saved, setSaved] = useState(false);
   const patchPhase = useOptimisticPhase();
   const qc = useQueryClient();
+
+  // Assignées dropdown state
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const assigneeWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!showAssigneeDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (assigneeWrapperRef.current && !assigneeWrapperRef.current.contains(e.target as Node)) {
+        setShowAssigneeDropdown(false);
+        setAssigneeSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showAssigneeDropdown]);
+
+  // Reset dropdown when switching edit target
+  useEffect(() => {
+    setShowAssigneeDropdown(false);
+    setAssigneeSearch("");
+  }, [editTarget]);
 
   if (!editTarget) return null;
 
@@ -282,36 +306,87 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             </div>
           </div>
 
-          {/* Assignés — filtrés par phase, toggle via click */}
+          {/* Assigné·es — chips des assignés + dropdown de recherche */}
           <div className={styles.fieldRow}>
             <span className={styles.fieldLabel}>Assigné·es</span>
-            <div className={styles.assignees}>
-              {data.members.map((m) => {
-                const isAssigned = data.phaseAssignees.some(
-                  (a) => a.phaseId === phase.id && a.memberId === m.id
-                );
-                return (
-                  <button
-                    key={m.id}
-                    className={`${styles.memberChip} ${isAssigned ? "" : styles.memberChipInactive}`}
-                    title={isAssigned ? `Désassigner ${m.userName}` : `Assigner ${m.userName}`}
-                    style={{ background: isAssigned ? (m.color ?? "#001D63") : undefined }}
-                    disabled={isPending}
-                    onClick={() => {
-                      save(() => togglePhaseAssignee({
-                        phaseId: phase.id,
-                        memberId: m.id,
-                        planningId,
-                      }));
-                    }}
-                  >
-                    {m.initials ?? "?"}
-                    {isAssigned && (
-                      <span className={styles.memberName}>{m.userName.split(" ")[0]}</span>
-                    )}
-                  </button>
-                );
-              })}
+            <div ref={assigneeWrapperRef} className={styles.assigneesWrapper}>
+              {/* Chips des membres assignés + bouton + */}
+              <div className={styles.assigneesChips}>
+                {data.members
+                  .filter((m) => data.phaseAssignees.some((a) => a.phaseId === phase.id && a.memberId === m.id))
+                  .map((m) => (
+                    <div key={m.id} className={styles.memberChipAssigned}>
+                      <span className={styles.memberChipAvatar} style={{ background: m.color ?? "#001D63" }}>
+                        {m.initials ?? "?"}
+                      </span>
+                      <span className={styles.memberChipNameText}>{m.userName.split(" ")[0]}</span>
+                      <button
+                        className={styles.memberChipRemoveBtn}
+                        onClick={() => save(() => togglePhaseAssignee({ phaseId: phase.id, memberId: m.id, planningId }))}
+                        title={`Désassigner ${m.userName}`}
+                        disabled={isPending}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                <button
+                  className={styles.addMemberBtn}
+                  onClick={() => { setShowAssigneeDropdown((v) => !v); setAssigneeSearch(""); }}
+                  title="Ajouter un assigné"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Dropdown de recherche */}
+              {showAssigneeDropdown && (
+                <div className={styles.assigneeDropdown}>
+                  <input
+                    type="text"
+                    className={styles.assigneeSearchInput}
+                    placeholder="Rechercher un membre…"
+                    value={assigneeSearch}
+                    onChange={(e) => setAssigneeSearch(e.target.value)}
+                    autoFocus
+                  />
+                  <div className={styles.assigneeDropdownList}>
+                    {(() => {
+                      const unassigned = data.members.filter(
+                        (m) => !data.phaseAssignees.some((a) => a.phaseId === phase.id && a.memberId === m.id)
+                      );
+                      const filtered = unassigned.filter((m) =>
+                        m.userName.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
+                        (m.initials ?? "").toLowerCase().includes(assigneeSearch.toLowerCase())
+                      );
+                      if (filtered.length === 0) {
+                        return (
+                          <div className={styles.assigneeDropdownEmpty}>
+                            {unassigned.length === 0 ? "Tous assignés" : "Aucun résultat"}
+                          </div>
+                        );
+                      }
+                      return filtered.map((m) => (
+                        <button
+                          key={m.id}
+                          className={styles.assigneeDropdownRow}
+                          disabled={isPending}
+                          onClick={() => {
+                            save(() => togglePhaseAssignee({ phaseId: phase.id, memberId: m.id, planningId }));
+                            setShowAssigneeDropdown(false);
+                            setAssigneeSearch("");
+                          }}
+                        >
+                          <span className={styles.assigneeDropdownAvatar} style={{ background: m.color ?? "#001D63" }}>
+                            {m.initials ?? "?"}
+                          </span>
+                          <span>{m.userName}</span>
+                        </button>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
