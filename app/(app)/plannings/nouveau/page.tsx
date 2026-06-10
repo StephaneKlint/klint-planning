@@ -17,6 +17,35 @@ export default function NouveauPlanningPage() {
       </header>
 
       <form action={createPlanning} className={styles.form}>
+
+        {/* Type de planning */}
+        <div className={styles.fieldGroup}>
+          <label className={styles.label}>Type de planning</label>
+          <div className={styles.typeGrid}>
+            <label className={styles.typeCard}>
+              <input type="radio" name="type" value="multi" defaultChecked className={styles.typeRadio} />
+              <div className={styles.typeCardContent}>
+                <span className={styles.typeCardIcon}>🗂️</span>
+                <span className={styles.typeCardTitle}>Multi-projets</span>
+                <span className={styles.typeCardDesc}>
+                  Plusieurs domaines et projets en parallèle. Idéal pour un portefeuille ou un plan de transformation.
+                </span>
+              </div>
+            </label>
+            <label className={styles.typeCard}>
+              <input type="radio" name="type" value="mono" className={styles.typeRadio} />
+              <div className={styles.typeCardContent}>
+                <span className={styles.typeCardIcon}>📋</span>
+                <span className={styles.typeCardTitle}>Mono-projet</span>
+                <span className={styles.typeCardDesc}>
+                  Un seul projet avec ses phases. Adapté à un suivi de projet CRM ou applicatif unique.
+                </span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Nom */}
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="name">
             Nom du planning <span className={styles.required}>*</span>
@@ -33,6 +62,7 @@ export default function NouveauPlanningPage() {
           />
         </div>
 
+        {/* Année + Dates */}
         <div className={styles.row}>
           <div className={styles.fieldGroup}>
             <label className={styles.label} htmlFor="year">Année</label>
@@ -73,6 +103,7 @@ export default function NouveauPlanningPage() {
           </div>
         </div>
 
+        {/* Description */}
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="description">Description</label>
           <textarea
@@ -86,7 +117,7 @@ export default function NouveauPlanningPage() {
         </div>
 
         <div className={styles.actions}>
-          <Link href="/p" className={styles.cancelBtn}>Annuler</Link>
+          <Link href="/plannings" className={styles.cancelBtn}>Annuler</Link>
           <button type="submit" className={styles.submitBtn}>
             Créer le planning
           </button>

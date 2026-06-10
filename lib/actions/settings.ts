@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import {
-  phaseTypes, milestoneTypes, statuses, domains, planningSettings,
+  phaseTypes, milestoneTypes, statuses, domains, planningSettings, planningMembers,
 } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -128,4 +128,28 @@ export async function updatePlanningSettings(input: z.infer<typeof PlanningSetti
     })
     .where(eq(planningSettings.planningId, data.planningId));
   revalidatePath(`/parametres`);
+}
+
+// ── Gestion des rôles (RBAC) ─────────────────────────────────────────────────
+
+const UpdateMemberPermissionSchema = z.object({
+  memberId:   z.string().uuid(),
+  planningId: z.string().uuid(),
+  permission: z.enum(["owner", "editor", "viewer"]),
+});
+
+export async function updateMemberPermission(
+  input: z.infer<typeof UpdateMemberPermissionSchema>
+) {
+  const data = UpdateMemberPermissionSchema.parse(input);
+  await db.update(planningMembers)
+    .set({ permission: data.permission })
+    .where(
+      and(
+        eq(planningMembers.id, data.memberId),
+        eq(planningMembers.planningId, data.planningId)
+      )
+    );
+  revalidatePath(`/parametres`);
+  revalidatePath(`/ressources`);
 }

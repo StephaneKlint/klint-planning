@@ -207,3 +207,22 @@
   color: #DC2626;
   border-color: #FECACA;
 }
+
+/* Export PDF */
+.exportBtn {
+  background: var(--klint-navy, #001036);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-btn, 8px);
+  font-weight: var(--weight-semibold, 600);
+}
+
+.exportBtn:hover:not(:disabled) {
+  background: #002070;
+  color: #ffffff;
+}
+
+.exportBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

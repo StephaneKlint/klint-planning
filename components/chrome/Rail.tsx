@@ -33,9 +33,11 @@ const BOTTOM_NAV: NavItem[] = [
 interface RailProps {
   avatarInitials?: string;
   avatarColor?: string;
+  logoDataUrl?: string | null;
+  logoAlt?: string;
 }
 
-export function Rail({ avatarInitials = "?", avatarColor = "#001D63" }: RailProps) {
+export function Rail({ avatarInitials = "?", avatarColor = "#001D63", logoDataUrl, logoAlt = "Klint" }: RailProps) {
   const pathname = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -51,12 +53,17 @@ export function Rail({ avatarInitials = "?", avatarColor = "#001D63" }: RailProp
 
   return (
     <nav className={styles.rail} aria-label="Navigation principale">
-      {/* Logo Klint */}
+      {/* Logo */}
       <div className={styles.brand} aria-hidden>
-        <div className={styles.brandMark}>
-          <span className={styles.brandK}>K</span>
-          <span className={styles.brandSub}>LINT</span>
-        </div>
+        {logoDataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoDataUrl} alt={logoAlt} className={styles.customLogo} />
+        ) : (
+          <div className={styles.brandMark}>
+            <span className={styles.brandK}>K</span>
+            <span className={styles.brandSub}>LINT</span>
+          </div>
+        )}
       </div>
 
       <div className={styles.topNav}>

@@ -373,3 +373,96 @@
   color: #9ca3af;
   font-size: var(--text-13);
 }
+
+/* ─── Planning selector (multi-planning) ────────────────────────────────── */
+.planningSelector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.planningTab {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-display);
+  border: 1px solid var(--klint-line);
+  background: transparent;
+  color: var(--klint-navy);
+  text-decoration: none;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+
+.planningTab:hover {
+  background: var(--klint-paper);
+  border-color: var(--klint-navy);
+}
+
+.planningTabActive {
+  background: var(--klint-navy);
+  color: white;
+  border-color: var(--klint-navy);
+}
+
+/* ─── Apparence / Logo ───────────────────────────────────────────────────── */
+.logoSection {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.logoPreviewBox {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-card);
+  border: 1.5px solid var(--klint-line);
+  background: #001036;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.logoPreviewImg {
+  max-width: 64px;
+  max-height: 64px;
+  object-fit: contain;
+}
+
+.logoKlintFallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  line-height: 1;
+}
+
+.logoControls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.logoButtonRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.logoResetBtn {
+  /* extends deleteRowBtn but with auto width */
+  width: auto !important;
+  height: auto !important;
+  padding: 5px 10px;
+  font-size: var(--text-12);
+  font-family: var(--font-display);
+  white-space: nowrap;
+}

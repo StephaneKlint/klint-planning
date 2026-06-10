@@ -122,3 +122,64 @@
 .submitBtn:hover {
   opacity: 0.88;
 }
+
+/* ── Type de planning ── */
+.typeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.typeCard {
+  position: relative;
+  cursor: pointer;
+}
+
+.typeRadio {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.typeCardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 2px solid var(--klint-line);
+  border-radius: var(--radius-card);
+  background: var(--klint-paper);
+  transition: border-color 120ms, background 120ms;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.typeCard:hover .typeCardContent {
+  border-color: var(--klint-navy);
+  background: #f8faff;
+}
+
+.typeRadio:checked + .typeCardContent {
+  border-color: var(--klint-navy);
+  background: #EEF2FF;
+  box-shadow: 0 0 0 3px rgba(0, 16, 54, 0.08);
+}
+
+.typeCardIcon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.typeCardTitle {
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+  color: var(--klint-navy);
+}
+
+.typeCardDesc {
+  font-size: var(--text-12);
+  color: #6b7280;
+  line-height: 1.4;
+}

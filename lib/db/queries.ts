@@ -94,7 +94,16 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
 
 export async function listPlannings() {
   return db
-    .select({ id: plannings.id, name: plannings.name, year: plannings.year, archived: plannings.archived })
+    .select({
+      id:       plannings.id,
+      name:     plannings.name,
+      year:     plannings.year,
+      type:     plannings.type,
+      archived: plannings.archived,
+      viewStart: plannings.viewStart,
+      viewEnd:   plannings.viewEnd,
+      createdAt: plannings.createdAt,
+    })
     .from(plannings)
     .where(eq(plannings.archived, false))
     .orderBy(asc(plannings.createdAt));

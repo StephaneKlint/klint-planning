@@ -18,6 +18,8 @@ interface ToolbarProps {
   onVisibilityClick?: () => void;
   onColorModeClick?: () => void;
   onSearchClick?: () => void;
+  onExportPdf?: () => void;
+  exportPdfPending?: boolean;
   colorModeLabel?: string;
   presenceStack?: React.ReactNode;
   panelVisible?: boolean;
@@ -41,6 +43,8 @@ export function Toolbar({
   onColorModeClick,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onSearchClick: _onSearchClick,
+  onExportPdf,
+  exportPdfPending = false,
   colorModeLabel = "Domaine",
   presenceStack,
   panelVisible = true,
@@ -166,7 +170,7 @@ export function Toolbar({
 
       <div className={styles.divider} aria-hidden />
 
-      {/* Groupe droite — Présence + tri */}
+      {/* Groupe droite — Présence + export */}
       <div className={`${styles.group} ${styles.groupRight}`}>
         {presenceStack}
         <button
@@ -177,6 +181,18 @@ export function Toolbar({
         >
           <Icon name="sort" size={14} />
         </button>
+        {onExportPdf && (
+          <button
+            className={`${styles.btn} ${styles.exportBtn}`}
+            onClick={onExportPdf}
+            disabled={exportPdfPending}
+            aria-label="Exporter en PDF A3"
+            title="Exporter en PDF A3 paysage"
+          >
+            <Icon name="download" size={14} />
+            <span>{exportPdfPending ? "Export…" : "PDF A3"}</span>
+          </button>
+        )}
       </div>
     </div>
   );

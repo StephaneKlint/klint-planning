@@ -1,23 +1,27 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./Parametres.module.css";
 import type { GanttData } from "@/lib/db/queries";
+import type { AppSettings } from "@/lib/actions/appSettings";
 import {
   addPhaseType, deletePhaseType, updatePhaseType,
   addMilestoneType, deleteMilestoneType, updateMilestoneType,
-  updateDomainCadence, updatePlanningSettings,
+  updateDomainCadence, updatePlanningSettings, updateMemberPermission,
 } from "@/lib/actions/settings";
+import { saveAppLogo } from "@/lib/actions/appSettings";
 
-type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts";
+type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "membres" | "apparence";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "general",  label: "Général" },
-  { id: "cadence",  label: "Cadence" },
-  { id: "phases",   label: "Types de phases" },
-  { id: "jalons",   label: "Types de jalons" },
-  { id: "statuts",  label: "Statuts" },
+  { id: "general",   label: "Général" },
+  { id: "cadence",   label: "Cadence" },
+  { id: "phases",    label: "Types de phases" },
+  { id: "jalons",    label: "Types de jalons" },
+  { id: "statuts",   label: "Statuts" },
+  { id: "membres",   label: "Membres & Droits" },
+  { id: "apparence", label: "Apparence" },
 ];
 
 function fmtDate(d: string) {
@@ -30,11 +34,24 @@ const PRESET_COLORS = [
   "#DC2626","#EA580C","#0369A1","#374151","#BE185D",
 ];
 
-export function ParametresTabs({ data }: { data: GanttData }) {
+const PERMISSION_LABELS: Record<string, string> = {
+  owner:  "Propriétaire",
+  editor: "Éditeur",
+  viewer: "Lecteur",
+};
+
+export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppSettings }) {
   const router = useRouter();
   const [active, setActive] = useState<Tab>("general");
   const [isPending, startTransition] = useTransition();
-  const { planning, settings, domains, phaseTypes, milestoneTypes, statuses } = data;
+  const { planning, settings, domains, phaseTypes, milestoneTypes, statuses, members } = data;
+
+  // Logo upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(appCfg.logoDataUrl ?? null);
+  const [logoAlt, setLogoAlt] = useState(appCfg.logoAlt || "Klint");
+  const [logoSaving, setLogoSaving] = useState(false);
+  const [logoMsg, setLogoMsg] = useState<string | null>(null);
 
   // Phase type form state
   const [newPTCode, setNewPTCode] = useState("");
@@ -416,6 +433,177 @@ export function ParametresTabs({ data }: { data: GanttData }) {
           <p className={styles.tabDesc} style={{ marginTop: 12 }}>
             Les statuts sont synchronisés avec le système. L&apos;édition libre arrive dans une prochaine version.
           </p>
+        </div>
+      )}
+
+      {/* ── Membres & Droits ─────────────────────────────────────── */}
+      {active === "membres" && (
+        <div className={styles.tabPanel}>
+          <p className={styles.tabDesc}>
+            Gérez les rôles des membres de ce planning. Les propriétaires peuvent tout modifier ; les éditeurs gèrent le contenu ; les lecteurs consultent uniquement.
+          </p>
+          {members.length === 0 ? (
+            <p className={styles.tabDesc}>Aucun membre sur ce planning.</p>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr><th>Membre</th><th>Email</th><th>Rôle</th></tr>
+              </thead>
+              <tbody>
+                {members.map((m) => (
+                  <tr key={m.id}>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span
+                          style={{
+                            width: 28, height: 28, borderRadius: "50%",
+                            background: m.color ?? "#001D63",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            color: "white", fontSize: 10, fontWeight: 700, flexShrink: 0,
+                          }}
+                        >
+                          {(m.initials ?? m.userName.slice(0, 2)).toUpperCase()}
+                        </span>
+                        {m.userName}
+                      </div>
+                    </td>
+                    <td className={styles.tdMuted}>{m.userEmail}</td>
+                    <td>
+                      <select
+                        className={styles.addInput}
+                        defaultValue={m.permission}
+                        disabled={isPending}
+                        onChange={(e) => {
+                          startTransition(async () => {
+                            await updateMemberPermission({
+                              memberId: m.id,
+                              planningId: planning.id,
+                              permission: e.target.value as "owner" | "editor" | "viewer",
+                            });
+                            router.refresh();
+                          });
+                        }}
+                      >
+                        {Object.entries(PERMISSION_LABELS).map(([val, lbl]) => (
+                          <option key={val} value={val}>{lbl}</option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* ── Apparence (Logo) ─────────────────────────────────────── */}
+      {active === "apparence" && (
+        <div className={styles.tabPanel}>
+          <p className={styles.tabDesc}>
+            Personnalisez le logo affiché dans la barre de navigation (Rail). Format recommandé : PNG ou SVG carré, fond transparent. Taille max : 200 Ko.
+          </p>
+
+          <div className={styles.logoSection}>
+            {/* Prévisualisation */}
+            <div className={styles.logoPreviewBox}>
+              {logoPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoPreview} alt={logoAlt} className={styles.logoPreviewImg} />
+              ) : (
+                <div className={styles.logoKlintFallback}>
+                  <span style={{ fontSize: 28, fontWeight: 900, color: "#5CD696" }}>K</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.45)", textTransform: "uppercase" }}>LINT</span>
+                </div>
+              )}
+            </div>
+
+            {/* Contrôles */}
+            <div className={styles.logoControls}>
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>Texte alternatif</span>
+                <input
+                  type="text"
+                  className={styles.addInput}
+                  value={logoAlt}
+                  onChange={(e) => setLogoAlt(e.target.value)}
+                  placeholder="ex. Mon Entreprise"
+                  maxLength={100}
+                />
+              </div>
+
+              <div className={styles.logoButtonRow}>
+                <button
+                  className={styles.addBtn}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={logoSaving}
+                >
+                  {logoPreview ? "Changer le logo" : "Choisir un logo…"}
+                </button>
+
+                {logoPreview && (
+                  <button
+                    className={`${styles.deleteRowBtn} ${styles.logoResetBtn}`}
+                    onClick={async () => {
+                      setLogoSaving(true);
+                      await saveAppLogo(null, "Klint");
+                      setLogoPreview(null);
+                      setLogoAlt("Klint");
+                      setLogoMsg("Logo réinitialisé.");
+                      setLogoSaving(false);
+                      router.refresh();
+                      setTimeout(() => setLogoMsg(null), 3000);
+                    }}
+                    disabled={logoSaving}
+                  >
+                    Réinitialiser (logo Klint)
+                  </button>
+                )}
+
+                {logoPreview && (
+                  <button
+                    className={styles.saveBtn}
+                    onClick={async () => {
+                      setLogoSaving(true);
+                      await saveAppLogo(logoPreview, logoAlt || "Klint");
+                      setLogoMsg("Logo enregistré ✓");
+                      setLogoSaving(false);
+                      router.refresh();
+                      setTimeout(() => setLogoMsg(null), 3000);
+                    }}
+                    disabled={logoSaving || !logoPreview}
+                  >
+                    {logoSaving ? "Enregistrement…" : "Enregistrer"}
+                  </button>
+                )}
+              </div>
+
+              {logoMsg && <p style={{ color: "#16A34A", fontSize: 12, margin: "4px 0 0" }}>{logoMsg}</p>}
+            </div>
+          </div>
+
+          {/* Input file caché */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (file.size > 200 * 1024) {
+                alert("Fichier trop lourd (max 200 Ko). Utilisez un SVG ou un PNG optimisé.");
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                setLogoPreview(ev.target?.result as string);
+              };
+              reader.readAsDataURL(file);
+              // Reset input so same file can be selected again
+              e.target.value = "";
+            }}
+          />
         </div>
       )}
     </div>

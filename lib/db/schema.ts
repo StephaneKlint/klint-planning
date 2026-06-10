@@ -82,12 +82,23 @@ export const verificationTokens = pgTable(
   (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
 );
 
+// ---- Paramètres globaux de l'application ---------------------------------
+// Singleton (une seule ligne, key = 'global')
+
+export const appSettings = pgTable("app_settings", {
+  key:          varchar("key", { length: 20 }).primaryKey(),   // toujours "global"
+  logoDataUrl:  text("logo_data_url"),                         // base64 ou null → logo Klint
+  logoAlt:      varchar("logo_alt", { length: 100 }).default("Klint"),
+  updatedAt:    timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ---- Plannings -----------------------------------------------------------
 
 export const plannings = pgTable("plannings", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
+  type: varchar("type", { length: 20 }).notNull().default("multi"), // "mono" | "multi"
   year: integer("year").notNull(),
   viewStart: date("view_start").notNull(),
   viewEnd: date("view_end").notNull(),

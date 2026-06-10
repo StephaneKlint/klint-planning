@@ -3,6 +3,7 @@
  * GanttView — Toolbar + Gantt + EditPanel + BulkBar + CommandPalette + Présence.
  * Polling 10s (données) + heartbeat/présence 30s via Neon.
  */
+import { useRef, useState } from "react";
 import { Gantt } from "@/components/gantt/Gantt";
 import { Toolbar } from "@/components/chrome/Toolbar";
 import { EditPanel } from "@/components/panels/EditPanel";
@@ -23,6 +24,9 @@ interface GanttViewProps extends GanttProps {
 }
 
 export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProps) {
+  const ganttRef = useRef<HTMLDivElement>(null);
+  const [exportPending, setExportPending] = useState(false);
+
   const {
     zoom, setZoom,
     colorMode, setColorMode,
@@ -55,6 +59,50 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     setPanelMode(panelMode === "hidden" ? "compact" : "hidden");
   };
 
+  const handleExportPdf = async () => {
+    if (!ganttRef.current || exportPending) return;
+    setExportPending(true);
+    try {
+      // Dynamic imports — évite le bundle côté server
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      const el = ganttRef.current;
+      const canvas = await html2canvas(el, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        scrollX: 0,
+        scrollY: 0,
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
+      });
+
+      // A3 paysage : 420 × 297 mm
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = pdf.internal.pageSize.getHeight();
+
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+      const ratio = Math.min(pdfW / imgW, pdfH / imgH);
+
+      const imgData = canvas.toDataURL("image/png");
+      pdf.addImage(imgData, "PNG", 0, 0, imgW * ratio, imgH * ratio);
+
+      const planningName = liveData.planning.name.replace(/[^a-zA-Z0-9-_]/g, "_");
+      pdf.save(`${planningName}_planning_A3.pdf`);
+    } catch (err) {
+      console.error("Export PDF failed:", err);
+      alert("L'export PDF a échoué. Essayez de réduire le zoom ou la période affichée.");
+    } finally {
+      setExportPending(false);
+    }
+  };
+
   return (
     <div className={styles.view}>
       <Toolbar
@@ -67,6 +115,8 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         onVisibilityClick={toggleDomainBands}
         onSearchClick={() => setCommandPaletteOpen(true)}
         onColorModeClick={handleColorMode}
+        onExportPdf={handleExportPdf}
+        exportPdfPending={exportPending}
         colorModeLabel={colorModeLabel}
         presenceStack={<PresenceStack members={activeMembers} />}
         panelVisible={panelMode !== "hidden"}
@@ -75,7 +125,7 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         onFilterDatesChange={setFilterDates}
         onClearFilter={clearFilterDates}
       />
-      <div className={styles.ganttOuter}>
+      <div className={styles.ganttOuter} ref={ganttRef}>
         <Gantt
           {...props}
           viewStart={filterDateStart ?? props.viewStart}
