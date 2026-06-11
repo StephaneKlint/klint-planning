@@ -45,7 +45,7 @@ interface EditPanelProps {
 }
 
 export function EditPanel({ planningId, data }: EditPanelProps) {
-  const { editTarget, closeEdit } = useGanttStore();
+  const { editTarget, closeEdit, pushUndo } = useGanttStore();
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const patchPhase = useOptimisticPhase();
@@ -168,8 +168,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               placeholder="Libellé de la phase…"
               onBlur={(e) => {
                 const val = e.target.value.trim() || null;
+                const prev = phase.label ?? null;
                 patchPhase(planningId, phase.id, { label: val });
                 save(() => updatePhaseLabel({ phaseId: phase.id, planningId, label: val }));
+                pushUndo({ type: "phase-label", phaseId: phase.id, planningId, prev });
               }}
             />
           </div>
@@ -182,10 +184,13 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               className={styles.dateInput}
               defaultValue={phase.startDate}
               onBlur={(e) => {
+                const prevStart = phase.startDate;
+                const prevEnd   = phase.endDate;
                 save(() => updatePhaseDates({
                   phaseId: phase.id, planningId,
                   startDate: e.target.value, endDate: phase.endDate,
                 }));
+                pushUndo({ type: "phase-dates", phaseId: phase.id, planningId, prevStart, prevEnd });
               }}
             />
           </div>
@@ -196,10 +201,13 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               className={styles.dateInput}
               defaultValue={phase.endDate}
               onBlur={(e) => {
+                const prevStart = phase.startDate;
+                const prevEnd   = phase.endDate;
                 save(() => updatePhaseDates({
                   phaseId: phase.id, planningId,
                   startDate: phase.startDate, endDate: e.target.value,
                 }));
+                pushUndo({ type: "phase-dates", phaseId: phase.id, planningId, prevStart, prevEnd });
               }}
             />
           </div>
@@ -218,9 +226,11 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                     color: opt.color,
                   }}
                   onClick={() => {
+                    const prev = phase.status ?? null;
                     const next = currentStatus === opt.value ? null : opt.value;
                     patchPhase(planningId, phase.id, { status: next });
                     save(() => updatePhaseStatus({ phaseId: phase.id, planningId, status: next }));
+                    pushUndo({ type: "phase-status", phaseId: phase.id, planningId, prev });
                   }}
                   disabled={isPending}
                 >
@@ -243,8 +253,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                   patchPhase(planningId, phase.id, { progress: Number(e.target.value) });
                 }}
                 onMouseUp={(e) => {
+                  const prev = phase.progress;
                   const val = Number((e.target as HTMLInputElement).value);
                   save(() => updatePhaseProgress({ phaseId: phase.id, planningId, progress: val }));
+                  pushUndo({ type: "phase-progress", phaseId: phase.id, planningId, prev });
                 }}
               />
               <div className={styles.progressInput}>
@@ -257,8 +269,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                     patchPhase(planningId, phase.id, { progress: val });
                   }}
                   onBlur={(e) => {
+                    const prev = phase.progress;
                     const val = Math.min(100, Math.max(0, Number(e.target.value)));
                     save(() => updatePhaseProgress({ phaseId: phase.id, planningId, progress: val }));
+                    pushUndo({ type: "phase-progress", phaseId: phase.id, planningId, prev });
                   }}
                 />
                 <span className={styles.progressPct}>%</span>
@@ -278,8 +292,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                     style={{ background: col }}
                     aria-label={col}
                     onClick={() => {
+                      const prev = phase.color ?? null;
                       patchPhase(planningId, phase.id, { color: col });
                       save(() => updatePhaseColor({ phaseId: phase.id, planningId, color: col }));
+                      pushUndo({ type: "phase-color", phaseId: phase.id, planningId, prev });
                     }}
                   />
                 ))}
@@ -288,8 +304,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                     className={styles.swatchReset}
                     title="Couleur du domaine"
                     onClick={() => {
+                      const prev = phase.color ?? null;
                       patchPhase(planningId, phase.id, { color: null });
                       save(() => updatePhaseColor({ phaseId: phase.id, planningId, color: null }));
+                      pushUndo({ type: "phase-color", phaseId: phase.id, planningId, prev });
                     }}
                   >
                     ↺
@@ -305,6 +323,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                     patchPhase(planningId, phase.id, { color: e.target.value });
                     save(() => updatePhaseColor({ phaseId: phase.id, planningId, color: e.target.value }));
                   }}
+                  onBlur={() => {
+                    const prev = phase.color ?? null;
+                    pushUndo({ type: "phase-color", phaseId: phase.id, planningId, prev });
+                  }}
                   title="Choisir une couleur"
                 />
                 <input
@@ -316,8 +338,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                   onChange={(e) => {
                     const v = e.target.value;
                     if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+                      const prev = phase.color ?? null;
                       patchPhase(planningId, phase.id, { color: v });
                       save(() => updatePhaseColor({ phaseId: phase.id, planningId, color: v }));
+                      pushUndo({ type: "phase-color", phaseId: phase.id, planningId, prev });
                     }
                   }}
                 />
@@ -419,7 +443,9 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               rows={3}
               onBlur={(e) => {
                 const note = e.target.value.trim() || null;
+                const prev = phase.note ?? null;
                 save(() => updatePhaseNote({ phaseId: phase.id, planningId, note }));
+                pushUndo({ type: "phase-note", phaseId: phase.id, planningId, prev });
               }}
             />
           </div>
@@ -561,10 +587,12 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             onBlur={(e) => {
               const val = e.target.value.trim();
               if (val && val !== ms.label) {
+                const prevLabel = ms.label;
                 patchMilestone({ label: val });
                 startTransition(async () => {
                   await updateMilestone({ milestoneId: ms.id, planningId, label: val });
                 });
+                pushUndo({ type: "milestone-update", milestoneId: ms.id, planningId, prev: { label: prevLabel } });
               }
             }}
           />
@@ -600,9 +628,11 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               defaultValue={ms.date}
               onBlur={(e) => {
                 if (e.target.value && e.target.value !== ms.date) {
+                  const prevDate = ms.date;
                   startTransition(async () => {
                     await updateMilestone({ milestoneId: ms.id, planningId, date: e.target.value });
                   });
+                  pushUndo({ type: "milestone-update", milestoneId: ms.id, planningId, prev: { date: prevDate } });
                 }
               }}
             />
@@ -644,9 +674,11 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                     style={{ background: c }}
                     title={c}
                     onClick={() => {
+                      const prevColor = ms.color ?? null;
                       startTransition(async () => {
                         await updateMilestone({ milestoneId: ms.id, planningId, color: c });
                       });
+                      pushUndo({ type: "milestone-update", milestoneId: ms.id, planningId, prev: { color: prevColor } });
                     }}
                   />
                 ))}
@@ -654,9 +686,11 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                   className={`${styles.swatchReset} ${!ms.color ? styles.swatchActive : ""}`}
                   title="Couleur du type"
                   onClick={() => {
+                    const prevColor = ms.color ?? null;
                     startTransition(async () => {
                       await updateMilestone({ milestoneId: ms.id, planningId, color: null });
                     });
+                    pushUndo({ type: "milestone-update", milestoneId: ms.id, planningId, prev: { color: prevColor } });
                   }}
                 >
                   auto
@@ -672,6 +706,9 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                       await updateMilestone({ milestoneId: ms.id, planningId, color: e.target.value });
                     });
                   }}
+                  onBlur={() => {
+                    pushUndo({ type: "milestone-update", milestoneId: ms.id, planningId, prev: { color: ms.color ?? null } });
+                  }}
                   title="Choisir une couleur"
                 />
                 <input
@@ -683,9 +720,11 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                   onChange={(e) => {
                     const v = e.target.value;
                     if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+                      const prevColor = ms.color ?? null;
                       startTransition(async () => {
                         await updateMilestone({ milestoneId: ms.id, planningId, color: v });
                       });
+                      pushUndo({ type: "milestone-update", milestoneId: ms.id, planningId, prev: { color: prevColor } });
                     }
                   }}
                 />
@@ -704,9 +743,11 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               rows={3}
               onBlur={(e) => {
                 const val = e.target.value || null;
+                const prevNote = ms.note ?? null;
                 startTransition(async () => {
                   await updateMilestone({ milestoneId: ms.id, planningId, note: val });
                 });
+                pushUndo({ type: "milestone-update", milestoneId: ms.id, planningId, prev: { note: prevNote } });
               }}
             />
           </div>

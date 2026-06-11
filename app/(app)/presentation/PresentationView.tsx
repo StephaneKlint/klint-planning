@@ -139,7 +139,7 @@ export function PresentationView({ data, planningId }: Props) {
           +
         </button>
         <span style={{ fontSize: "var(--text-12)", color: "rgba(255,255,255,0.75)", minWidth: 52, textAlign: "center" }}>
-          {ZOOM_LABELS[zoom]}
+          {ZOOM_LABELS[zoom as ZoomLevel]}
         </span>
         <button
           className={styles.barBtn}

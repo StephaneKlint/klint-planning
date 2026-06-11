@@ -13,6 +13,21 @@ export type EditTarget =
   | { kind: "create-phase"; lotId: string }
   | null;
 
+// ── Undo stack ───────────────────────────────────────────────────────────────
+export type UndoEntry =
+  | { type: "phase-status";   phaseId: string; planningId: string; prev: string | null }
+  | { type: "phase-dates";    phaseId: string; planningId: string; prevStart: string; prevEnd: string }
+  | { type: "phase-label";    phaseId: string; planningId: string; prev: string | null }
+  | { type: "phase-note";     phaseId: string; planningId: string; prev: string | null }
+  | { type: "phase-color";    phaseId: string; planningId: string; prev: string | null }
+  | { type: "phase-progress"; phaseId: string; planningId: string; prev: number }
+  | { type: "milestone-update"; milestoneId: string; planningId: string;
+      prev: { date?: string; label?: string; note?: string | null; color?: string | null } }
+  | { type: "member-delete";  userId: string; planningId: string; initials: string | null;
+      color: string | null; permission: string; phaseIds: string[] };
+
+const UNDO_MAX = 30;
+
 interface GanttState {
   // Display
   zoom: ZoomLevel;
@@ -35,6 +50,11 @@ interface GanttState {
   // Date range filter (null = use planning default)
   filterDateStart: string | null;
   filterDateEnd: string | null;
+  // Undo stack
+  undoStack: UndoEntry[];
+  pushUndo: (entry: UndoEntry) => void;
+  popUndo: () => UndoEntry | undefined;
+  clearUndo: () => void;
   // Actions
   setZoom: (z: ZoomLevel) => void;
   setDensity: (d: Density) => void;
@@ -52,9 +72,12 @@ interface GanttState {
   requestScroll: (req: "today" | "prev" | "next" | null) => void;
   setFilterDates: (start: string | null, end: string | null) => void;
   clearFilterDates: () => void;
+  // Project visibility filter
+  projectFilterOpen: boolean;
+  setProjectFilterOpen: (open: boolean) => void;
 }
 
-export const useGanttStore = create<GanttState>((set) => ({
+export const useGanttStore = create<GanttState>((set, get) => ({
   zoom: "12m",
   density: "normal",
   colorMode: "domain",
@@ -69,6 +92,8 @@ export const useGanttStore = create<GanttState>((set) => ({
   scrollRequest: null,
   filterDateStart: null,
   filterDateEnd: null,
+  undoStack: [],
+  projectFilterOpen: false,
 
   setZoom: (zoom) => set({ zoom }),
   setDensity: (density) => set({ density }),
@@ -108,4 +133,18 @@ export const useGanttStore = create<GanttState>((set) => ({
   requestScroll: (scrollRequest) => set({ scrollRequest }),
   setFilterDates: (filterDateStart, filterDateEnd) => set({ filterDateStart, filterDateEnd }),
   clearFilterDates: () => set({ filterDateStart: null, filterDateEnd: null }),
+
+  pushUndo: (entry) => set((s) => ({
+    undoStack: [entry, ...s.undoStack].slice(0, UNDO_MAX),
+  })),
+  popUndo: () => {
+    const state = get();
+    if (state.undoStack.length === 0) return undefined;
+    const popped = state.undoStack[0];
+    set({ undoStack: state.undoStack.slice(1) });
+    return popped;
+  },
+  clearUndo: () => set({ undoStack: [] }),
+
+  setProjectFilterOpen: (projectFilterOpen) => set({ projectFilterOpen }),
 }));

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { GanttData, MemberRow } from "@/lib/db/queries";
 import { togglePhaseAssignee } from "@/lib/actions/planning";
 import { addMember, updateMember, removeMember } from "@/lib/actions/members";
+import { useGanttStore } from "@/store/ganttStore";
 import styles from "./Ressources.module.css";
 
 interface Props {
@@ -32,6 +33,7 @@ function fmt(d: string) {
 export function RessourcesClient({ data }: Props) {
   const { planning, domains, lots, phases } = data;
   const router = useRouter();
+  const { pushUndo } = useGanttStore();
 
   // Local copy of assignees for optimistic updates
   const [localAssignees, setLocalAssignees] = useState<{ phaseId: string; memberId: string }[]>(
@@ -128,10 +130,24 @@ export function RessourcesClient({ data }: Props) {
 
   const handleDelete = async (memberId: string) => {
     if (!window.confirm("Supprimer ce responsable du planning ? Ses attributions de phases seront supprimées.")) return;
+    // Capture state for undo before removal
+    const member = effectiveMembers.find((m) => m.id === memberId);
+    const phaseIds = localAssignees.filter((a) => a.memberId === memberId).map((a) => a.phaseId);
     setDeletedMemberIds((prev) => new Set([...prev, memberId]));
     setLocalAssignees((prev) => prev.filter((a) => a.memberId !== memberId));
     try {
       await removeMember(memberId, planning.id);
+      if (member) {
+        pushUndo({
+          type: "member-delete",
+          userId: member.userId,
+          planningId: planning.id,
+          initials: member.initials,
+          color: member.color,
+          permission: member.permission,
+          phaseIds,
+        });
+      }
       router.refresh();
     } catch {
       // Revert optimistic delete on error
@@ -536,7 +552,7 @@ export function RessourcesClient({ data }: Props) {
                   </span>
                 </div>
               )}
-              {memberModal.type === "add" && (
+              {memberModal.type === "add" ? (
                 <div className={styles.memberFormRow}>
                   <label className={styles.memberFormLabel}>Email *</label>
                   <input
@@ -545,6 +561,18 @@ export function RessourcesClient({ data }: Props) {
                     value={memberFormEmail}
                     onChange={(e) => setMemberFormEmail(e.target.value)}
                     placeholder="prenom.nom@exemple.com"
+                  />
+                </div>
+              ) : (
+                <div className={styles.memberFormRow}>
+                  <label className={styles.memberFormLabel}>Email</label>
+                  <input
+                    type="email"
+                    className={styles.memberFormInput}
+                    value={memberFormEmail}
+                    readOnly
+                    style={{ background: "var(--klint-paper, #F8FAFC)", color: "#6b7280", cursor: "default" }}
+                    title="L'email ne peut pas être modifié"
                   />
                 </div>
               )}

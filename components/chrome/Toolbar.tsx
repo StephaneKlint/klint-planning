@@ -20,6 +20,9 @@ interface ToolbarProps {
   onSearchClick?: () => void;
   onExportPdf?: () => void;
   exportPdfPending?: boolean;
+  onExportJson?: () => void;
+  onProjectFilter?: () => void;
+  projectFilterActive?: boolean;
   colorModeLabel?: string;
   presenceStack?: React.ReactNode;
   panelVisible?: boolean;
@@ -28,6 +31,9 @@ interface ToolbarProps {
   filterEnd?: string | null;
   onFilterDatesChange?: (start: string | null, end: string | null) => void;
   onClearFilter?: () => void;
+  // Undo
+  canUndo?: boolean;
+  onUndo?: () => void;
 }
 
 const ZOOM_LEVELS: ZoomLevel[] = ["1m", "3m", "6m", "12m"];
@@ -45,6 +51,9 @@ export function Toolbar({
   onSearchClick: _onSearchClick,
   onExportPdf,
   exportPdfPending = false,
+  onExportJson,
+  onProjectFilter,
+  projectFilterActive = false,
   colorModeLabel = "Domaine",
   presenceStack,
   panelVisible = true,
@@ -52,6 +61,8 @@ export function Toolbar({
   filterEnd,
   onFilterDatesChange,
   onClearFilter,
+  canUndo = false,
+  onUndo,
 }: ToolbarProps) {
   const hasFilter = !!(filterStart || filterEnd);
   return (
@@ -173,24 +184,56 @@ export function Toolbar({
       {/* Groupe droite — Présence + export */}
       <div className={`${styles.group} ${styles.groupRight}`}>
         {presenceStack}
+
+        {/* Undo */}
+        {onUndo && (
+          <button
+            className={styles.btn}
+            onClick={onUndo}
+            disabled={!canUndo}
+            aria-label="Annuler la dernière action (Ctrl+Z)"
+            title="Annuler (Ctrl+Z)"
+            style={!canUndo ? { opacity: 0.35, cursor: "not-allowed" } : undefined}
+          >
+            <Icon name="undo" size={14} />
+          </button>
+        )}
+
+        {/* Filtrer les projets */}
         <button
-          className={styles.btn}
-          aria-label="Trier les lots"
-          title="Trier les lots (prochainement)"
-          style={{ opacity: 0.4, cursor: "not-allowed" }}
+          className={`${styles.btn} ${projectFilterActive ? styles.btnActive : ""}`}
+          onClick={onProjectFilter}
+          aria-label="Filtrer les projets affichés"
+          title="Afficher / masquer des projets"
         >
           <Icon name="sort" size={14} />
+          <span>Projets</span>
         </button>
+
+        {/* Export JSON */}
+        {onExportJson && (
+          <button
+            className={styles.btn}
+            onClick={onExportJson}
+            aria-label="Exporter en JSON"
+            title="Exporter le planning en JSON"
+          >
+            <Icon name="download" size={14} />
+            <span>JSON</span>
+          </button>
+        )}
+
+        {/* Export PDF A3 */}
         {onExportPdf && (
           <button
             className={`${styles.btn} ${styles.exportBtn}`}
             onClick={onExportPdf}
             disabled={exportPdfPending}
             aria-label="Exporter en PDF A3"
-            title="Exporter en PDF A3 paysage"
+            title="Aperçu et impression A3 paysage"
           >
             <Icon name="download" size={14} />
-            <span>{exportPdfPending ? "Export…" : "PDF A3"}</span>
+            <span>{exportPdfPending ? "Capture…" : "PDF A3"}</span>
           </button>
         )}
       </div>

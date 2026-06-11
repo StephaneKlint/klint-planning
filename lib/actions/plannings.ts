@@ -340,3 +340,178 @@ export async function importPlanningFromJSON(jsonStr: string): Promise<string> {
   revalidatePath("/p");
   return newId;
 }
+
+// ---------------------------------------------------------------------------
+// Update Planning from JSON (mise à jour non-destructive)
+// ---------------------------------------------------------------------------
+// Stratégie :
+//   - Domaines : matchés par `code`
+//   - Lots     : matchés par `name` dans le domaine
+//   - Phases   : matchées par `type` + `label` dans le lot → mise à jour dates/statut/etc.
+//   - Jalons   : matchés par `type` + `label` dans le lot → mise à jour date/note/etc.
+//   - Éléments non trouvés → création (ajout pur)
+// ---------------------------------------------------------------------------
+export async function updatePlanningFromJSON(planningId: string, jsonStr: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let data: any;
+  try {
+    data = JSON.parse(jsonStr);
+  } catch {
+    throw new Error("Fichier JSON invalide.");
+  }
+
+  if (!data?.klintPlanningExport) {
+    throw new Error("Ce fichier n'est pas un export Klint Planning valide.");
+  }
+
+  // Vérifier que le planning existe
+  const [existing] = await db.select().from(plannings).where(eq(plannings.id, planningId));
+  if (!existing) throw new Error("Planning introuvable.");
+
+  // 1. Mettre à jour les métadonnées du planning (dates de vue, description)
+  const p = data.planning ?? {};
+  await db.update(plannings).set({
+    viewStart:   p.viewStart   ?? existing.viewStart,
+    viewEnd:     p.viewEnd     ?? existing.viewEnd,
+    description: p.description ?? existing.description,
+  }).where(eq(plannings.id, planningId));
+
+  // 2. Charger la structure existante
+  const [existingDomains, existingLots, existingPhases, existingMilestones] = await Promise.all([
+    db.select().from(domains).where(eq(domains.planningId, planningId)),
+    db.select().from(lots).where(eq(lots.planningId, planningId)),
+    db.select().from(phases).where(
+      inArray(
+        phases.lotId,
+        (await db.select({ id: lots.id }).from(lots).where(eq(lots.planningId, planningId))).map(l => l.id)
+      )
+    ),
+    db.select().from(milestones).where(
+      inArray(
+        milestones.lotId,
+        (await db.select({ id: lots.id }).from(lots).where(eq(lots.planningId, planningId))).map(l => l.id)
+      )
+    ),
+  ]);
+
+  // 3. Parcourir les domaines du JSON
+  const domainsArr = Array.isArray(data.domains) ? data.domains : [];
+  for (const d of domainsArr) {
+    const domCode = String(d.code ?? "");
+    const existingDomain = existingDomains.find((ed) => ed.code === domCode);
+    let domainId: string;
+
+    if (!existingDomain) {
+      // Créer le domaine s'il n'existe pas
+      const [newD] = await db.insert(domains).values({
+        planningId,
+        code:       domCode,
+        name:       String(d.name ?? "Domaine"),
+        bg:         String(d.bg ?? "#F8FAFC"),
+        bgAlt:      d.bgAlt ?? null,
+        strong:     String(d.strong ?? "#001036"),
+        phaseColor: String(d.phaseColor ?? "#3B82F6"),
+        sortOrder:  Number(d.sortOrder ?? 0),
+        collapsed:  Boolean(d.collapsed ?? false),
+        cadence:    d.cadence ?? null,
+      }).returning({ id: domains.id });
+      domainId = newD.id;
+    } else {
+      domainId = existingDomain.id;
+    }
+
+    const lotsArr = Array.isArray(d.lots) ? d.lots : [];
+    for (const l of lotsArr) {
+      const lotName = String(l.name ?? "");
+      const existingLot = existingLots.find(
+        (el) => el.domainId === domainId && el.name.trim().toLowerCase() === lotName.trim().toLowerCase()
+      );
+      let lotId: string;
+
+      if (!existingLot) {
+        // Créer le lot s'il n'existe pas
+        const [newL] = await db.insert(lots).values({
+          planningId,
+          domainId,
+          name:      lotName,
+          subtitle:  l.subtitle ?? null,
+          icon:      l.icon ?? null,
+          sortOrder: Number(l.sortOrder ?? 0),
+          hidden:    Boolean(l.hidden ?? false),
+        }).returning({ id: lots.id });
+        lotId = newL.id;
+      } else {
+        lotId = existingLot.id;
+      }
+
+      // Phases
+      const phasesArr = Array.isArray(l.phases) ? l.phases : [];
+      for (const ph of phasesArr) {
+        const phType  = String(ph.type ?? "custom");
+        const phLabel = String(ph.label ?? "");
+        const matchPh = existingPhases.find(
+          (ep) => ep.lotId === lotId && ep.type === phType &&
+            (ep.label ?? "").trim().toLowerCase() === phLabel.trim().toLowerCase()
+        );
+
+        if (matchPh) {
+          // Mise à jour des données modifiables
+          await db.update(phases).set({
+            startDate: ph.startDate ?? matchPh.startDate,
+            endDate:   ph.endDate   ?? matchPh.endDate,
+            status:    ph.status   !== undefined ? ph.status   : matchPh.status,
+            progress:  ph.progress !== undefined ? Number(ph.progress) : matchPh.progress,
+            color:     ph.color    !== undefined ? ph.color    : matchPh.color,
+            note:      ph.note     !== undefined ? ph.note     : matchPh.note,
+          }).where(eq(phases.id, matchPh.id));
+        } else {
+          // Création de la phase
+          await db.insert(phases).values({
+            lotId,
+            type:      phType,
+            label:     phLabel,
+            startDate: ph.startDate,
+            endDate:   ph.endDate,
+            status:    ph.status    ?? null,
+            progress:  Number(ph.progress ?? 0),
+            color:     ph.color     ?? null,
+            note:      ph.note      ?? null,
+            sortOrder: Number(ph.sortOrder ?? 0),
+          });
+        }
+      }
+
+      // Jalons
+      const msArr = Array.isArray(l.milestones) ? l.milestones : [];
+      for (const ms of msArr) {
+        const msType  = String(ms.type ?? "custom");
+        const msLabel = String(ms.label ?? "");
+        const matchMs = existingMilestones.find(
+          (em) => em.lotId === lotId && em.type === msType &&
+            (em.label ?? "").trim().toLowerCase() === msLabel.trim().toLowerCase()
+        );
+
+        if (matchMs) {
+          await db.update(milestones).set({
+            date:  ms.date  ?? matchMs.date,
+            color: ms.color !== undefined ? ms.color : matchMs.color,
+            note:  ms.note  !== undefined ? ms.note  : matchMs.note,
+          }).where(eq(milestones.id, matchMs.id));
+        } else {
+          await db.insert(milestones).values({
+            lotId,
+            type:     msType,
+            label:    msLabel,
+            date:     ms.date,
+            color:    ms.color    ?? null,
+            labelPos: ms.labelPos ?? "above",
+            note:     ms.note     ?? null,
+          });
+        }
+      }
+    }
+  }
+
+  revalidatePath("/plannings");
+  revalidatePath(`/p/${planningId}`);
+}

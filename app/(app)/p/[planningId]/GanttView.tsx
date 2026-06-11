@@ -3,9 +3,10 @@
  * GanttView — Toolbar + Gantt + EditPanel + BulkBar + CommandPalette + Présence.
  * Polling 10s (données) + heartbeat/présence 30s via Neon.
  */
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Gantt } from "@/components/gantt/Gantt";
 import { Toolbar } from "@/components/chrome/Toolbar";
+import { ProjectFilterModal } from "@/components/chrome/ProjectFilterModal";
 import { EditPanel } from "@/components/panels/EditPanel";
 import { BulkBar } from "@/components/panels/BulkBar";
 import { CommandPalette } from "@/components/panels/CommandPalette";
@@ -13,8 +14,17 @@ import { PresenceStack } from "@/components/chrome/PresenceStack";
 import { useGanttStore } from "@/store/ganttStore";
 import { usePlanning } from "@/lib/queries/usePlanning";
 import { usePresence } from "@/lib/queries/usePresence";
+import { useQueryClient } from "@tanstack/react-query";
+import { planningQueryKey } from "@/lib/queries/usePlanning";
+import {
+  updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
+  updatePhaseDates, updatePhaseColor, updatePhaseLabel,
+  updateMilestone,
+} from "@/lib/actions/planning";
+import { restoreMember } from "@/lib/actions/members";
 import type { GanttProps } from "@/components/gantt/types";
 import type { GanttData } from "@/lib/db/queries";
+import type { UndoEntry } from "@/store/ganttStore";
 import styles from "./GanttView.module.css";
 
 interface GanttViewProps extends GanttProps {
@@ -36,7 +46,12 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     toggleDomainBands,
     filterDateStart, filterDateEnd,
     setFilterDates, clearFilterDates,
+    undoStack, popUndo,
+    projectFilterOpen, setProjectFilterOpen,
+    hiddenLotIds,
   } = useGanttStore();
+
+  const qc = useQueryClient();
 
   // Données en live — polling 10s
   const { data } = usePlanning(props.planningId, initialData);
@@ -59,31 +74,116 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     setPanelMode(panelMode === "hidden" ? "compact" : "hidden");
   };
 
+  // ── Undo ────────────────────────────────────────────────────────────────────
+  const handleUndo = useCallback(async () => {
+    const entry: UndoEntry | undefined = popUndo();
+    if (!entry) return;
+
+    try {
+      switch (entry.type) {
+        case "phase-status":
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await updatePhaseStatus({ phaseId: entry.phaseId, planningId: entry.planningId, status: entry.prev as any });
+          break;
+        case "phase-dates":
+          await updatePhaseDates({ phaseId: entry.phaseId, planningId: entry.planningId, startDate: entry.prevStart, endDate: entry.prevEnd });
+          break;
+        case "phase-label":
+          await updatePhaseLabel({ phaseId: entry.phaseId, planningId: entry.planningId, label: entry.prev });
+          break;
+        case "phase-note":
+          await updatePhaseNote({ phaseId: entry.phaseId, planningId: entry.planningId, note: entry.prev });
+          break;
+        case "phase-color":
+          await updatePhaseColor({ phaseId: entry.phaseId, planningId: entry.planningId, color: entry.prev });
+          break;
+        case "phase-progress":
+          await updatePhaseProgress({ phaseId: entry.phaseId, planningId: entry.planningId, progress: entry.prev });
+          break;
+        case "milestone-update":
+          await updateMilestone({ milestoneId: entry.milestoneId, planningId: entry.planningId, ...entry.prev });
+          break;
+        case "member-delete":
+          await restoreMember({
+            userId: entry.userId, planningId: entry.planningId,
+            initials: entry.initials, color: entry.color,
+            permission: entry.permission, phaseIds: entry.phaseIds,
+          });
+          break;
+      }
+      qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    } catch (err) {
+      console.error("Undo failed:", err);
+    }
+  }, [popUndo, props.planningId, qc]);
+
+  // Ctrl+Z keyboard shortcut
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        e.preventDefault();
+        handleUndo();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [handleUndo]);
+
+  // ── PDF export ──────────────────────────────────────────────────────────────
   const handleExportPdf = async () => {
     if (!ganttRef.current || exportPending) return;
     setExportPending(true);
     try {
-      // Dynamic import — évite le bundle côté server
       const html2canvas = (await import("html2canvas")).default;
+      const outerEl = ganttRef.current;
 
-      const el = ganttRef.current;
-      const canvas = await html2canvas(el, {
+      // Mesure les dimensions réelles du contenu via l'élément bodyScroll
+      const bodyEl = outerEl.querySelector<HTMLElement>("[data-gantt-body]");
+      const timelineW = bodyEl?.scrollWidth  ?? 1200;
+      const timelineH = bodyEl?.scrollHeight ?? 600;
+      const SIDE_W   = 340;
+      const HEADER_H = 52;
+      const exportW  = timelineW + SIDE_W;
+      const exportH  = timelineH + HEADER_H;
+
+      const canvas = await html2canvas(outerEl, {
         scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
         scrollX: 0,
         scrollY: 0,
-        width: el.scrollWidth,
-        height: el.scrollHeight,
-        windowWidth: el.scrollWidth,
-        windowHeight: el.scrollHeight,
+        width: exportW,
+        height: exportH,
+        windowWidth: exportW,
+        windowHeight: exportH,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onclone: (_clonedDoc: Document, clonedOuter: any) => {
+          // Agrandit le conteneur extérieur à la taille totale du contenu
+          (clonedOuter as HTMLElement).style.cssText = [
+            `position: relative !important`,
+            `width: ${exportW}px !important`,
+            `height: ${exportH}px !important`,
+            `overflow: visible !important`,
+            `padding: 0 !important`,
+          ].join(";");
+
+          // Supprime toutes les contraintes de débordement dans les enfants
+          (clonedOuter as HTMLElement).querySelectorAll<HTMLElement>("*").forEach((child) => {
+            child.style.overflow  = "visible";
+            child.style.overflowX = "visible";
+            child.style.overflowY = "visible";
+            child.style.maxHeight = "none";
+            child.style.maxWidth  = "none";
+          });
+        },
       });
 
       const imgData = canvas.toDataURL("image/png");
       const planningName = liveData.planning.name;
 
-      // Ouvre une fenêtre de prévisualisation / impression
       const printWin = window.open("", "_blank");
       if (!printWin) {
         alert("Autorisez les pop-ups pour l'impression.");
@@ -146,6 +246,11 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     }
   };
 
+  // ── Export JSON ─────────────────────────────────────────────────────────────
+  const handleExportJson = () => {
+    window.location.href = `/api/export/${props.planningId}`;
+  };
+
   return (
     <div className={styles.view}>
       <Toolbar
@@ -160,6 +265,9 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         onColorModeClick={handleColorMode}
         onExportPdf={handleExportPdf}
         exportPdfPending={exportPending}
+        onExportJson={handleExportJson}
+        onProjectFilter={() => setProjectFilterOpen(!projectFilterOpen)}
+        projectFilterActive={projectFilterOpen || hiddenLotIds.size > 0}
         colorModeLabel={colorModeLabel}
         presenceStack={<PresenceStack members={activeMembers} />}
         panelVisible={panelMode !== "hidden"}
@@ -167,7 +275,19 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         filterEnd={filterDateEnd}
         onFilterDatesChange={setFilterDates}
         onClearFilter={clearFilterDates}
+        canUndo={undoStack.length > 0}
+        onUndo={handleUndo}
       />
+
+      {/* Modal sélecteur de projets */}
+      {projectFilterOpen && (
+        <ProjectFilterModal
+          domains={liveData.domains}
+          lots={liveData.lots}
+          onClose={() => setProjectFilterOpen(false)}
+        />
+      )}
+
       <div className={styles.ganttOuter} ref={ganttRef}>
         <Gantt
           {...props}

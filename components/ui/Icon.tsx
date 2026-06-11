@@ -12,7 +12,8 @@ export type IconName =
   | "sort" | "close" | "plug" | "key" | "shield" | "sparkle" | "drag"
   | "flag" | "link" | "edit" | "archive" | "trash" | "note" | "history"
   | "layers" | "eye" | "eyeOff" | "chartLine" | "diamond" | "moon" | "sun"
-  | "play" | "info" | "share" | "ai" | "file" | "expand" | "presenting";
+  | "play" | "info" | "share" | "ai" | "file" | "expand" | "presenting"
+  | "undo";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   search:       <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></>,
@@ -67,6 +68,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
   file:         <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></>,
   expand:       <><path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8"/><path d="M3 16.2V21m0 0h4.8M3 21l6-6"/><path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"/><path d="M3 7.8V3m0 0h4.8M3 3l6 6"/></>,
   presenting:   <><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></>,
+  undo:         <><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></>,
 };
 
 export interface IconProps {

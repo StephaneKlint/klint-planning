@@ -293,3 +293,177 @@
 .emptyBtn:hover {
   opacity: 0.88;
 }
+
+/* ─── Import mode modal ─────────────────────────────────────────────────── */
+.importModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 16, 54, 0.45);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.importModal {
+  background: var(--klint-white, #fff);
+  border-radius: var(--radius-card, 12px);
+  border: 1px solid var(--klint-line, #E6E8EE);
+  box-shadow: 0 12px 40px rgba(0, 16, 54, 0.2);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+}
+
+.importModalHeader {
+  display: flex;
+  align-items: center;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--klint-line, #E6E8EE);
+  gap: 10px;
+}
+
+.importModalTitle {
+  font-size: var(--text-15, 15px);
+  font-weight: var(--weight-bold, 700);
+  color: var(--klint-navy, #001036);
+  margin: 0;
+  flex: 1;
+}
+
+.importModalClose {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: #9ca3af;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 100ms, color 100ms;
+}
+.importModalClose:hover { background: var(--klint-paper); color: var(--klint-navy); }
+
+.importModalBody {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.importModalHint {
+  font-size: var(--text-13, 13px);
+  color: #6b7280;
+  margin: 0 0 4px;
+}
+
+/* Radio option card */
+.importModeOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--klint-line, #E6E8EE);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 100ms, background 100ms;
+}
+.importModeOption:hover { border-color: #9ca3af; background: var(--klint-paper); }
+.importModeOptionActive { border-color: var(--klint-navy, #001036) !important; background: #EEF2FF !important; }
+
+.importModeRadio {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--klint-navy, #001036);
+}
+
+.importModeOptionContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.importModeTitle {
+  font-size: var(--text-13, 13px);
+  font-weight: var(--weight-semibold, 600);
+  color: var(--klint-navy, #001036);
+}
+
+.importModeDesc {
+  font-size: var(--text-12, 12px);
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* Planning selector */
+.importTargetRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.importTargetLabel {
+  font-size: var(--text-12, 12px);
+  font-weight: var(--weight-semibold, 600);
+  color: var(--klint-navy, #001036);
+}
+
+.importTargetSelect {
+  width: 100%;
+  padding: 8px 10px;
+  font-family: var(--font-display);
+  font-size: var(--text-13, 13px);
+  color: var(--klint-navy, #001036);
+  background: var(--klint-white, #fff);
+  border: 1.5px solid var(--klint-line, #E6E8EE);
+  border-radius: 8px;
+  cursor: pointer;
+  appearance: none;
+  outline: none;
+}
+.importTargetSelect:focus { border-color: var(--klint-navy, #001036); }
+
+/* Footer */
+.importModalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--klint-line, #E6E8EE);
+}
+
+.importModalCancelBtn {
+  padding: 7px 16px;
+  font-family: var(--font-display);
+  font-size: var(--text-13, 13px);
+  font-weight: var(--weight-medium, 500);
+  color: #6b7280;
+  background: transparent;
+  border: 1px solid var(--klint-line, #E6E8EE);
+  border-radius: var(--radius-btn, 8px);
+  cursor: pointer;
+  transition: background 100ms, border-color 100ms;
+}
+.importModalCancelBtn:hover { background: var(--klint-paper); border-color: #9ca3af; }
+
+.importModalConfirmBtn {
+  padding: 7px 18px;
+  font-family: var(--font-display);
+  font-size: var(--text-13, 13px);
+  font-weight: var(--weight-semibold, 600);
+  color: white;
+  background: var(--klint-navy, #001036);
+  border: none;
+  border-radius: var(--radius-btn, 8px);
+  cursor: pointer;
+  transition: opacity 120ms;
+}
+.importModalConfirmBtn:hover { opacity: 0.88; }

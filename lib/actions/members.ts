@@ -1,12 +1,12 @@
 "use server";
 /**
  * lib/actions/members.ts
- * Gestion des responsables d'un planning (add, update, remove).
+ * Gestion des responsables d'un planning (add, update, remove, restore).
  */
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { users, planningMembers } from "@/lib/db/schema";
+import { users, planningMembers, phaseAssignees } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 // ── Ajouter un responsable ────────────────────────────────────────────────────
@@ -100,4 +100,47 @@ export async function removeMember(memberId: string, planningId: string) {
     .where(and(eq(planningMembers.id, memberId), eq(planningMembers.planningId, planningId)));
 
   revalidatePath("/ressources");
+}
+
+// ── Restaurer un responsable supprimé (undo) ─────────────────────────────────
+
+const RestoreMemberSchema = z.object({
+  userId:     z.string().uuid(),
+  planningId: z.string().uuid(),
+  initials:   z.string().max(3).nullable(),
+  color:      z.string().nullable(),
+  permission: z.string(),
+  phaseIds:   z.array(z.string().uuid()),
+});
+
+export async function restoreMember(input: z.infer<typeof RestoreMemberSchema>) {
+  const data = RestoreMemberSchema.parse(input);
+
+  // Vérifier si le membre existe déjà (double undo protection)
+  const existing = await db.select({ id: planningMembers.id })
+    .from(planningMembers)
+    .where(and(
+      eq(planningMembers.planningId, data.planningId),
+      eq(planningMembers.userId, data.userId)
+    ))
+    .limit(1);
+
+  if (existing.length > 0) return; // déjà restauré
+
+  const [member] = await db.insert(planningMembers).values({
+    planningId: data.planningId,
+    userId:     data.userId,
+    initials:   data.initials?.toUpperCase().slice(0, 3) ?? undefined,
+    color:      data.color ?? undefined,
+    permission: (data.permission as "owner" | "editor" | "viewer") ?? "editor",
+  }).returning({ id: planningMembers.id });
+
+  if (data.phaseIds.length > 0) {
+    await db.insert(phaseAssignees).values(
+      data.phaseIds.map((phaseId) => ({ phaseId, memberId: member.id }))
+    );
+  }
+
+  revalidatePath("/ressources");
+  revalidatePath(`/p`);
 }

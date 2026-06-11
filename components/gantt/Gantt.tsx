@@ -36,7 +36,9 @@ export function Gantt({
   viewEnd,
   referenceDate,
 }: GanttProps) {
-  const { zoom, density, colorMode, showWeekends, showDomainBands, panelMode, scrollRequest, requestScroll } = useGanttStore();
+  const { zoom: zoomRaw, density: densityRaw, colorMode, showWeekends, showDomainBands, panelMode, scrollRequest, requestScroll } = useGanttStore();
+  const zoom = zoomRaw as import("@/store/ganttStore").ZoomLevel;
+  const density = densityRaw as import("@/store/ganttStore").Density;
 
   const ppd = PPD[zoom];
   const rowH = ROW_H[density];
@@ -172,8 +174,8 @@ export function Gantt({
           />
         </div>
 
-        {/* Body (scrolls both) */}
-        <div ref={bodyRef} className={styles.bodyScroll}>
+        {/* Body (scrolls both) — data-gantt-body used for PDF export measurement */}
+        <div ref={bodyRef} className={styles.bodyScroll} data-gantt-body="true">
           <TimelineBody
             rows={rows}
             totalH={totalH}
