@@ -37,9 +37,23 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
   const [planning] = await db.select().from(plannings).where(eq(plannings.id, planningId));
   if (!planning) return null;
 
+  // Members query shape (shared)
+  const memberSelect = {
+    id: planningMembers.id,
+    planningId: planningMembers.planningId,
+    userId: planningMembers.userId,
+    permission: planningMembers.permission,
+    projectRoleId: planningMembers.projectRoleId,
+    initials: planningMembers.initials,
+    color: planningMembers.color,
+    lastSeenAt: planningMembers.lastSeenAt,
+    userName: users.name,
+    userEmail: users.email,
+  } as const;
+
   const [
     planningDomains, planningLots, planningPhaseTypes,
-    planningMilestoneTypes, planningStatuses, settings,
+    planningMilestoneTypes, planningStatuses, settings, rawMembers,
   ] = await Promise.all([
     db.select().from(domains).where(eq(domains.planningId, planningId)).orderBy(asc(domains.sortOrder)),
     db.select().from(lots).where(eq(lots.planningId, planningId)).orderBy(asc(lots.sortOrder)),
@@ -47,31 +61,27 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
     db.select().from(milestoneTypes).where(eq(milestoneTypes.planningId, planningId)).orderBy(asc(milestoneTypes.sortOrder)),
     db.select().from(statuses).where(eq(statuses.planningId, planningId)).orderBy(asc(statuses.sortOrder)),
     db.select().from(planningSettings).where(eq(planningSettings.planningId, planningId)).then((r) => r[0] ?? null),
+    // Always load members — needed even on empty plannings for the Ressources view
+    db.select(memberSelect).from(planningMembers)
+      .innerJoin(users, eq(planningMembers.userId, users.id))
+      .where(eq(planningMembers.planningId, planningId)),
   ]);
 
   if (planningLots.length === 0) {
-    return { planning, settings, domains: planningDomains, lots: [], phases: [], milestones: [], members: [], phaseTypes: planningPhaseTypes, milestoneTypes: planningMilestoneTypes, statuses: planningStatuses, phaseAssignees: [] };
+    return {
+      planning, settings,
+      domains: planningDomains, lots: [], phases: [], milestones: [],
+      members: rawMembers,
+      phaseTypes: planningPhaseTypes, milestoneTypes: planningMilestoneTypes,
+      statuses: planningStatuses, phaseAssignees: [],
+    };
   }
 
   const lotIds = planningLots.map((l) => l.id);
 
-  const [planningPhases, planningMilestones, rawMembers] = await Promise.all([
+  const [planningPhases, planningMilestones] = await Promise.all([
     db.select().from(phases).where(inArray(phases.lotId, lotIds)).orderBy(asc(phases.sortOrder)),
     db.select().from(milestones).where(inArray(milestones.lotId, lotIds)),
-    db.select({
-      id: planningMembers.id,
-      planningId: planningMembers.planningId,
-      userId: planningMembers.userId,
-      permission: planningMembers.permission,
-      projectRoleId: planningMembers.projectRoleId,
-      initials: planningMembers.initials,
-      color: planningMembers.color,
-      lastSeenAt: planningMembers.lastSeenAt,
-      userName: users.name,
-      userEmail: users.email,
-    }).from(planningMembers)
-      .innerJoin(users, eq(planningMembers.userId, users.id))
-      .where(eq(planningMembers.planningId, planningId)),
   ]);
 
   const rawAssignees = planningPhases.length > 0
