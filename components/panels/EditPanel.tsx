@@ -15,7 +15,7 @@ import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
   updatePhaseDates, updatePhaseColor, updatePhaseLabel,
   updateMilestone, togglePhaseAssignee,
-  createLot, createPhase, createDomain,
+  createLot, createPhase, createDomain, updateDomain, updateLot,
 } from "@/lib/actions/planning";
 import { useOptimisticPhase, planningQueryKey } from "@/lib/queries/usePlanning";
 import styles from "./EditPanel.module.css";
@@ -77,10 +77,13 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   const [createPhaseStart, setCreatePhaseStart] = useState("");
   const [createPhaseEnd, setCreatePhaseEnd] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
-  // Domain creation state
+  // Domain creation/edit state
   const [domainPresetIdx, setDomainPresetIdx] = useState(0);
   const [domainCode, setDomainCode] = useState("");
   const [domainName, setDomainName] = useState("");
+  // Lot edit state
+  const [editLotName, setEditLotName] = useState("");
+  const [editLotSubtitle, setEditLotSubtitle] = useState("");
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -109,6 +112,23 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
     setDomainPresetIdx(0);
     setDomainCode("");
     setDomainName("");
+    // Seed lot edit form from current data
+    if (editTarget?.kind === "lot" || editTarget?.kind === "edit-lot") {
+      const lotId = editTarget.kind === "lot" ? editTarget.id : editTarget.lotId;
+      const lot = data.lots.find((l) => l.id === lotId);
+      setEditLotName(lot?.name ?? "");
+      setEditLotSubtitle(lot?.subtitle ?? "");
+    }
+    // Seed domain edit form from current data
+    if (editTarget?.kind === "edit-domain") {
+      const domain = data.domains.find((d) => d.id === editTarget.domainId);
+      setDomainName(domain?.name ?? "");
+      setDomainCode(domain?.code ?? "");
+      // Find matching preset index
+      const idx = DOMAIN_PRESETS.findIndex(([bg]) => bg === domain?.bg);
+      setDomainPresetIdx(idx >= 0 ? idx : 0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editTarget]);
 
   if (!editTarget) return null;
@@ -493,12 +513,33 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   }
 
   // ──────────────────────────── MODE LOT ────────────────────────────
-  if (editTarget.kind === "lot") {
-    const lot = data.lots.find((l) => l.id === editTarget.id);
+  if (editTarget.kind === "lot" || editTarget.kind === "edit-lot") {
+    const lotId = editTarget.kind === "lot" ? editTarget.id : editTarget.lotId;
+    const lotPlanningId = editTarget.kind === "edit-lot" ? editTarget.planningId : planningId;
+    const lot = data.lots.find((l) => l.id === lotId);
     const domain = lot ? data.domains.find((d) => d.id === lot.domainId) : null;
-    const lotPhases = data.phases.filter((p) => p.lotId === editTarget.id);
-    const lotMilestones = data.milestones.filter((m) => m.lotId === editTarget.id);
+    const lotPhases = data.phases.filter((p) => p.lotId === lotId);
+    const lotMilestones = data.milestones.filter((m) => m.lotId === lotId);
     if (!lot) return null;
+
+    const handleSaveLot = () => {
+      if (!editLotName.trim()) { setCreateError("Le nom du projet est requis."); return; }
+      setCreateError(null);
+      startTransition(async () => {
+        try {
+          await updateLot({
+            lotId,
+            planningId: lotPlanningId,
+            name: editLotName.trim(),
+            subtitle: editLotSubtitle.trim() || null,
+          });
+          closeEdit();
+          router.refresh();
+        } catch (e) {
+          setCreateError(e instanceof Error ? e.message : "Erreur lors de la sauvegarde.");
+        }
+      });
+    };
 
     return (
       <div className={styles.panel} role="dialog" aria-label="Projet">
@@ -509,45 +550,80 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                 {domain.name}
               </span>
             )}
+            <span className={styles.modeTag}>Projet</span>
           </div>
           <button className={styles.closeBtn} onClick={closeEdit}><Icon name="close" size={14} /></button>
         </div>
-        <div className={styles.titleRow}>
-          <h2 className={styles.title}>{lot.name}</h2>
-          {lot.subtitle && <p className={styles.lotSubtitle}>{lot.subtitle}</p>}
-        </div>
         <div className={styles.body}>
-          <div className={styles.statsRow}>
-            <span className={styles.stat}><strong>{lotPhases.length}</strong> phases</span>
-            <span className={styles.stat}><strong>{lotMilestones.length}</strong> jalons</span>
-          </div>
+          {/* Editable name */}
           <div className={styles.fieldRow}>
-            <span className={styles.fieldLabel}>Phases</span>
-            <div className={styles.phaseList}>
-              {lotPhases.map((p) => (
-                <div key={p.id} className={styles.phaseListItem}>
-                  <span className={styles.phaseTypeBadge}>
-                    {PHASE_TYPE_LABELS[p.type] ?? p.type}
-                  </span>
-                  <span className={styles.phaseDates}>{p.startDate} → {p.endDate}</span>
-                </div>
-              ))}
-            </div>
+            <span className={styles.fieldLabel}>Nom du projet *</span>
+            <input
+              type="text"
+              className={styles.input}
+              value={editLotName}
+              onChange={(e) => setEditLotName(e.target.value)}
+              placeholder="Nom du projet…"
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && handleSaveLot()}
+            />
           </div>
+          {/* Editable subtitle */}
           <div className={styles.fieldRow}>
-            <span className={styles.fieldLabel}>Jalons</span>
-            <div className={styles.phaseList}>
-              {lotMilestones.map((m) => (
-                <div key={m.id} className={styles.phaseListItem}>
-                  <span className={styles.phaseTypeBadge}>{m.type}</span>
-                  <span className={styles.phaseDates}>{m.label} — {m.date}</span>
-                </div>
-              ))}
-            </div>
+            <span className={styles.fieldLabel}>Sous-titre</span>
+            <input
+              type="text"
+              className={styles.input}
+              value={editLotSubtitle}
+              onChange={(e) => setEditLotSubtitle(e.target.value)}
+              placeholder="ex. Périmètre, client, contexte…"
+              onKeyDown={(e) => e.key === "Enter" && handleSaveLot()}
+            />
           </div>
+          {createError && (
+            <p style={{ color: "#DC2626", fontSize: 12, margin: 0 }}>{createError}</p>
+          )}
+          {/* Stats */}
+          <div className={styles.statsRow} style={{ marginTop: 8 }}>
+            <span className={styles.stat}><strong>{lotPhases.length}</strong> phase{lotPhases.length !== 1 ? "s" : ""}</span>
+            <span className={styles.stat}><strong>{lotMilestones.length}</strong> jalon{lotMilestones.length !== 1 ? "s" : ""}</span>
+          </div>
+          {lotPhases.length > 0 && (
+            <div className={styles.fieldRow}>
+              <span className={styles.fieldLabel}>Phases</span>
+              <div className={styles.phaseList}>
+                {lotPhases.map((p) => (
+                  <div key={p.id} className={styles.phaseListItem}>
+                    <span className={styles.phaseTypeBadge}>{PHASE_TYPE_LABELS[p.type] ?? p.type}</span>
+                    <span className={styles.phaseDates}>{p.startDate} → {p.endDate}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {lotMilestones.length > 0 && (
+            <div className={styles.fieldRow}>
+              <span className={styles.fieldLabel}>Jalons</span>
+              <div className={styles.phaseList}>
+                {lotMilestones.map((m) => (
+                  <div key={m.id} className={styles.phaseListItem}>
+                    <span className={styles.phaseTypeBadge}>{m.type}</span>
+                    <span className={styles.phaseDates}>{m.label} — {m.date}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className={styles.footer}>
-          <Button variant="ghost" size="sm" onClick={closeEdit}>Fermer</Button>
+          <Button variant="ghost" size="sm" onClick={closeEdit}>Annuler</Button>
+          <button
+            className={styles.createSubmitBtn}
+            onClick={handleSaveLot}
+            disabled={isPending || !editLotName.trim()}
+          >
+            {isPending ? "Sauvegarde…" : "Enregistrer"}
+          </button>
         </div>
       </div>
     );
@@ -774,6 +850,127 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
 
         <div className={styles.footer}>
           <Button variant="ghost" size="sm" onClick={closeEdit}>Fermer</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ──────────────────────────── MODE EDIT-DOMAIN ────────────────────────────
+  if (editTarget.kind === "edit-domain") {
+    const domain = data.domains.find((d) => d.id === editTarget.domainId);
+    if (!domain) return null;
+
+    const [bg, strong, phaseColor] = DOMAIN_PRESETS[domainPresetIdx];
+    const autoCode = (n: string) => n.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5) || "DOM";
+
+    const handleSaveDomain = () => {
+      if (!domainName.trim()) { setCreateError("Le nom du domaine est requis."); return; }
+      setCreateError(null);
+      startTransition(async () => {
+        try {
+          await updateDomain({
+            domainId: editTarget.domainId,
+            planningId: editTarget.planningId,
+            name: domainName.trim(),
+            code: (domainCode.trim() || autoCode(domainName)).toUpperCase().slice(0, 10),
+            bg,
+            bgAlt: bg,
+            strong,
+            phaseColor,
+          });
+          closeEdit();
+          router.refresh();
+        } catch (e) {
+          setCreateError(e instanceof Error ? e.message : "Erreur lors de la sauvegarde.");
+        }
+      });
+    };
+
+    return (
+      <div className={styles.panel} role="dialog" aria-label="Modifier le domaine">
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <span className={styles.modeTag} style={{ background: bg, color: strong }}>Domaine</span>
+          </div>
+          <button className={styles.closeBtn} onClick={closeEdit}><Icon name="close" size={14} /></button>
+        </div>
+        <div className={styles.titleRow}>
+          <h2 className={styles.title}>Modifier le domaine</h2>
+        </div>
+        <div className={styles.body}>
+          {/* Color preset */}
+          <div className={styles.fieldRow} style={{ flexDirection: "column", gap: 8 }}>
+            <span className={styles.fieldLabel}>Couleur du domaine</span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {DOMAIN_PRESETS.map(([pBg, pStrong, , label], idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setDomainPresetIdx(idx)}
+                  title={label}
+                  style={{
+                    width: 28, height: 28, borderRadius: 7,
+                    background: pBg,
+                    border: idx === domainPresetIdx
+                      ? `2.5px solid ${pStrong}`
+                      : "2px solid #E5E7EB",
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: DOMAIN_PRESETS[idx][2], display: "block" }} />
+                </button>
+              ))}
+            </div>
+            {/* Preview */}
+            <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
+              <span style={{ background: bg, color: strong, padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                {domainCode || autoCode(domainName) || "CODE"}
+              </span>
+              <span style={{ background: phaseColor, color: "#fff", padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 600 }}>
+                Phase
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.fieldRow}>
+            <span className={styles.fieldLabel}>Nom du domaine *</span>
+            <input
+              type="text"
+              className={styles.input}
+              value={domainName}
+              onChange={(e) => setDomainName(e.target.value)}
+              placeholder="ex. CRM, Marketing, Data…"
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && handleSaveDomain()}
+            />
+          </div>
+
+          <div className={styles.fieldRow}>
+            <span className={styles.fieldLabel}>Code (5 car. max)</span>
+            <input
+              type="text"
+              className={styles.input}
+              value={domainCode}
+              onChange={(e) => setDomainCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))}
+              placeholder={autoCode(domainName) || "CRM"}
+              maxLength={5}
+              style={{ maxWidth: 100, textTransform: "uppercase" }}
+            />
+          </div>
+
+          {createError && (
+            <p style={{ color: "#DC2626", fontSize: 12, margin: 0 }}>{createError}</p>
+          )}
+        </div>
+        <div className={styles.footer}>
+          <Button variant="ghost" size="sm" onClick={closeEdit}>Annuler</Button>
+          <button
+            className={styles.createSubmitBtn}
+            onClick={handleSaveDomain}
+            disabled={isPending || !domainName.trim()}
+          >
+            {isPending ? "Sauvegarde…" : "Enregistrer"}
+          </button>
         </div>
       </div>
     );

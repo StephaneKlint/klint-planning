@@ -244,6 +244,47 @@ export async function createDomain(input: z.infer<typeof CreateDomainSchema>) {
 }
 
 // ---------------------------------------------------------------------------
+// Domain update
+// ---------------------------------------------------------------------------
+
+const UpdateDomainSchema = z.object({
+  domainId:   z.string().uuid(),
+  planningId: z.string().uuid(),
+  name:       z.string().min(1).max(80).optional(),
+  code:       z.string().min(1).max(10).optional(),
+  bg:         z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  bgAlt:      z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  strong:     z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  phaseColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+});
+
+export async function updateDomain(input: z.infer<typeof UpdateDomainSchema>) {
+  const data = UpdateDomainSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  const updates: Partial<{
+    name: string; code: string;
+    bg: string; bgAlt: string; strong: string; phaseColor: string;
+  }> = {};
+  if (data.name       !== undefined) updates.name       = data.name;
+  if (data.code       !== undefined) updates.code       = data.code.toUpperCase().slice(0, 10);
+  if (data.bg         !== undefined) updates.bg         = data.bg;
+  if (data.bgAlt      !== undefined) updates.bgAlt      = data.bgAlt;
+  if (data.strong     !== undefined) updates.strong     = data.strong;
+  if (data.phaseColor !== undefined) updates.phaseColor = data.phaseColor;
+
+  const [updated] = await db
+    .update(domains)
+    .set(updates)
+    .where(eq(domains.id, data.domainId))
+    .returning({ id: domains.id, name: domains.name });
+
+  await logActivity(data.planningId, "updated", "domain", data.domainId, `Domaine modifié : ${data.name ?? ""}`);
+  revalidatePath(`/p/${data.planningId}`);
+  return updated;
+}
+
+// ---------------------------------------------------------------------------
 // Lot creation
 // ---------------------------------------------------------------------------
 

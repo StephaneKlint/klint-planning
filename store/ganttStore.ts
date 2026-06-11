@@ -10,7 +10,9 @@ export type EditTarget =
   | { kind: "lot"; id: string }
   | { kind: "milestone"; id: string }
   | { kind: "create-domain"; planningId: string }
+  | { kind: "edit-domain"; domainId: string; planningId: string }
   | { kind: "create-lot"; domainId: string }
+  | { kind: "edit-lot"; lotId: string; planningId: string }
   | { kind: "create-phase"; lotId: string }
   | null;
 

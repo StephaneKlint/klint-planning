@@ -107,7 +107,10 @@ export function GanttSide({
                       height: DOMAIN_HEAD_H,
                       background: domain.bg,
                       color: domain.strong,
+                      cursor: "pointer",
                     }}
+                    onClick={() => openEdit({ kind: "edit-domain", domainId: row.id, planningId })}
+                    title="Cliquez pour modifier le domaine"
                   >
                     <span className={styles.domainName}>{domain.name}</span>
                     <button
@@ -139,7 +142,10 @@ export function GanttSide({
                     left: 0,
                     right: 0,
                     height: row.h,
+                    cursor: "pointer",
                   }}
+                  onClick={() => openEdit({ kind: "edit-lot", lotId: row.id, planningId })}
+                  title="Cliquez pour modifier le projet"
                 >
                   <Donut progress={progress} status={status} size={32} />
                   <div className={styles.lotText}>
