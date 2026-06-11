@@ -121,6 +121,35 @@
 .badgeRisk { background: var(--st-risk-bg); color: var(--st-risk-c); }
 
 /* Domain progress */
+.expandControls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.expandBtn {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-family: var(--font-display, system-ui);
+  font-weight: 600;
+  color: var(--klint-navy, #001036);
+  background: var(--klint-paper, #F6F7FB);
+  border: 1.5px solid var(--klint-line, #E6E8EE);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.expandBtn:hover:not(:disabled) {
+  background: var(--klint-line, #E6E8EE);
+}
+
+.expandBtn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
 .domainList {
   display: flex;
   flex-direction: column;

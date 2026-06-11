@@ -32,7 +32,8 @@ export function computeRowOffsets(
   domains: { id: string; code: string }[],
   lots: { id: string; domainId: string }[],
   rowH: number,
-  domainHeadH = DOMAIN_HEAD_H
+  domainHeadH = DOMAIN_HEAD_H,
+  hiddenLotIds?: Set<string>
 ): { rows: RowEntry[]; totalH: number } {
   const rows: RowEntry[] = [];
   let y = 0;
@@ -40,6 +41,8 @@ export function computeRowOffsets(
     rows.push({ kind: "domain", id: domain.id, domainCode: domain.code, y, h: domainHeadH });
     y += domainHeadH;
     for (const lot of lots.filter((l) => l.domainId === domain.id)) {
+      // Skip hidden lots — they don't appear in the timeline or side panel
+      if (hiddenLotIds?.has(lot.id)) continue;
       rows.push({ kind: "lot", id: lot.id, domainCode: domain.code, y, h: rowH });
       y += rowH;
     }

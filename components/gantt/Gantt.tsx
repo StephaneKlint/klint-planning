@@ -36,13 +36,13 @@ export function Gantt({
   viewEnd,
   referenceDate,
 }: GanttProps) {
-  const { zoom: zoomRaw, density: densityRaw, colorMode, showWeekends, showDomainBands, panelMode, scrollRequest, requestScroll } = useGanttStore();
+  const { zoom: zoomRaw, density: densityRaw, colorMode, showWeekends, showDomainBands, panelMode, scrollRequest, requestScroll, hiddenLotIds } = useGanttStore();
   const zoom = zoomRaw as import("@/store/ganttStore").ZoomLevel;
   const density = densityRaw as import("@/store/ganttStore").Density;
 
   const ppd = PPD[zoom];
   const rowH = ROW_H[density];
-  const { rows, totalH } = computeRowOffsets(domains, lots, rowH);
+  const { rows, totalH } = computeRowOffsets(domains, lots, rowH, undefined, hiddenLotIds);
   const totalW = timelineWidth(viewStart, viewEnd, ppd);
 
   // Refs for scroll sync

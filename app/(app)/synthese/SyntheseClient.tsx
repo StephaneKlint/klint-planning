@@ -65,8 +65,41 @@ export function SyntheseClient({ domainSummaries }: Props) {
     });
   }
 
+  const allExpanded = domainSummaries.every((d) => expandedDomains.has(d.id));
+  const allCollapsed = domainSummaries.every((d) => !expandedDomains.has(d.id));
+
+  function expandAll() {
+    setExpandedDomains(new Set(domainSummaries.map((d) => d.id)));
+  }
+  function collapseAll() {
+    setExpandedDomains(new Set());
+  }
+
   return (
-    <div className={styles.domainList}>
+    <div>
+      {/* Tout ouvrir / Tout fermer */}
+      {domainSummaries.length > 1 && (
+        <div className={styles.expandControls}>
+          <button
+            className={styles.expandBtn}
+            onClick={expandAll}
+            disabled={allExpanded}
+            aria-label="Tout ouvrir"
+          >
+            ▼ Tout ouvrir
+          </button>
+          <button
+            className={styles.expandBtn}
+            onClick={collapseAll}
+            disabled={allCollapsed}
+            aria-label="Tout fermer"
+          >
+            ▶ Tout fermer
+          </button>
+        </div>
+      )}
+
+      <div className={styles.domainList}>
       {domainSummaries.map((domain) => {
         const isOpen = expandedDomains.has(domain.id);
         return (
@@ -146,6 +179,7 @@ export function SyntheseClient({ domainSummaries }: Props) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

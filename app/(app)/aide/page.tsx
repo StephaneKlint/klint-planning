@@ -1,6 +1,6 @@
 /**
  * Page Aide — Guide utilisateur mode formation (avec recherche)
- * Couvre l'ensemble des fonctionnalités (Jalons 0-8)
+ * Couvre l'ensemble des fonctionnalités (Jalons 0-9)
  */
 "use client";
 
@@ -189,12 +189,12 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
-  { id: "plannings", num: "1", title: "Mes plannings", keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono modele vide" },
-  { id: "gantt", num: "2", title: "Vue Gantt", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter filtres vide empty état domaine créer" },
+  { id: "plannings", num: "1", title: "Mes plannings", keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono modele vide renommer supprimer" },
+  { id: "gantt", num: "2", title: "Vue Gantt", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter filtres vide empty état domaine créer supprimer" },
   { id: "toolbar", num: "3", title: "Barre d'outils", keywords: "toolbar barre outils panneau aujourd hui pdf json projets sélection filtrer annuler undo" },
   { id: "edit", num: "4", title: "Édition des phases et jalons", keywords: "éditer phase jalon dates statut avancement couleur note assigné responsable sélection multiple recherche palette commandes ctrl k" },
   { id: "raccourcis", num: "5", title: "Raccourcis clavier", keywords: "raccourcis clavier ctrl k esc flèches zoom selection escape undo annuler ctrl z" },
-  { id: "synthese", num: "6", title: "Vue Synthèse", keywords: "synthèse kpi indicateurs jalons retard risque alertes avancement domaine" },
+  { id: "synthese", num: "6", title: "Vue Synthèse", keywords: "synthèse kpi indicateurs jalons retard risque alertes avancement domaine collapsible ouvrir fermer sous-projets lots chips statuts" },
   { id: "ressources", num: "7", title: "Vue Ressources", keywords: "ressources membres responsables ajouter modifier supprimer attribution phases planning email initiales couleur" },
   { id: "parametres", num: "8", title: "Paramètres", keywords: "paramètres général cadence types phases jalons statuts membres droits apparence logo" },
   { id: "logo", num: "9", title: "Logo & Apparence", keywords: "logo apparence navbar png svg favicon changer enregistrer réinitialiser" },
@@ -277,9 +277,17 @@ export default function AidePage() {
               <dd style={S.dd}>
                 Cliquez sur <strong>+ Nouveau planning</strong>. Choisissez un point de départ :<br />
                 — <strong>Planning vide</strong> : crée un planning vierge. Choisissez le type (Multi-projets ou Mono-projet), le nom, l&apos;année et les dates. Le planning s&apos;ouvrira avec un état vide vous invitant à créer votre premier domaine.<br />
-                — <strong>Dupliquer un planning</strong> : copie complète d&apos;un planning existant (domaines, lots, phases, jalons, paramètres). Sélectionnez le planning source, personnalisez le nom, puis cliquez sur « Dupliquer ».<br />
+                — <strong>Dupliquer un planning</strong> : copie complète d&apos;un planning existant (domaines, lots, phases, jalons, paramètres). Disponible depuis la liste des plannings (bouton dédié sur la carte) ou depuis <strong>Nouveau planning → Dupliquer</strong>. Sélectionnez le planning source, personnalisez le nom, puis cliquez sur « Dupliquer ».<br />
                 — <strong>Depuis un modèle</strong> : même fonctionnement que la duplication, mais à partir d&apos;un planning de référence servant de modèle.
               </dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Renommer un planning</dt>
+              <dd style={S.dd}>Sur la liste des plannings, cliquez sur le bouton <strong>✎</strong> à droite du nom de la carte pour ouvrir une modale. Vous pouvez y modifier le nom, l&apos;année et les dates du planning, puis enregistrer.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Supprimer un planning</dt>
+              <dd style={S.dd}>Sur la carte du planning dans la liste, cliquez sur le bouton <strong>🗑</strong>. Une confirmation est demandée. La suppression est définitive : tous les domaines, projets, phases et jalons associés sont effacés.</dd>
             </div>
             <div>
               <dt style={S.dt}>Exporter en JSON</dt>
@@ -345,6 +353,22 @@ export default function AidePage() {
               <dd style={S.dd}>Utilisez les champs <strong>Du … au …</strong> dans la barre d&apos;outils pour restreindre la plage affichée.</dd>
             </div>
             <div>
+              <dt style={S.dt}>Supprimer un domaine</dt>
+              <dd style={S.dd}>Cliquez sur l&apos;en-tête du domaine dans le panneau gauche pour ouvrir son panneau d&apos;édition, puis cliquez sur le bouton <strong>🗑</strong> dans le footer (à gauche). La suppression efface le domaine et tout son contenu : projets (lots), phases et jalons.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Supprimer un projet (lot)</dt>
+              <dd style={S.dd}>Cliquez sur la ligne du projet dans le panneau gauche pour ouvrir son panneau d&apos;édition, puis cliquez sur le bouton <strong>🗑</strong> dans le footer (à gauche). Toutes les phases et jalons du lot sont supprimés.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Supprimer une phase</dt>
+              <dd style={S.dd}>Ouvrez la phase en cliquant dessus dans le Gantt (panneau d&apos;édition à droite), puis cliquez sur le bouton <strong>🗑</strong> en bas du panneau.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Supprimer un jalon</dt>
+              <dd style={S.dd}>Cliquez sur le jalon dans le Gantt pour afficher son panneau, puis cliquez sur le bouton <strong>🗑</strong> dans le footer du panneau.</dd>
+            </div>
+            <div>
               <dt style={S.dt}>Présence des collaborateurs</dt>
               <dd style={S.dd}>Les avatars en haut à droite indiquent les membres connectés en temps réel (mis à jour toutes les 30 s).</dd>
             </div>
@@ -368,8 +392,20 @@ export default function AidePage() {
               <dd style={S.dd}>Cliquez sur <strong>Aujourd&apos;hui</strong> pour recentrer la vue sur la date du jour.</dd>
             </div>
             <div>
-              <dt style={S.dt}>Sélectionner les projets affichés</dt>
-              <dd style={S.dd}>Le bouton <strong>Projets</strong> ouvre une modale permettant de cocher/décocher chaque lot pour contrôler leur visibilité dans le Gantt.</dd>
+              <dt style={S.dt}>Œil (Affichage)</dt>
+              <dd style={S.dd}>Active ou désactive les <strong>bandes de couleur de fond</strong> affichées derrière chaque domaine dans la timeline. Utile pour alléger l&apos;affichage ou le rendre plus lisible à l&apos;impression.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Domaine / Statut / Personne</dt>
+              <dd style={S.dd}>Bascule le mode de coloration des barres de phases entre trois options :<br />
+                — <strong>Domaine</strong> : couleur propre à chaque domaine.<br />
+                — <strong>Statut</strong> : couleur reflétant l&apos;état d&apos;avancement (planifiée, en cours, terminée, à risque…).<br />
+                — <strong>Personne</strong> : couleur du responsable assigné à la phase.
+              </dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Projets (filtre de visibilité)</dt>
+              <dd style={S.dd}>Le bouton <strong>Projets</strong> ouvre le sélecteur de visibilité des lots. Cochez ou décochez chaque lot (sous-projet) pour l&apos;afficher ou le masquer dans le Gantt. Utilisez « Tout afficher » / « Tout masquer » pour réinitialiser rapidement.</dd>
             </div>
             <div>
               <dt style={S.dt}>Exporter en JSON</dt>
@@ -462,6 +498,13 @@ export default function AidePage() {
             <div>
               <dt style={S.dt}>Tableau de bord KPI</dt>
               <dd style={S.dd}>La vue Synthèse affiche des indicateurs clés : nombre de phases en cours, en retard, à risque, terminées. Des jauges d&apos;avancement par domaine sont également visibles.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Avancement par domaine — section interactive</dt>
+              <dd style={S.dd}>
+                La section <strong>Avancement par domaine</strong> est interactive. Cliquez sur un domaine pour afficher ou masquer ses sous-projets (▶ fermé / ▼ ouvert). Chaque sous-projet affiche sa propre barre de progression ainsi que des chips de statuts.<br />
+                Utilisez les boutons <strong>Tout ouvrir</strong> / <strong>Tout fermer</strong> (en haut de la section) pour développer ou replier tous les domaines en une seule action.
+              </dd>
             </div>
             <div>
               <dt style={S.dt}>Jalons à horizon J+30 / J+60 / J+90</dt>
@@ -602,7 +645,7 @@ export default function AidePage() {
 
       {/* Footer */}
       <div style={{ marginTop: 48, paddingTop: 20, borderTop: "1px solid var(--klint-line, #E6E8EE)", fontSize: 12, color: "#9CA3AF" }}>
-        Klint Planning v1.0 — Jalons 0–8 · Klint Consulting © 2026
+        Klint Planning v1.0 — Jalons 0–9 · Klint Consulting © 2026
       </div>
     </div>
   );
