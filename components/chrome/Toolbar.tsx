@@ -1,8 +1,9 @@
 /**
- * Toolbar — 48px, 3 groups: left (panel toggle + today + zoom) | center (search + filters) | right (display toggles)
+ * Toolbar — 48px, 3 groups: left (panel toggle + today + zoom + dates) | right (display toggles)
  */
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { Icon } from "@/components/ui/Icon";
 import styles from "./Toolbar.module.css";
 
@@ -15,7 +16,9 @@ interface ToolbarProps {
   onTogglePanel?: () => void;
   onScrollPrev?: () => void;
   onScrollNext?: () => void;
+  /** @deprecated Use onToggleDomainBands instead */
   onVisibilityClick?: () => void;
+  /** @deprecated Use onColorModeChange instead */
   onColorModeClick?: () => void;
   onSearchClick?: () => void;
   onExportPdf?: () => void;
@@ -23,6 +26,7 @@ interface ToolbarProps {
   onExportJson?: () => void;
   onProjectFilter?: () => void;
   projectFilterActive?: boolean;
+  /** @deprecated Use colorMode instead */
   colorModeLabel?: string;
   presenceStack?: React.ReactNode;
   panelVisible?: boolean;
@@ -34,6 +38,15 @@ interface ToolbarProps {
   // Undo
   canUndo?: boolean;
   onUndo?: () => void;
+  // New display options
+  showDomainBands?: boolean;
+  showWeekends?: boolean;
+  showResponsables?: boolean;
+  onToggleDomainBands?: () => void;
+  onToggleWeekends?: () => void;
+  onToggleResponsables?: () => void;
+  colorMode?: "domain" | "status" | "person";
+  onColorModeChange?: (mode: "domain" | "status" | "person") => void;
 }
 
 const ZOOM_LEVELS: ZoomLevel[] = ["1m", "3m", "6m", "12m"];
@@ -45,8 +58,10 @@ export function Toolbar({
   onTogglePanel,
   onScrollPrev,
   onScrollNext,
-  onVisibilityClick,
-  onColorModeClick,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onVisibilityClick: _onVisibilityClick,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onColorModeClick: _onColorModeClick,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onSearchClick: _onSearchClick,
   onExportPdf,
@@ -54,7 +69,8 @@ export function Toolbar({
   onExportJson,
   onProjectFilter,
   projectFilterActive = false,
-  colorModeLabel = "Domaine",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  colorModeLabel: _colorModeLabel,
   presenceStack,
   panelVisible = true,
   filterStart,
@@ -63,11 +79,34 @@ export function Toolbar({
   onClearFilter,
   canUndo = false,
   onUndo,
+  showDomainBands,
+  showWeekends,
+  showResponsables,
+  onToggleDomainBands,
+  onToggleWeekends,
+  onToggleResponsables,
+  colorMode,
+  onColorModeChange,
 }: ToolbarProps) {
   const hasFilter = !!(filterStart || filterEnd);
+
+  const [affichageOpen, setAffichageOpen] = useState(false);
+  const affichageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!affichageOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (affichageRef.current && !affichageRef.current.contains(e.target as Node)) {
+        setAffichageOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [affichageOpen]);
+
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Barre d'outils du planning">
-      {/* Groupe gauche — Navigation */}
+      {/* Groupe gauche — Navigation + Dates */}
       <div className={styles.group}>
         <button
           className={`${styles.btn} ${!panelVisible ? styles.btnActive : ""}`}
@@ -123,32 +162,10 @@ export function Toolbar({
             </button>
           </div>
         )}
-      </div>
 
-      <div className={styles.divider} aria-hidden />
+        <div className={styles.divider} aria-hidden />
 
-      {/* Groupe centre — Filtres */}
-      <div className={`${styles.group} ${styles.groupCenter}`}>
-        <button
-          className={styles.btn}
-          onClick={onVisibilityClick}
-          aria-label="Affichage des lots"
-          title="Afficher/masquer domaines et lots"
-        >
-          <Icon name="eye" size={14} />
-          <span>Affichage</span>
-        </button>
-
-        <button
-          className={styles.btn}
-          onClick={onColorModeClick}
-          aria-label={`Coloration : ${colorModeLabel}`}
-          title="Changer le mode de coloration"
-        >
-          <Icon name="filter" size={14} />
-          <span>{colorModeLabel}</span>
-        </button>
-
+        {/* Date range filter — within left group */}
         <div className={`${styles.dateFilterGroup} ${hasFilter ? styles.dateFilterGroupActive : ""}`}>
           <span className={styles.dateFilterLabel}>Du</span>
           <input
@@ -181,8 +198,58 @@ export function Toolbar({
 
       <div className={styles.divider} aria-hidden />
 
-      {/* Groupe droite — Présence + export */}
+      {/* Groupe droite — Affichage + Présence + export */}
       <div className={`${styles.group} ${styles.groupRight}`}>
+        {/* Groupe Affichage — dropdown */}
+        <div ref={affichageRef} style={{ position: "relative" }}>
+          <button
+            className={`${styles.btn} ${affichageOpen ? styles.btnActive : ""}`}
+            onClick={() => setAffichageOpen((o) => !o)}
+            aria-label="Options d'affichage"
+            title="Affichage"
+          >
+            <Icon name="eye" size={14} />
+            <span>Affichage</span>
+            <span style={{ fontSize: 10, marginLeft: 2 }}>{affichageOpen ? "▲" : "▼"}</span>
+          </button>
+
+          {affichageOpen && (
+            <div className={styles.affichageDropdown}>
+              {/* Visibilité */}
+              <p className={styles.dropdownSection}>Éléments visibles</p>
+              {[
+                { label: "Bandes de domaines", active: showDomainBands, toggle: onToggleDomainBands },
+                { label: "Week-ends",          active: showWeekends,    toggle: onToggleWeekends },
+                { label: "Responsables",       active: showResponsables, toggle: onToggleResponsables },
+              ].map(({ label, active, toggle }) => (
+                <button
+                  key={label}
+                  className={styles.dropdownItem}
+                  onClick={toggle}
+                >
+                  <span className={styles.dropdownCheck}>{active ? "✓" : ""}</span>
+                  {label}
+                </button>
+              ))}
+
+              <div className={styles.dropdownDivider} />
+
+              {/* Coloration */}
+              <p className={styles.dropdownSection}>Coloration des phases</p>
+              {(["domain", "status", "person"] as const).map((m) => (
+                <button
+                  key={m}
+                  className={styles.dropdownItem}
+                  onClick={() => { onColorModeChange?.(m); }}
+                >
+                  <span className={styles.dropdownCheck}>{colorMode === m ? "●" : ""}</span>
+                  {m === "domain" ? "Par domaine" : m === "status" ? "Par statut" : "Par responsable"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {presenceStack}
 
         {/* Undo */}

@@ -224,6 +224,21 @@ export async function archivePlanning(planningId: string) {
   revalidatePath("/plannings");
 }
 
+export async function disablePlanning(planningId: string) {
+  await db.update(plannings).set({ disabled: true }).where(eq(plannings.id, planningId));
+  revalidatePath("/plannings");
+}
+
+export async function enablePlanning(planningId: string) {
+  await db.update(plannings).set({ disabled: false }).where(eq(plannings.id, planningId));
+  revalidatePath("/plannings");
+}
+
+export async function unarchivePlanning(planningId: string) {
+  await db.update(plannings).set({ archived: false }).where(eq(plannings.id, planningId));
+  revalidatePath("/plannings");
+}
+
 // ---------------------------------------------------------------------------
 // Import Planning from JSON
 // ---------------------------------------------------------------------------

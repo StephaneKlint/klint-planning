@@ -105,6 +105,7 @@ export const plannings = pgTable("plannings", {
   viewEnd: date("view_end").notNull(),
   referenceDate: date("reference_date"),
   archived: boolean("archived").default(false).notNull(),
+  disabled: boolean("disabled").default(false).notNull(),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   duplicatePlanning, archivePlanning, deletePlanning, updatePlanningMeta,
   importPlanningFromJSON, updatePlanningFromJSON,
+  disablePlanning, enablePlanning, unarchivePlanning,
 } from "@/lib/actions/plannings";
 import styles from "./Plannings.module.css";
 
@@ -15,10 +16,17 @@ type PlanningRow = {
   year: number;
   type: string;
   archived: boolean;
+  disabled: boolean;
   viewStart: string;
   viewEnd: string;
   createdAt: Date;
 };
+
+interface Props {
+  active: PlanningRow[];
+  archived: PlanningRow[];
+  disabled: PlanningRow[];
+}
 
 function fmtDate(d: string) {
   const [y, m, day] = d.split("-");
@@ -26,8 +34,8 @@ function fmtDate(d: string) {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  multi: "Multi-projets",
-  mono:  "Mono-projet",
+  multi: "Multi",
+  mono:  "Mono",
 };
 
 // ── Rename modal ─────────────────────────────────────────────────────────────
@@ -127,13 +135,205 @@ function RenameModal({ planning, onClose, onSaved }: RenameModalProps) {
   );
 }
 
+// ── Planning card ─────────────────────────────────────────────────────────────
+type TabName = "active" | "archived" | "disabled";
+
+interface CardProps {
+  p: PlanningRow;
+  tab: TabName;
+  loadingId: string | null;
+  loadingAction: string | null;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
+  onRename: (p: PlanningRow) => void;
+  onDuplicate: (p: PlanningRow) => void;
+  onDelete: (p: PlanningRow) => void;
+  onArchive?: (p: PlanningRow) => void;
+  onDisable?: (p: PlanningRow) => void;
+  onEnable?: (p: PlanningRow) => void;
+  onUnarchive?: (p: PlanningRow) => void;
+  isPending: boolean;
+}
+
+function PlanningCard({
+  p, tab, loadingId, loadingAction,
+  selected = false, onSelect,
+  onRename, onDuplicate, onDelete,
+  onArchive, onDisable, onEnable, onUnarchive,
+  isPending,
+}: CardProps) {
+  const isThis = loadingId === p.id;
+
+  return (
+    <div className={`${styles.card} ${selected ? styles.cardSelected : ""}`} style={{ position: "relative" }}>
+      {/* Checkbox — only for active tab */}
+      {tab === "active" && onSelect && (
+        <div
+          className={`${styles.cardCheckbox} ${selected ? styles.cardCheckboxChecked : ""}`}
+          role="checkbox"
+          aria-checked={selected}
+          aria-label={`Sélectionner ${p.name}`}
+          tabIndex={0}
+          onClick={() => onSelect(p.id)}
+          onKeyDown={(e) => (e.key === " " || e.key === "Enter") && onSelect(p.id)}
+        >
+          {selected && "✓"}
+        </div>
+      )}
+
+      <div className={styles.cardHead}>
+        <span className={styles.cardType}>{TYPE_LABELS[p.type] ?? p.type}</span>
+        <span className={styles.cardYear}>{p.year}</span>
+      </div>
+
+      <div className={styles.cardTitleRow}>
+        <Link href={`/p/${p.id}`} className={styles.cardTitle}>{p.name}</Link>
+      </div>
+
+      <p className={styles.cardMeta}>{fmtDate(p.viewStart)} → {fmtDate(p.viewEnd)}</p>
+
+      {/* Icon actions bar */}
+      <div className={styles.cardIconActions}>
+        {/* Primary open button */}
+        <Link href={`/p/${p.id}`} className={styles.openBtn} style={{ fontSize: 12, padding: "5px 12px" }}>
+          Ouvrir →
+        </Link>
+
+        <div className={styles.cardIconSep} />
+
+        {/* Duplicate */}
+        <button
+          className={styles.cardIconBtn}
+          title="Dupliquer"
+          aria-label="Dupliquer"
+          onClick={() => onDuplicate(p)}
+          disabled={isPending}
+        >
+          {isThis && loadingAction === "dup" ? "…" : "⧉"}
+        </button>
+
+        {/* Export JSON */}
+        <a
+          href={`/api/export/${p.id}`}
+          className={styles.cardIconBtn}
+          title="Exporter JSON"
+          aria-label="Exporter JSON"
+          download
+        >
+          ⬇
+        </a>
+
+        {/* Spacer */}
+        <div style={{ marginLeft: "auto" }} />
+
+        {/* Rename */}
+        <button
+          className={styles.cardIconBtn}
+          title="Renommer"
+          aria-label="Renommer"
+          onClick={() => onRename(p)}
+        >
+          ✎
+        </button>
+
+        <div className={styles.cardIconSep} />
+
+        {/* Tab-specific actions */}
+        {tab === "active" && (
+          <>
+            <button
+              className={`${styles.cardIconBtn} ${styles.cardIconBtnWarning}`}
+              title="Archiver"
+              aria-label="Archiver"
+              onClick={() => onArchive?.(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "archive" ? "…" : "📦"}
+            </button>
+            <button
+              className={`${styles.cardIconBtn} ${styles.cardIconBtnWarning}`}
+              title="Désactiver"
+              aria-label="Désactiver"
+              onClick={() => onDisable?.(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "disable" ? "…" : "🚫"}
+            </button>
+            <button
+              className={`${styles.cardIconBtn} ${styles.cardIconBtnDanger}`}
+              title="Supprimer"
+              aria-label="Supprimer"
+              onClick={() => onDelete(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "delete" ? "…" : "🗑"}
+            </button>
+          </>
+        )}
+
+        {tab === "archived" && (
+          <>
+            <button
+              className={styles.cardIconBtn}
+              title="Restaurer"
+              aria-label="Restaurer"
+              onClick={() => onUnarchive?.(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "unarchive" ? "…" : "↩"}
+            </button>
+            <button
+              className={`${styles.cardIconBtn} ${styles.cardIconBtnDanger}`}
+              title="Supprimer"
+              aria-label="Supprimer"
+              onClick={() => onDelete(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "delete" ? "…" : "🗑"}
+            </button>
+          </>
+        )}
+
+        {tab === "disabled" && (
+          <>
+            <button
+              className={styles.cardIconBtn}
+              title="Réactiver"
+              aria-label="Réactiver"
+              onClick={() => onEnable?.(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "enable" ? "…" : "↩"}
+            </button>
+            <button
+              className={`${styles.cardIconBtn} ${styles.cardIconBtnDanger}`}
+              title="Supprimer"
+              aria-label="Supprimer"
+              onClick={() => onDelete(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "delete" ? "…" : "🗑"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main client component ────────────────────────────────────────────────────
 
-export function PlanningListClient({ plannings }: { plannings: PlanningRow[] }) {
+export function PlanningListClient({ active, archived, disabled }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [loadingId, setLoadingId]   = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+  // Tabs
+  const [tab, setTab] = useState<TabName>("active");
+
+  // Multi-select (active tab only)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Rename modal
   const [renamePlanning, setRenamePlanning] = useState<PlanningRow | null>(null);
@@ -146,10 +346,25 @@ export function PlanningListClient({ plannings }: { plannings: PlanningRow[] }) 
   const [importMode, setImportMode]         = useState<"create" | "update">("create");
   const [importTargetId, setImportTargetId] = useState<string>("");
 
-  const busy = (id: string, act: string) => {
-    setLoadingId(id); setLoadingAction(act);
-  };
+  const busy = (id: string, act: string) => { setLoadingId(id); setLoadingAction(act); };
   const notBusy = () => { setLoadingId(null); setLoadingAction(null); };
+
+  const handleTabChange = (t: TabName) => {
+    setTab(t);
+    setSelected(new Set());
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  // ── Single actions ──
 
   const handleDuplicate = (p: PlanningRow) => {
     if (isPending) return;
@@ -172,7 +387,7 @@ export function PlanningListClient({ plannings }: { plannings: PlanningRow[] }) 
   };
 
   const handleArchive = (p: PlanningRow) => {
-    if (!confirm(`Archiver "${p.name}" ? Il ne sera plus accessible depuis la liste.`)) return;
+    if (!confirm(`Archiver "${p.name}" ?`)) return;
     if (isPending) return;
     busy(p.id, "archive");
     startTransition(async () => {
@@ -181,6 +396,68 @@ export function PlanningListClient({ plannings }: { plannings: PlanningRow[] }) 
       router.refresh();
     });
   };
+
+  const handleDisable = (p: PlanningRow) => {
+    if (!confirm(`Désactiver "${p.name}" ?`)) return;
+    if (isPending) return;
+    busy(p.id, "disable");
+    startTransition(async () => {
+      await disablePlanning(p.id);
+      notBusy();
+      router.refresh();
+    });
+  };
+
+  const handleEnable = (p: PlanningRow) => {
+    if (isPending) return;
+    busy(p.id, "enable");
+    startTransition(async () => {
+      await enablePlanning(p.id);
+      notBusy();
+      router.refresh();
+    });
+  };
+
+  const handleUnarchive = (p: PlanningRow) => {
+    if (isPending) return;
+    busy(p.id, "unarchive");
+    startTransition(async () => {
+      await unarchivePlanning(p.id);
+      notBusy();
+      router.refresh();
+    });
+  };
+
+  // ── Bulk actions ──
+
+  const handleBulkArchive = () => {
+    if (!confirm(`Archiver ${selected.size} planning(s) ?`)) return;
+    startTransition(async () => {
+      await Promise.all([...selected].map((id) => archivePlanning(id)));
+      clearSelection();
+      router.refresh();
+    });
+  };
+
+  const handleBulkDisable = () => {
+    if (!confirm(`Désactiver ${selected.size} planning(s) ?`)) return;
+    startTransition(async () => {
+      await Promise.all([...selected].map((id) => disablePlanning(id)));
+      clearSelection();
+      router.refresh();
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (!confirm(`Supprimer définitivement ${selected.size} planning(s) ? Cette action est irréversible.`)) return;
+    startTransition(async () => {
+      await Promise.all([...selected].map((id) => deletePlanning(id)));
+      clearSelection();
+      router.refresh();
+    });
+  };
+
+  // ── Import ──
 
   const handleImportClick = () => {
     setImportError(null);
@@ -203,7 +480,7 @@ export function PlanningListClient({ plannings }: { plannings: PlanningRow[] }) 
     }
     setImportModalText(text);
     setImportMode("create");
-    setImportTargetId(plannings[0]?.id ?? "");
+    setImportTargetId(active[0]?.id ?? "");
   };
 
   const handleImportConfirm = async () => {
@@ -226,32 +503,23 @@ export function PlanningListClient({ plannings }: { plannings: PlanningRow[] }) 
     }
   };
 
-  if (plannings.length === 0) {
-    return (
-      <>
-        <input ref={importInputRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleImportFile} />
-        <div className={styles.empty}>
-          <p className={styles.emptyTitle}>Aucun planning actif</p>
-          <p className={styles.emptyDesc}>Créez votre premier planning pour démarrer ou importez un fichier JSON.</p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-            <Link href="/plannings/nouveau" className={styles.emptyBtn}>+ Nouveau planning</Link>
-            <button className={styles.importBtn} onClick={handleImportClick} disabled={importPending}>
-              {importPending ? "Import en cours…" : "⬆ Importer JSON"}
-            </button>
-          </div>
-          {importError && <p style={{ color: "#DC2626", fontSize: "var(--text-13)", marginTop: 8 }}>{importError}</p>}
-        </div>
-        <ImportModeModal open={!!importModalText} mode={importMode} onModeChange={setImportMode}
-          plannings={plannings} targetId={importTargetId} onTargetChange={setImportTargetId}
-          onConfirm={handleImportConfirm} onCancel={() => setImportModalText(null)} />
-      </>
-    );
-  }
+  // ── Current list ──
+  const currentList = tab === "active" ? active : tab === "archived" ? archived : disabled;
+
+  const sharedCardProps = {
+    loadingId,
+    loadingAction,
+    isPending,
+    onRename: setRenamePlanning,
+    onDuplicate: handleDuplicate,
+    onDelete: handleDelete,
+  };
 
   return (
     <>
       <input ref={importInputRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleImportFile} />
 
+      {/* Top bar with import */}
       <div className={styles.listTopBar}>
         <button className={styles.importBtn} onClick={handleImportClick} disabled={importPending}>
           {importPending ? "Import en cours…" : "⬆ Importer JSON"}
@@ -259,67 +527,64 @@ export function PlanningListClient({ plannings }: { plannings: PlanningRow[] }) 
         {importError && <span className={styles.importError}>{importError}</span>}
       </div>
 
-      <div className={styles.grid}>
-        {plannings.map((p) => {
-          const isThis = loadingId === p.id;
-          return (
-            <div key={p.id} className={styles.card}>
-              <div className={styles.cardHead}>
-                <span className={styles.cardType}>{TYPE_LABELS[p.type] ?? p.type}</span>
-                <span className={styles.cardYear}>{p.year}</span>
-              </div>
-
-              {/* Title row with rename button */}
-              <div className={styles.cardTitleRow}>
-                <Link href={`/p/${p.id}`} className={styles.cardTitle}>
-                  {p.name}
-                </Link>
-                <button
-                  className={styles.renameBtn}
-                  onClick={() => setRenamePlanning(p)}
-                  title="Modifier ce planning"
-                  aria-label="Modifier"
-                >
-                  ✎
-                </button>
-              </div>
-
-              <p className={styles.cardMeta}>{fmtDate(p.viewStart)} → {fmtDate(p.viewEnd)}</p>
-
-              <div className={styles.cardActions}>
-                <Link href={`/p/${p.id}`} className={styles.openBtn}>Ouvrir →</Link>
-                <button
-                  className={styles.dupBtn}
-                  onClick={() => handleDuplicate(p)}
-                  disabled={isPending}
-                  title="Dupliquer"
-                >
-                  {isThis && loadingAction === "dup" ? "Copie…" : "⧉ Dupliquer"}
-                </button>
-                <a href={`/api/export/${p.id}`} className={styles.exportJsonBtn} title="Exporter JSON" download>
-                  ⬇ JSON
-                </a>
-                <button
-                  className={styles.archiveBtn}
-                  onClick={() => handleArchive(p)}
-                  disabled={isPending}
-                  title="Archiver"
-                >
-                  {isThis && loadingAction === "archive" ? "Archivage…" : "Archiver"}
-                </button>
-                <button
-                  className={styles.deleteBtn}
-                  onClick={() => handleDelete(p)}
-                  disabled={isPending}
-                  title="Supprimer définitivement"
-                >
-                  {isThis && loadingAction === "delete" ? "…" : "🗑"}
-                </button>
-              </div>
-            </div>
-          );
-        })}
+      {/* Tabs */}
+      <div className={styles.tabs}>
+        <button
+          className={`${styles.tab} ${tab === "active" ? styles.tabActive : ""}`}
+          onClick={() => handleTabChange("active")}
+        >
+          Actifs ({active.length})
+        </button>
+        <button
+          className={`${styles.tab} ${tab === "archived" ? styles.tabActive : ""}`}
+          onClick={() => handleTabChange("archived")}
+        >
+          Archivés ({archived.length})
+        </button>
+        <button
+          className={`${styles.tab} ${tab === "disabled" ? styles.tabActive : ""}`}
+          onClick={() => handleTabChange("disabled")}
+        >
+          Désactivés ({disabled.length})
+        </button>
       </div>
+
+      {/* Grid */}
+      {currentList.length === 0 ? (
+        <div className={styles.empty}>
+          <p className={styles.emptyTitle}>
+            {tab === "active" ? "Aucun planning actif" : tab === "archived" ? "Aucun planning archivé" : "Aucun planning désactivé"}
+          </p>
+          {tab === "active" && (
+            <>
+              <p className={styles.emptyDesc}>Créez votre premier planning pour démarrer ou importez un fichier JSON.</p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                <a href="/plannings/nouveau" className={styles.emptyBtn}>+ Nouveau planning</a>
+                <button className={styles.importBtn} onClick={handleImportClick} disabled={importPending}>
+                  {importPending ? "Import en cours…" : "⬆ Importer JSON"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className={styles.grid}>
+          {currentList.map((p) => (
+            <PlanningCard
+              key={p.id}
+              p={p}
+              tab={tab}
+              {...sharedCardProps}
+              selected={selected.has(p.id)}
+              onSelect={tab === "active" ? toggleSelect : undefined}
+              onArchive={handleArchive}
+              onDisable={handleDisable}
+              onEnable={handleEnable}
+              onUnarchive={handleUnarchive}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Rename modal */}
       {renamePlanning && (
@@ -330,9 +595,37 @@ export function PlanningListClient({ plannings }: { plannings: PlanningRow[] }) 
         />
       )}
 
-      <ImportModeModal open={!!importModalText} mode={importMode} onModeChange={setImportMode}
-        plannings={plannings} targetId={importTargetId} onTargetChange={setImportTargetId}
-        onConfirm={handleImportConfirm} onCancel={() => setImportModalText(null)} />
+      {/* Import mode modal */}
+      <ImportModeModal
+        open={!!importModalText}
+        mode={importMode}
+        onModeChange={setImportMode}
+        plannings={active}
+        targetId={importTargetId}
+        onTargetChange={setImportTargetId}
+        onConfirm={handleImportConfirm}
+        onCancel={() => setImportModalText(null)}
+      />
+
+      {/* Bulk action bar */}
+      {tab === "active" && selected.size > 0 && (
+        <div className={styles.bulkBar}>
+          <span className={styles.bulkCount}>{selected.size} sélectionné{selected.size > 1 ? "s" : ""}</span>
+          <span>—</span>
+          <button className={styles.bulkBtn} onClick={handleBulkArchive} disabled={isPending}>
+            Archiver
+          </button>
+          <button className={styles.bulkBtn} onClick={handleBulkDisable} disabled={isPending}>
+            Désactiver
+          </button>
+          <button className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={handleBulkDelete} disabled={isPending}>
+            Supprimer
+          </button>
+          <button className={styles.bulkCancelBtn} onClick={clearSelection}>
+            Annuler
+          </button>
+        </div>
+      )}
     </>
   );
 }

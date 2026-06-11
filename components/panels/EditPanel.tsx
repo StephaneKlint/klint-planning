@@ -17,6 +17,7 @@ import {
   updateMilestone, togglePhaseAssignee,
   createLot, createPhase, createDomain, updateDomain, updateLot,
   deletePhase, deleteMilestone, deleteLot, deleteDomain,
+  moveLot,
 } from "@/lib/actions/planning";
 import { useOptimisticPhase, planningQueryKey } from "@/lib/queries/usePlanning";
 import styles from "./EditPanel.module.css";
@@ -85,6 +86,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   // Lot edit state
   const [editLotName, setEditLotName] = useState("");
   const [editLotSubtitle, setEditLotSubtitle] = useState("");
+  const [editLotDomainId, setEditLotDomainId] = useState("");
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -119,6 +121,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
       const lot = data.lots.find((l) => l.id === lotId);
       setEditLotName(lot?.name ?? "");
       setEditLotSubtitle(lot?.subtitle ?? "");
+      setEditLotDomainId(lot?.domainId ?? "");
     }
     // Seed domain edit form from current data
     if (editTarget?.kind === "edit-domain") {
@@ -131,6 +134,14 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editTarget]);
+
+  // Sync editLotDomainId when lot data changes externally
+  useEffect(() => {
+    if (editTarget?.kind === "edit-lot") {
+      const lot = data.lots.find((l) => l.id === editTarget.lotId);
+      if (lot) setEditLotDomainId(lot.domainId);
+    }
+  }, [editTarget, data.lots]);
 
   if (!editTarget) return null;
 
@@ -555,6 +566,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             name: editLotName.trim(),
             subtitle: editLotSubtitle.trim() || null,
           });
+          // Si le domaine a changé
+          if (editLotDomainId && editLotDomainId !== lot.domainId) {
+            await moveLot(lotId, editLotDomainId, lotPlanningId);
+          }
           closeEdit();
           router.refresh();
         } catch (e) {
@@ -601,6 +616,19 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               placeholder="ex. Périmètre, client, contexte…"
               onKeyDown={(e) => e.key === "Enter" && handleSaveLot()}
             />
+          </div>
+          {/* Sélecteur de domaine */}
+          <div className={styles.fieldRow}>
+            <span className={styles.fieldLabel}>Domaine</span>
+            <select
+              className={styles.select}
+              value={editLotDomainId}
+              onChange={(e) => setEditLotDomainId(e.target.value)}
+            >
+              {data.domains.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
           </div>
           {createError && (
             <p style={{ color: "#DC2626", fontSize: 12, margin: 0 }}>{createError}</p>

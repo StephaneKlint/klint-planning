@@ -18,6 +18,7 @@ interface NavItem {
 const PLANNING_AWARE = new Set(["/synthese", "/ressources", "/parametres"]);
 
 const TOP_NAV: NavItem[] = [
+  { href: "/plannings",  icon: "layers",    label: "Plannings"  },
   { href: "/p",          icon: "calendar",  label: "Planning"   },
   { href: "/synthese",   icon: "chartLine", label: "Synthèse"   },
   { href: "/ressources", icon: "users",     label: "Ressources" },
@@ -45,7 +46,9 @@ export function Rail({ avatarInitials = "?", avatarColor = "#001D63", logoDataUr
   const pathPlanningId = pathname.startsWith("/p/") ? pathname.split("/")[2] : null;
 
   const isActive = (href: string) =>
-    href === "/p" ? pathname.startsWith("/p") : pathname.startsWith(href);
+    href === "/p"
+      ? pathname.startsWith("/p") && !pathname.startsWith("/plannings")
+      : pathname.startsWith(href);
 
   // Inject ?planningId= for context-aware pages when a planning is active
   const resolveHref = (href: string) =>

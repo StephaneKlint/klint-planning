@@ -208,6 +208,66 @@
   border-color: #FECACA;
 }
 
+/* ── Affichage dropdown ── */
+.affichageDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: white;
+  border: 1.5px solid var(--klint-line, #E6E8EE);
+  border-radius: 10px;
+  padding: 8px 4px;
+  min-width: 200px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  z-index: 200;
+}
+
+.dropdownSection {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #9CA3AF;
+  padding: 4px 12px 2px;
+  margin: 0;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: var(--font-display, system-ui);
+  font-weight: 500;
+  color: var(--klint-navy, #001036);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.dropdownItem:hover {
+  background: var(--klint-paper, #F6F7FB);
+}
+
+.dropdownCheck {
+  width: 14px;
+  font-size: 11px;
+  color: var(--klint-navy, #001036);
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: var(--klint-line, #E6E8EE);
+  margin: 6px 8px;
+}
+
 /* Export PDF */
 .exportBtn {
   background: var(--klint-navy, #001036);

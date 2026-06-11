@@ -580,6 +580,17 @@ export async function togglePhaseAssignee(input: z.infer<typeof TogglePhaseAssig
 }
 
 // ---------------------------------------------------------------------------
+// Lot domain move
+// ---------------------------------------------------------------------------
+
+export async function moveLot(lotId: string, newDomainId: string, planningId: string) {
+  await assertCanEdit(planningId);
+  await db.update(lots).set({ domainId: newDomainId }).where(eq(lots.id, lotId));
+  await logActivity(planningId, "moved", "lot", lotId, "Projet déplacé vers un autre domaine");
+  revalidatePath(`/p/${planningId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Data fetch action (callable from client via TanStack Query)
 // Server Action boundary ensures DB code stays server-side.
 // ---------------------------------------------------------------------------

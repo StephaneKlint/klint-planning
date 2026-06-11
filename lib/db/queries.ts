@@ -102,21 +102,28 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
   };
 }
 
-export async function listPlannings() {
-  return db
+export async function listPlannings(filter: "active" | "archived" | "disabled" | "all" = "active") {
+  const rows = await db
     .select({
-      id:       plannings.id,
-      name:     plannings.name,
-      year:     plannings.year,
-      type:     plannings.type,
+      id: plannings.id,
+      name: plannings.name,
+      year: plannings.year,
+      type: plannings.type,
       archived: plannings.archived,
+      disabled: plannings.disabled,
       viewStart: plannings.viewStart,
-      viewEnd:   plannings.viewEnd,
+      viewEnd: plannings.viewEnd,
       createdAt: plannings.createdAt,
     })
     .from(plannings)
-    .where(eq(plannings.archived, false))
-    .orderBy(asc(plannings.createdAt));
+    .where(
+      filter === "active"   ? and(eq(plannings.archived, false), eq(plannings.disabled, false)) :
+      filter === "archived" ? eq(plannings.archived, true) :
+      filter === "disabled" ? and(eq(plannings.archived, false), eq(plannings.disabled, true)) :
+      undefined
+    )
+    .orderBy(desc(plannings.createdAt));
+  return rows;
 }
 
 export interface ActivityEntry {

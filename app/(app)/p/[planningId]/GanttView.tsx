@@ -44,7 +44,9 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     panelMode, setPanelMode,
     setCommandPaletteOpen,
     requestScroll,
-    toggleDomainBands,
+    showDomainBands, toggleDomainBands,
+    showWeekends, toggleWeekends,
+    showResponsables, toggleResponsables,
     filterDateStart, filterDateEnd,
     setFilterDates, clearFilterDates,
     undoStack, popUndo,
@@ -60,16 +62,6 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
 
   // Présence — heartbeat 30s + polling membres actifs 30s
   const activeMembers = usePresence(props.planningId, demoMemberId);
-
-  const colorModeLabel =
-    colorMode === "domain" ? "Domaine" : colorMode === "status" ? "Statut" : "Personne";
-
-  const handleColorMode = () => {
-    const next: Record<string, "domain" | "status" | "person"> = {
-      domain: "status", status: "person", person: "domain",
-    };
-    setColorMode(next[colorMode]);
-  };
 
   const handleTogglePanel = () => {
     setPanelMode(panelMode === "hidden" ? "compact" : "hidden");
@@ -270,15 +262,12 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         onScrollPrev={() => requestScroll("prev")}
         onScrollNext={() => requestScroll("next")}
         onTogglePanel={handleTogglePanel}
-        onVisibilityClick={toggleDomainBands}
         onSearchClick={() => setCommandPaletteOpen(true)}
-        onColorModeClick={handleColorMode}
         onExportPdf={handleExportPdf}
         exportPdfPending={exportPending}
         onExportJson={handleExportJson}
         onProjectFilter={() => setProjectFilterOpen(!projectFilterOpen)}
         projectFilterActive={projectFilterOpen || hiddenLotIds.size > 0}
-        colorModeLabel={colorModeLabel}
         presenceStack={<PresenceStack members={activeMembers} />}
         panelVisible={panelMode !== "hidden"}
         filterStart={filterDateStart}
@@ -287,6 +276,14 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         onClearFilter={clearFilterDates}
         canUndo={undoStack.length > 0}
         onUndo={handleUndo}
+        showDomainBands={showDomainBands}
+        showWeekends={showWeekends}
+        showResponsables={showResponsables}
+        onToggleDomainBands={toggleDomainBands}
+        onToggleWeekends={toggleWeekends}
+        onToggleResponsables={toggleResponsables}
+        colorMode={colorMode}
+        onColorModeChange={setColorMode}
       />
 
       {/* Modal sélecteur de projets */}
