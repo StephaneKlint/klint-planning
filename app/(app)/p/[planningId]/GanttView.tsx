@@ -47,6 +47,8 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     showDomainBands, toggleDomainBands,
     showWeekends, toggleWeekends,
     showResponsables, toggleResponsables,
+    showHolidays, toggleHolidays,
+    showClosures, toggleClosures,
     filterDateStart, filterDateEnd,
     setFilterDates, clearFilterDates,
     undoStack, popUndo,
@@ -284,6 +286,10 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         onToggleResponsables={toggleResponsables}
         colorMode={colorMode}
         onColorModeChange={setColorMode}
+        showHolidays={showHolidays}
+        showClosures={showClosures}
+        onToggleHolidays={toggleHolidays}
+        onToggleClosures={toggleClosures}
       />
 
       {/* Modal sélecteur de projets */}
@@ -307,6 +313,7 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
           milestoneTypes={liveData.milestoneTypes}
           statuses={liveData.statuses}
           phaseAssignees={liveData.phaseAssignees}
+          closurePeriods={liveData.closurePeriods}
         />
       </div>
 

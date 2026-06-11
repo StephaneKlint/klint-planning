@@ -5,7 +5,7 @@
  * - Synchronises horizontal scroll (header ↔ body)
  * - Re-centers on Today when zoom changes
  */
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { useGanttStore } from "@/store/ganttStore";
 import { GanttSide } from "./GanttSide";
 import { TimelineHeader } from "./TimelineHeader";
@@ -13,7 +13,7 @@ import { TimelineBody } from "./TimelineBody";
 import type { GanttProps } from "./types";
 import type { StatusCode } from "@/components/ui/StatusPill";
 import {
-  PPD, ROW_H, computeRowOffsets, timelineWidth, todayScrollLeft,
+  PPD, ROW_H, computeRowOffsets, timelineWidth, todayScrollLeft, assignTracks,
 } from "./ganttUtils";
 import { derivePhaseStatus } from "@/lib/domain";
 import styles from "./Gantt.module.css";
@@ -35,14 +35,53 @@ export function Gantt({
   viewStart,
   viewEnd,
   referenceDate,
+  closurePeriods,
 }: GanttProps) {
-  const { zoom: zoomRaw, density: densityRaw, colorMode, showWeekends, showDomainBands, panelMode, scrollRequest, requestScroll, hiddenLotIds } = useGanttStore();
+  const { zoom: zoomRaw, density: densityRaw, colorMode, showWeekends, showDomainBands, showHolidays, showClosures, panelMode, scrollRequest, requestScroll, hiddenLotIds } = useGanttStore();
   const zoom = zoomRaw as import("@/store/ganttStore").ZoomLevel;
   const density = densityRaw as import("@/store/ganttStore").Density;
 
-  const ppd = PPD[zoom];
+  // ── Adaptive PPD: stretch to fill available timeline width for short views ──
+  const [timelineContainerW, setTimelineContainerW] = useState(0);
+  const timelineWrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = timelineWrapperRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      setTimelineContainerW(entries[0].contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const minPpd = PPD[zoom];
+  const nbDays = Math.max(1, Math.round(
+    (new Date(viewEnd + "T00:00:00Z").getTime() - new Date(viewStart + "T00:00:00Z").getTime()) / 86400000
+  ) + 1);
+  // Stretch PPD when NOT in 12m view and container is measured
+  const ppd = (() => {
+    if (zoom === "12m" || timelineContainerW < 100) return minPpd;
+    const stretchPpd = timelineContainerW / nbDays;
+    return Math.max(minPpd, stretchPpd);
+  })();
+
   const rowH = ROW_H[density];
-  const { rows, totalH } = computeRowOffsets(domains, lots, rowH, undefined, hiddenLotIds);
+
+  // ── Track counts per lot (for overlapping phases) ───────────────────────────
+  const phasesByLotForTracks = phases.reduce<Record<string, typeof phases>>((acc, p) => {
+    (acc[p.lotId] ??= []).push(p);
+    return acc;
+  }, {});
+  const trackCountByLotId: Record<string, number> = {};
+  const trackByPhaseId: Record<string, number> = {};
+  for (const [lotId, lotPhases] of Object.entries(phasesByLotForTracks)) {
+    const { numTracks, trackByPhaseId: tMap } = assignTracks(lotPhases);
+    trackCountByLotId[lotId] = numTracks;
+    Object.assign(trackByPhaseId, tMap);
+  }
+
+  const { rows, totalH } = computeRowOffsets(domains, lots, rowH, undefined, hiddenLotIds, trackCountByLotId);
   const totalW = timelineWidth(viewStart, viewEnd, ppd);
 
   // Refs for scroll sync
@@ -159,7 +198,7 @@ export function Gantt({
       )}
 
       {/* RIGHT — Timeline */}
-      <div className={styles.timelineWrapper}>
+      <div ref={timelineWrapperRef} className={styles.timelineWrapper}>
         {/* Header row (scrolls horizontally) */}
         <div
           ref={headerRef}
@@ -197,6 +236,11 @@ export function Gantt({
             showDomainBands={showDomainBands}
             viewStart2={viewStart}
             viewEnd={viewEnd}
+            closurePeriods={closurePeriods}
+            showHolidays={showHolidays}
+            showClosures={showClosures}
+            trackByPhaseId={trackByPhaseId}
+            rowH={rowH}
           />
         </div>
       </div>

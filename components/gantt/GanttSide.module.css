@@ -152,6 +152,48 @@
   border-style: solid;
 }
 
+/* ── + menu contextuel (Phase / Jalon) ── */
+.addMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: #ffffff;
+  border: 1.5px solid var(--klint-line, #E6E8EE);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 120px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  z-index: 200;
+}
+
+.addMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  font-family: var(--font-display, system-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--klint-navy, #001036);
+  background: none;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 100ms;
+}
+.addMenuItem:hover {
+  background: var(--klint-paper, #FAFBFC);
+}
+
+.addMenuIcon {
+  font-size: 10px;
+  width: 14px;
+  text-align: center;
+  color: #6B7280;
+}
+
 /* ── Header "+ Domaine" button ── */
 .addDomainBtn {
   padding: 3px 8px;

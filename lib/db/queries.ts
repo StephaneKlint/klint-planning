@@ -3,7 +3,7 @@ import {
   plannings, domains, lots, phases, milestones,
   planningMembers, users, phaseAssignees,
   phaseTypes, milestoneTypes, statuses, planningSettings,
-  activityLog,
+  activityLog, closurePeriods, connectionLogs,
 } from "./schema";
 import { eq, asc, desc, inArray, and } from "drizzle-orm";
 
@@ -18,6 +18,8 @@ export type MemberRow = typeof planningMembers.$inferSelect & {
 export type PhaseTypeRow = typeof phaseTypes.$inferSelect;
 export type MilestoneTypeRow = typeof milestoneTypes.$inferSelect;
 export type StatusRow = typeof statuses.$inferSelect;
+export type ClosurePeriodRow = typeof closurePeriods.$inferSelect;
+export type ConnectionLogRow = typeof connectionLogs.$inferSelect;
 
 export interface GanttData {
   planning: typeof plannings.$inferSelect;
@@ -31,6 +33,7 @@ export interface GanttData {
   milestoneTypes: MilestoneTypeRow[];
   statuses: StatusRow[];
   phaseAssignees: { phaseId: string; memberId: string }[];
+  closurePeriods: ClosurePeriodRow[];
 }
 
 export async function getGanttData(planningId: string): Promise<GanttData | null> {
@@ -67,6 +70,13 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
       .where(eq(planningMembers.planningId, planningId)),
   ]);
 
+  // Load closure periods for this planning
+  const planningClosures = await db
+    .select()
+    .from(closurePeriods)
+    .where(eq(closurePeriods.planningId, planningId))
+    .orderBy(asc(closurePeriods.sortOrder), asc(closurePeriods.startDate));
+
   if (planningLots.length === 0) {
     return {
       planning, settings,
@@ -74,6 +84,7 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
       members: rawMembers,
       phaseTypes: planningPhaseTypes, milestoneTypes: planningMilestoneTypes,
       statuses: planningStatuses, phaseAssignees: [],
+      closurePeriods: planningClosures,
     };
   }
 
@@ -99,6 +110,7 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
     milestoneTypes: planningMilestoneTypes,
     statuses: planningStatuses,
     phaseAssignees: rawAssignees,
+    closurePeriods: planningClosures,
   };
 }
 
@@ -172,4 +184,12 @@ export async function getActivityLog(planningId: string, limit = 150): Promise<A
     actorInitials: r.actorInitials ?? (r.actorName ? r.actorName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() : "?"),
     actorColor: r.actorColor ?? "#001D63",
   }));
+}
+
+export async function listConnectionLogs(limit = 100): Promise<ConnectionLogRow[]> {
+  return db
+    .select()
+    .from(connectionLogs)
+    .orderBy(desc(connectionLogs.createdAt))
+    .limit(limit);
 }

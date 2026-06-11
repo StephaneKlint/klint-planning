@@ -1,6 +1,6 @@
 import type {
   DomainRow, LotRow, PhaseRow, MilestoneRow, MemberRow,
-  StatusRow, PhaseTypeRow, MilestoneTypeRow,
+  StatusRow, PhaseTypeRow, MilestoneTypeRow, ClosurePeriodRow,
 } from "@/lib/db/queries";
 import type { ZoomLevel, Density, ColorMode } from "@/store/ganttStore";
 
@@ -28,4 +28,5 @@ export interface GanttProps {
   viewStart: string;
   viewEnd: string;
   referenceDate: string;
+  closurePeriods?: ClosurePeriodRow[];
 }

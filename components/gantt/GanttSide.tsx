@@ -5,6 +5,7 @@
  * so Y positions match exactly the timeline body.
  * Empty state shown when planning has no domains yet.
  */
+import { useState, useEffect, useRef } from "react";
 import type { RowEntry } from "./types";
 import type { DomainRow, LotRow } from "@/lib/db/queries";
 import { Donut } from "@/components/ui/Donut";
@@ -41,6 +42,21 @@ export function GanttSide({
   innerRef,
 }: GanttSideProps) {
   const { openEdit } = useGanttStore();
+  // Mini-menu state: which lot's + menu is open
+  const [addMenuLotId, setAddMenuLotId] = useState<string | null>(null);
+  const addMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close add menu on outside click
+  useEffect(() => {
+    if (!addMenuLotId) return;
+    const handler = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setAddMenuLotId(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [addMenuLotId]);
   const domainById = Object.fromEntries(domains.map((d) => [d.id, d]));
   const lotById = Object.fromEntries(lots.map((l) => [l.id, l]));
   const isEmpty = domains.length === 0;
@@ -154,14 +170,40 @@ export function GanttSide({
                       <span className={styles.lotSubtitle}>{lot.subtitle}</span>
                     )}
                   </div>
-                  <button
-                    className={styles.addPhaseBtn}
-                    onClick={(e) => { e.stopPropagation(); openEdit({ kind: "create-phase", lotId: row.id }); }}
-                    title="Ajouter une phase à ce projet"
-                    aria-label="Ajouter une phase"
+                  {/* + menu — Phase ou Jalon */}
+                  <div
+                    ref={addMenuLotId === row.id ? addMenuRef : undefined}
+                    style={{ position: "relative" }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    +
-                  </button>
+                    <button
+                      className={styles.addPhaseBtn}
+                      onClick={() => setAddMenuLotId(addMenuLotId === row.id ? null : row.id)}
+                      title="Ajouter une phase ou un jalon"
+                      aria-label="Ajouter"
+                      aria-expanded={addMenuLotId === row.id}
+                    >
+                      +
+                    </button>
+                    {addMenuLotId === row.id && (
+                      <div className={styles.addMenu}>
+                        <button
+                          className={styles.addMenuItem}
+                          onClick={() => { setAddMenuLotId(null); openEdit({ kind: "create-phase", lotId: row.id }); }}
+                        >
+                          <span className={styles.addMenuIcon}>▬</span>
+                          Phase
+                        </button>
+                        <button
+                          className={styles.addMenuItem}
+                          onClick={() => { setAddMenuLotId(null); openEdit({ kind: "create-milestone", lotId: row.id }); }}
+                        >
+                          <span className={styles.addMenuIcon}>◆</span>
+                          Jalon
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}

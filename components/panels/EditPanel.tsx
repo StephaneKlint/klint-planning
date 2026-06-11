@@ -15,7 +15,7 @@ import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
   updatePhaseDates, updatePhaseColor, updatePhaseLabel,
   updateMilestone, togglePhaseAssignee,
-  createLot, createPhase, createDomain, updateDomain, updateLot,
+  createLot, createPhase, createMilestone, createDomain, updateDomain, updateLot,
   deletePhase, deleteMilestone, deleteLot, deleteDomain,
   moveLot,
 } from "@/lib/actions/planning";
@@ -79,6 +79,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   const [createPhaseStart, setCreatePhaseStart] = useState("");
   const [createPhaseEnd, setCreatePhaseEnd] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
+  // Milestone creation state
+  const [createMsLabel, setCreateMsLabel] = useState("");
+  const [createMsDate, setCreateMsDate] = useState("");
+  const [createMsType, setCreateMsType] = useState("custom");
   // Domain creation/edit state
   const [domainPresetIdx, setDomainPresetIdx] = useState(0);
   const [domainCode, setDomainCode] = useState("");
@@ -112,6 +116,9 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
     setCreatePhaseStart("");
     setCreatePhaseEnd("");
     setCreateError(null);
+    setCreateMsLabel("");
+    setCreateMsDate("");
+    setCreateMsType("custom");
     setDomainPresetIdx(0);
     setDomainCode("");
     setDomainName("");
@@ -1415,6 +1422,105 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             disabled={isPending || !createPhaseStart || !createPhaseEnd}
           >
             {isPending ? "Création…" : "Créer la phase"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── create-milestone ────────────────────────────────────────────────────────
+  if (editTarget.kind === "create-milestone") {
+    const lot = data.lots.find((l) => l.id === editTarget.lotId);
+    const domain = lot ? data.domains.find((d) => d.id === lot.domainId) : null;
+
+    const msTypeOptions = data.milestoneTypes.length > 0
+      ? data.milestoneTypes
+      : [{ code: "custom", label: "Personnalisé", color: "#7C3AED" }];
+
+    const handleCreate = () => {
+      if (!createMsLabel.trim()) { setCreateError("Le libellé est requis."); return; }
+      if (!createMsDate) { setCreateError("La date est requise."); return; }
+      setCreateError(null);
+      startTransition(async () => {
+        try {
+          await createMilestone({
+            planningId,
+            lotId: editTarget.lotId,
+            type: createMsType,
+            label: createMsLabel.trim(),
+            date: createMsDate,
+            labelPos: "auto",
+          });
+          closeEdit();
+          router.refresh();
+        } catch (e) {
+          setCreateError(e instanceof Error ? e.message : "Erreur lors de la création.");
+        }
+      });
+    };
+
+    return (
+      <div className={styles.panel} role="dialog" aria-label="Nouveau jalon">
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <span className={styles.modeTag} style={{ background: "#F5F3FF", color: "#7C3AED" }}>◆ Jalon</span>
+            {domain && (
+              <span className={styles.domainChip} style={{ background: domain.bg, color: domain.strong }}>
+                {domain.name}
+              </span>
+            )}
+          </div>
+          <button className={styles.closeBtn} onClick={closeEdit}><Icon name="close" size={14} /></button>
+        </div>
+        <div className={styles.titleRow}>
+          <h2 className={styles.title}>{lot?.name ?? "Nouveau jalon"}</h2>
+          {lot?.subtitle && <p className={styles.lotSubtitle}>{lot.subtitle}</p>}
+        </div>
+        <div className={styles.body}>
+          <div className={styles.fieldRow}>
+            <span className={styles.fieldLabel}>Type</span>
+            <select
+              className={styles.select}
+              value={createMsType}
+              onChange={(e) => setCreateMsType(e.target.value)}
+            >
+              {msTypeOptions.map((t) => (
+                <option key={t.code} value={t.code}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.fieldRow}>
+            <span className={styles.fieldLabel}>Libellé *</span>
+            <input
+              type="text"
+              className={styles.input}
+              value={createMsLabel}
+              onChange={(e) => setCreateMsLabel(e.target.value)}
+              placeholder="ex. MEP v1.0"
+              autoFocus
+            />
+          </div>
+          <div className={styles.fieldRow}>
+            <span className={styles.fieldLabel}>Date *</span>
+            <input
+              type="date"
+              className={styles.dateInput}
+              value={createMsDate}
+              onChange={(e) => setCreateMsDate(e.target.value)}
+            />
+          </div>
+          {createError && (
+            <p style={{ color: "#DC2626", fontSize: 12, margin: 0 }}>{createError}</p>
+          )}
+        </div>
+        <div className={styles.footer}>
+          <Button variant="ghost" size="sm" onClick={closeEdit}>Annuler</Button>
+          <button
+            className={styles.createSubmitBtn}
+            onClick={handleCreate}
+            disabled={isPending || !createMsLabel || !createMsDate}
+          >
+            {isPending ? "Création…" : "Créer le jalon"}
           </button>
         </div>
       </div>

@@ -550,6 +550,38 @@ export async function updateMilestone(input: z.infer<typeof UpdateMilestoneSchem
 }
 
 // ---------------------------------------------------------------------------
+// Milestone creation
+// ---------------------------------------------------------------------------
+
+const CreateMilestoneSchema = z.object({
+  planningId: z.string().uuid(),
+  lotId: z.string().uuid(),
+  type: z.string().max(40).default("custom"),
+  label: z.string().min(1).max(200),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
+  labelPos: z.enum(["auto", "above", "below"]).default("auto"),
+});
+
+export async function createMilestone(input: z.infer<typeof CreateMilestoneSchema>) {
+  const data = CreateMilestoneSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  const [newMs] = await db.insert(milestones).values({
+    lotId:    data.lotId,
+    type:     data.type,
+    label:    data.label,
+    date:     data.date,
+    color:    data.color ?? null,
+    labelPos: data.labelPos,
+  }).returning({ id: milestones.id, label: milestones.label });
+
+  await logActivity(data.planningId, "created", "milestone", newMs.id, `Nouveau jalon : ${data.label}`);
+  revalidatePath(`/p/${data.planningId}`);
+  return newMs;
+}
+
+// ---------------------------------------------------------------------------
 // Phase assignee toggle
 // ---------------------------------------------------------------------------
 

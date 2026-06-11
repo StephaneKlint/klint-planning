@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
 import {
   duplicatePlanning, archivePlanning, deletePlanning, updatePlanningMeta,
   importPlanningFromJSON, updatePlanningFromJSON,
@@ -209,7 +210,9 @@ function PlanningCard({
           onClick={() => onDuplicate(p)}
           disabled={isPending}
         >
-          {isThis && loadingAction === "dup" ? "…" : "⧉"}
+          {isThis && loadingAction === "dup"
+            ? <span style={{ fontSize: 11 }}>…</span>
+            : <Icon name="layers" size={14} aria-hidden />}
         </button>
 
         {/* Export JSON */}
@@ -220,7 +223,7 @@ function PlanningCard({
           aria-label="Exporter JSON"
           download
         >
-          ⬇
+          <Icon name="download" size={14} aria-hidden />
         </a>
 
         {/* Spacer */}
@@ -229,11 +232,11 @@ function PlanningCard({
         {/* Rename */}
         <button
           className={styles.cardIconBtn}
-          title="Renommer"
+          title="Renommer / Modifier"
           aria-label="Renommer"
           onClick={() => onRename(p)}
         >
-          ✎
+          <Icon name="edit" size={14} aria-hidden />
         </button>
 
         <div className={styles.cardIconSep} />
@@ -248,7 +251,9 @@ function PlanningCard({
               onClick={() => onArchive?.(p)}
               disabled={isPending}
             >
-              {isThis && loadingAction === "archive" ? "…" : "📦"}
+              {isThis && loadingAction === "archive"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="archive" size={14} aria-hidden />}
             </button>
             <button
               className={`${styles.cardIconBtn} ${styles.cardIconBtnWarning}`}
@@ -257,16 +262,20 @@ function PlanningCard({
               onClick={() => onDisable?.(p)}
               disabled={isPending}
             >
-              {isThis && loadingAction === "disable" ? "…" : "🚫"}
+              {isThis && loadingAction === "disable"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="eyeOff" size={14} aria-hidden />}
             </button>
             <button
               className={`${styles.cardIconBtn} ${styles.cardIconBtnDanger}`}
-              title="Supprimer"
+              title="Supprimer définitivement"
               aria-label="Supprimer"
               onClick={() => onDelete(p)}
               disabled={isPending}
             >
-              {isThis && loadingAction === "delete" ? "…" : "🗑"}
+              {isThis && loadingAction === "delete"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="trash" size={14} aria-hidden />}
             </button>
           </>
         )}
@@ -275,21 +284,25 @@ function PlanningCard({
           <>
             <button
               className={styles.cardIconBtn}
-              title="Restaurer"
+              title="Restaurer (dés-archiver)"
               aria-label="Restaurer"
               onClick={() => onUnarchive?.(p)}
               disabled={isPending}
             >
-              {isThis && loadingAction === "unarchive" ? "…" : "↩"}
+              {isThis && loadingAction === "unarchive"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="undo" size={14} aria-hidden />}
             </button>
             <button
               className={`${styles.cardIconBtn} ${styles.cardIconBtnDanger}`}
-              title="Supprimer"
+              title="Supprimer définitivement"
               aria-label="Supprimer"
               onClick={() => onDelete(p)}
               disabled={isPending}
             >
-              {isThis && loadingAction === "delete" ? "…" : "🗑"}
+              {isThis && loadingAction === "delete"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="trash" size={14} aria-hidden />}
             </button>
           </>
         )}
@@ -303,16 +316,20 @@ function PlanningCard({
               onClick={() => onEnable?.(p)}
               disabled={isPending}
             >
-              {isThis && loadingAction === "enable" ? "…" : "↩"}
+              {isThis && loadingAction === "enable"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="play" size={14} aria-hidden />}
             </button>
             <button
               className={`${styles.cardIconBtn} ${styles.cardIconBtnDanger}`}
-              title="Supprimer"
+              title="Supprimer définitivement"
               aria-label="Supprimer"
               onClick={() => onDelete(p)}
               disabled={isPending}
             >
-              {isThis && loadingAction === "delete" ? "…" : "🗑"}
+              {isThis && loadingAction === "delete"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="trash" size={14} aria-hidden />}
             </button>
           </>
         )}

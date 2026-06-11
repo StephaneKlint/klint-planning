@@ -5,7 +5,7 @@
  * Uses absolute positioning (same rowOffsets as GanttSide).
  */
 import type { RowEntry, ColorMode } from "./types";
-import type { DomainRow, LotRow, PhaseRow, MilestoneRow, MilestoneTypeRow, StatusRow, MemberRow } from "@/lib/db/queries";
+import type { DomainRow, LotRow, PhaseRow, MilestoneRow, MilestoneTypeRow, StatusRow, MemberRow, ClosurePeriodRow } from "@/lib/db/queries";
 import { PhasePill } from "./PhasePill";
 import { MilestoneFlag } from "./MilestoneFlag";
 import { TodayLine } from "./TodayLine";
@@ -36,6 +36,13 @@ interface TimelineBodyProps {
   showDomainBands: boolean;
   viewStart2: string;
   viewEnd: string;
+  closurePeriods?: ClosurePeriodRow[];
+  showHolidays?: boolean;
+  showClosures?: boolean;
+  /** phase id → track index (0 = top track) — from assignTracks in Gantt.tsx */
+  trackByPhaseId?: Record<string, number>;
+  /** base row height (single track) — needed for pill Y calculation */
+  rowH?: number;
 }
 
 export function TimelineBody({
@@ -57,6 +64,11 @@ export function TimelineBody({
   showWeekends,
   showDomainBands,
   viewEnd,
+  closurePeriods,
+  showHolidays = true,
+  showClosures = true,
+  trackByPhaseId = {},
+  rowH: singleRowH = 44,
 }: TimelineBodyProps) {
   const { togglePhaseSelection, selectedPhaseIds, openEdit } = useGanttStore();
   const domainById = Object.fromEntries(domains.map((d) => [d.id, d]));
@@ -123,6 +135,44 @@ export function TimelineBody({
           aria-hidden
         />
       ))}
+
+      {/* Closure period bands — fermetures et jours fériés */}
+      {closurePeriods
+        ?.filter((cp) => {
+          if (!cp.active) return false;
+          if (cp.type === "holiday" && !showHolidays) return false;
+          if (cp.type === "custom" && !showClosures) return false;
+          // Must overlap the view range
+          return cp.endDate >= viewStart && cp.startDate <= viewEnd;
+        })
+        .map((cp) => {
+          const startClamped = cp.startDate < viewStart ? viewStart : cp.startDate;
+          const x1 = xOf(startClamped, viewStart, ppd);
+          // +1 day so the last day is fully covered
+          const dayAfterEnd = new Date(cp.endDate);
+          dayAfterEnd.setDate(dayAfterEnd.getDate() + 1);
+          const endStr = dayAfterEnd.toISOString().slice(0, 10);
+          const x2 = xOf(endStr, viewStart, ppd);
+          const width = Math.max(4, x2 - x1);
+          return (
+            <div
+              key={`cp-${cp.id}`}
+              style={{
+                position: "absolute",
+                left: x1,
+                top: 0,
+                width,
+                height: totalH,
+                background: cp.color,
+                opacity: 0.4,
+                pointerEvents: "none",
+                zIndex: 0,
+              }}
+              title={cp.label}
+              aria-hidden
+            />
+          );
+        })}
 
       {/* Domain band backgrounds */}
       {showDomainBands &&
@@ -210,7 +260,9 @@ export function TimelineBody({
           const left = xOfDate(phase.startDate);
           const right = xOfDate(phase.endDate);
           const width = right - left;
-          const pillTop = row.y + Math.floor((row.h - PILL_H) / 2);
+          // Multi-track: each track occupies singleRowH, pill centered within its track
+          const track = trackByPhaseId[phase.id] ?? 0;
+          const pillTop = row.y + track * singleRowH + Math.floor((singleRowH - PILL_H) / 2);
 
           // Resolve color based on current color mode
           let bg = phase.color ?? domain?.phaseColor ?? "#6B7280";

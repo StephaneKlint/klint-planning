@@ -14,6 +14,7 @@ export type EditTarget =
   | { kind: "create-lot"; domainId: string }
   | { kind: "edit-lot"; lotId: string; planningId: string }
   | { kind: "create-phase"; lotId: string }
+  | { kind: "create-milestone"; lotId: string }
   | null;
 
 // ── Undo stack ───────────────────────────────────────────────────────────────
@@ -60,6 +61,8 @@ interface GanttState {
   showWeekends: boolean;
   showDomainBands: boolean;
   showResponsables: boolean;
+  showHolidays: boolean;
+  showClosures: boolean;
   // Edit panel
   editTarget: EditTarget;
   // Bulk selection
@@ -86,6 +89,8 @@ interface GanttState {
   toggleWeekends: () => void;
   toggleDomainBands: () => void;
   toggleResponsables: () => void;
+  toggleHolidays: () => void;
+  toggleClosures: () => void;
   openEdit: (target: EditTarget) => void;
   closeEdit: () => void;
   togglePhaseSelection: (phaseId: string, multi: boolean) => void;
@@ -108,6 +113,8 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   showWeekends: true,
   showDomainBands: true,
   showResponsables: true,
+  showHolidays: true,
+  showClosures: true,
   editTarget: null,
   selectedPhaseIds: new Set(),
   hiddenLotIds: new Set(),
@@ -125,6 +132,8 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   toggleWeekends: () => set((s) => ({ showWeekends: !s.showWeekends })),
   toggleDomainBands: () => set((s) => ({ showDomainBands: !s.showDomainBands })),
   toggleResponsables: () => set((s) => ({ showResponsables: !s.showResponsables })),
+  toggleHolidays: () => set((s) => ({ showHolidays: !s.showHolidays })),
+  toggleClosures: () => set((s) => ({ showClosures: !s.showClosures })),
 
   openEdit: (editTarget) => set({ editTarget, selectedPhaseIds: new Set() }),
   closeEdit: () => set({ editTarget: null }),

@@ -11,17 +11,20 @@ import {
   updateDomainCadence, updatePlanningSettings, updateMemberPermission,
 } from "@/lib/actions/settings";
 import { saveAppLogo, saveAppFavicon } from "@/lib/actions/appSettings";
+import { seedHolidays, createClosurePeriod, updateClosurePeriod, deleteClosurePeriod } from "@/lib/actions/closurePeriods";
+import type { ClosurePeriodRow } from "@/lib/db/queries";
 
-type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "membres" | "apparence";
+type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "membres" | "apparence" | "calendrier";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "general",   label: "Général" },
-  { id: "cadence",   label: "Cadence" },
-  { id: "phases",    label: "Types de phases" },
-  { id: "jalons",    label: "Types de jalons" },
-  { id: "statuts",   label: "Statuts" },
-  { id: "membres",   label: "Membres & Droits" },
-  { id: "apparence", label: "Apparence" },
+  { id: "general",    label: "Général" },
+  { id: "cadence",    label: "Cadence" },
+  { id: "phases",     label: "Types de phases" },
+  { id: "jalons",     label: "Types de jalons" },
+  { id: "statuts",    label: "Statuts" },
+  { id: "membres",    label: "Membres & Droits" },
+  { id: "apparence",  label: "Apparence" },
+  { id: "calendrier", label: "Calendrier" },
 ];
 
 function fmtDate(d: string) {
@@ -45,6 +48,23 @@ export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppS
   const [active, setActive] = useState<Tab>("general");
   const [isPending, startTransition] = useTransition();
   const { planning, settings, domains, phaseTypes, milestoneTypes, statuses, members } = data;
+
+  // ── Calendrier state ────────────────────────────────────────────────────
+  const [calPeriods, setCalPeriods] = useState<ClosurePeriodRow[]>(data.closurePeriods ?? []);
+  const [calLabel, setCalLabel] = useState("");
+  const [calStart, setCalStart] = useState("");
+  const [calEnd, setCalEnd] = useState("");
+  const [calColor, setCalColor] = useState("#FED7AA");
+  const [calSeedMsg, setCalSeedMsg] = useState<string | null>(null);
+
+  const CLOSURE_COLORS = [
+    { hex: "#FEF3C7", label: "Jaune pâle" },
+    { hex: "#FED7AA", label: "Orange pâle" },
+    { hex: "#FECACA", label: "Rose pâle" },
+    { hex: "#D1FAE5", label: "Vert pâle" },
+    { hex: "#DBEAFE", label: "Bleu pâle" },
+    { hex: "#EDE9FE", label: "Violet pâle" },
+  ];
 
   // ── Logo upload state ──────────────────────────────────────────────────
   const logoInputRef    = useRef<HTMLInputElement>(null);
@@ -752,6 +772,224 @@ export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppS
               reader.readAsDataURL(file);
             }}
           />
+        </div>
+      )}
+
+      {/* ── Calendrier (jours fériés + fermetures) ───────────────────── */}
+      {active === "calendrier" && (
+        <div className={styles.tabPanel}>
+
+          {/* ─ Jours fériés ─ */}
+          <p className={styles.tabDesc} style={{ marginBottom: 12 }}>
+            <strong>Jours fériés français.</strong> Chargez automatiquement les jours fériés pour une année, ou ajoutez-les manuellement en-dessous.
+          </p>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
+            {[2025, 2026].map((yr) => (
+              <button
+                key={yr}
+                className={styles.addBtn}
+                disabled={isPending}
+                onClick={() => {
+                  startTransition(async () => {
+                    const res = await seedHolidays(planning.id, yr);
+                    setCalSeedMsg(`${res.inserted} jour(s) férié(s) ajouté(s) pour ${yr}.`);
+                    setCalPeriods((prev) => [...prev]); // trigger re-render via router.refresh
+                    router.refresh();
+                    setTimeout(() => setCalSeedMsg(null), 4000);
+                  });
+                }}
+              >
+                Charger jours fériés {yr}
+              </button>
+            ))}
+            {calSeedMsg && <span className={styles.savedMsg}>{calSeedMsg}</span>}
+          </div>
+
+          {/* Liste des jours fériés existants */}
+          {calPeriods.filter((cp) => cp.type === "holiday").length > 0 && (
+            <table className={styles.table} style={{ marginBottom: 24 }}>
+              <thead>
+                <tr><th>Libellé</th><th>Date</th><th>Actif</th><th></th></tr>
+              </thead>
+              <tbody>
+                {calPeriods.filter((cp) => cp.type === "holiday").map((cp) => (
+                  <tr key={cp.id}>
+                    <td>{cp.label}</td>
+                    <td className={styles.tdMuted}>{fmtDate(cp.startDate)}</td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={cp.active}
+                        disabled={isPending}
+                        onChange={(e) => {
+                          const next = calPeriods.map((p) => p.id === cp.id ? { ...p, active: e.target.checked } : p);
+                          setCalPeriods(next);
+                          startTransition(async () => {
+                            await updateClosurePeriod(cp.id, { active: e.target.checked });
+                            router.refresh();
+                          });
+                        }}
+                      />
+                    </td>
+                    <td>
+                      <button
+                        className={styles.deleteRowBtn}
+                        disabled={isPending}
+                        onClick={() => {
+                          if (!confirm(`Supprimer "${cp.label}" ?`)) return;
+                          setCalPeriods((prev) => prev.filter((p) => p.id !== cp.id));
+                          startTransition(async () => {
+                            await deleteClosurePeriod(cp.id, planning.id);
+                            router.refresh();
+                          });
+                        }}
+                      >
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <hr style={{ border: "none", borderTop: "1px solid var(--klint-line)", margin: "8px 0 20px" }} />
+
+          {/* ─ Périodes de fermeture ─ */}
+          <p className={styles.tabDesc} style={{ marginBottom: 12 }}>
+            <strong>Périodes de fermeture / Gel DSI.</strong> Définissez des périodes personnalisées (congés, gel, indisponibilité) affichées comme des bandes colorées sur le Gantt.
+          </p>
+
+          {calPeriods.filter((cp) => cp.type === "custom").length > 0 && (
+            <table className={styles.table} style={{ marginBottom: 16 }}>
+              <thead>
+                <tr><th>Libellé</th><th>Début</th><th>Fin</th><th>Couleur</th><th>Actif</th><th></th></tr>
+              </thead>
+              <tbody>
+                {calPeriods.filter((cp) => cp.type === "custom").map((cp) => (
+                  <tr key={cp.id}>
+                    <td>{cp.label}</td>
+                    <td className={styles.tdMuted}>{fmtDate(cp.startDate)}</td>
+                    <td className={styles.tdMuted}>{fmtDate(cp.endDate)}</td>
+                    <td>
+                      <span
+                        className={styles.colorSwatch}
+                        style={{ background: cp.color, border: "1px solid #e5e7eb" }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={cp.active}
+                        disabled={isPending}
+                        onChange={(e) => {
+                          const next = calPeriods.map((p) => p.id === cp.id ? { ...p, active: e.target.checked } : p);
+                          setCalPeriods(next);
+                          startTransition(async () => {
+                            await updateClosurePeriod(cp.id, { active: e.target.checked });
+                            router.refresh();
+                          });
+                        }}
+                      />
+                    </td>
+                    <td>
+                      <button
+                        className={styles.deleteRowBtn}
+                        disabled={isPending}
+                        onClick={() => {
+                          if (!confirm(`Supprimer "${cp.label}" ?`)) return;
+                          setCalPeriods((prev) => prev.filter((p) => p.id !== cp.id));
+                          startTransition(async () => {
+                            await deleteClosurePeriod(cp.id, planning.id);
+                            router.refresh();
+                          });
+                        }}
+                      >
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* Formulaire ajout période de fermeture */}
+          <form
+            className={styles.addRow}
+            style={{ flexWrap: "wrap", gap: 8 }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!calLabel.trim() || !calStart || !calEnd) return;
+              if (calEnd < calStart) { alert("La date de fin doit être après la date de début."); return; }
+              startTransition(async () => {
+                await createClosurePeriod({
+                  planningId: planning.id,
+                  label: calLabel.trim(),
+                  startDate: calStart,
+                  endDate: calEnd,
+                  color: calColor,
+                  type: "custom",
+                });
+                setCalLabel("");
+                setCalStart("");
+                setCalEnd("");
+                router.refresh();
+              });
+            }}
+          >
+            <input
+              className={styles.addInput}
+              placeholder="Libellé (ex. Gel DSI Q4)"
+              value={calLabel}
+              onChange={(e) => setCalLabel(e.target.value)}
+              maxLength={100}
+              style={{ flex: "1 1 160px" }}
+            />
+            <input
+              type="date"
+              className={styles.addInput}
+              value={calStart}
+              onChange={(e) => setCalStart(e.target.value)}
+              title="Date de début"
+              style={{ flex: "0 0 140px" }}
+            />
+            <input
+              type="date"
+              className={styles.addInput}
+              value={calEnd}
+              onChange={(e) => setCalEnd(e.target.value)}
+              title="Date de fin"
+              style={{ flex: "0 0 140px" }}
+            />
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              {CLOSURE_COLORS.map((c) => (
+                <button
+                  key={c.hex}
+                  type="button"
+                  title={c.label}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    background: c.hex,
+                    border: calColor === c.hex ? "2px solid #374151" : "1px solid #d1d5db",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                  onClick={() => setCalColor(c.hex)}
+                />
+              ))}
+            </div>
+            <button
+              type="submit"
+              className={styles.addBtn}
+              disabled={isPending || !calLabel || !calStart || !calEnd}
+            >
+              + Ajouter période
+            </button>
+          </form>
         </div>
       )}
     </div>

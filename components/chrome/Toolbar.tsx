@@ -42,9 +42,13 @@ interface ToolbarProps {
   showDomainBands?: boolean;
   showWeekends?: boolean;
   showResponsables?: boolean;
+  showHolidays?: boolean;
+  showClosures?: boolean;
   onToggleDomainBands?: () => void;
   onToggleWeekends?: () => void;
   onToggleResponsables?: () => void;
+  onToggleHolidays?: () => void;
+  onToggleClosures?: () => void;
   colorMode?: "domain" | "status" | "person";
   onColorModeChange?: (mode: "domain" | "status" | "person") => void;
 }
@@ -82,9 +86,13 @@ export function Toolbar({
   showDomainBands,
   showWeekends,
   showResponsables,
+  showHolidays,
+  showClosures,
   onToggleDomainBands,
   onToggleWeekends,
   onToggleResponsables,
+  onToggleHolidays,
+  onToggleClosures,
   colorMode,
   onColorModeChange,
 }: ToolbarProps) {
@@ -218,9 +226,11 @@ export function Toolbar({
               {/* Visibilité */}
               <p className={styles.dropdownSection}>Éléments visibles</p>
               {[
-                { label: "Bandes de domaines", active: showDomainBands, toggle: onToggleDomainBands },
-                { label: "Week-ends",          active: showWeekends,    toggle: onToggleWeekends },
-                { label: "Responsables",       active: showResponsables, toggle: onToggleResponsables },
+                { label: "Bandes de domaines", active: showDomainBands,   toggle: onToggleDomainBands },
+                { label: "Week-ends",          active: showWeekends,      toggle: onToggleWeekends },
+                { label: "Responsables",       active: showResponsables,  toggle: onToggleResponsables },
+                { label: "Jours fériés",       active: showHolidays,      toggle: onToggleHolidays },
+                { label: "Fermetures / Gel",   active: showClosures,      toggle: onToggleClosures },
               ].map(({ label, active, toggle }) => (
                 <button
                   key={label}

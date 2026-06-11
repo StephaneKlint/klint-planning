@@ -316,3 +316,42 @@ export const notifications = pgTable("notifications", {
   read: boolean("read").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ---- Périodes de fermeture et jours fériés (par planning) ----------------
+
+export const closurePeriods = pgTable(
+  "closure_periods",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    planningId: uuid("planning_id")
+      .notNull()
+      .references(() => plannings.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 100 }).notNull(),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date").notNull(),
+    color: varchar("color", { length: 9 }).notNull().default("#FEF3C7"),
+    type: varchar("type", { length: 20 }).notNull().default("custom"), // "holiday" | "custom"
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [index("cp_by_planning").on(t.planningId)]
+);
+
+// ---- Journalisation des connexions --------------------------------------
+
+export const connectionLogs = pgTable(
+  "connection_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    email: text("email").notNull(),
+    ip: text("ip"),
+    country: text("country"),
+    countryCode: text("country_code"),
+    city: text("city"),
+    userAgent: text("user_agent"),
+    isAlert: boolean("is_alert").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("cl_by_user").on(t.userId), index("cl_created").on(t.createdAt)]
+);

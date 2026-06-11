@@ -5,6 +5,7 @@
 import { auth } from "@/auth";
 import { Rail } from "@/components/chrome/Rail";
 import { TopbarWrapper } from "@/components/chrome/TopbarWrapper";
+import { ConnectionLogger } from "@/app/(app)/ConnectionLogger";
 import { listPlannings } from "@/lib/db/queries";
 import { getAppSettings } from "@/lib/actions/appSettings";
 import styles from "./layout.module.css";
@@ -23,6 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
+      <ConnectionLogger userId={user?.id ?? null} />
       <Rail
         avatarInitials={initials}
         logoDataUrl={appCfg.logoDataUrl}

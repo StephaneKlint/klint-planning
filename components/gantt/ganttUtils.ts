@@ -28,12 +28,44 @@ export function isWeekendDay(date: Date): boolean {
   return d === 0 || d === 6;
 }
 
+/**
+ * Greedy interval scheduling: assign overlapping phases to parallel tracks.
+ * Returns: trackByPhaseId (phase id → track index 0-based) and numTracks.
+ */
+export function assignTracks(
+  phases: { id: string; startDate: string; endDate: string }[]
+): { trackByPhaseId: Record<string, number>; numTracks: number } {
+  const sorted = [...phases].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const trackEnds: string[] = []; // last endDate per track
+  const trackByPhaseId: Record<string, number> = {};
+
+  for (const phase of sorted) {
+    let assigned = false;
+    for (let t = 0; t < trackEnds.length; t++) {
+      // Track is free if its last phase ends strictly before this one starts
+      if (trackEnds[t] < phase.startDate) {
+        trackEnds[t] = phase.endDate;
+        trackByPhaseId[phase.id] = t;
+        assigned = true;
+        break;
+      }
+    }
+    if (!assigned) {
+      trackByPhaseId[phase.id] = trackEnds.length;
+      trackEnds.push(phase.endDate);
+    }
+  }
+
+  return { trackByPhaseId, numTracks: Math.max(1, trackEnds.length) };
+}
+
 export function computeRowOffsets(
   domains: { id: string; code: string }[],
   lots: { id: string; domainId: string }[],
   rowH: number,
   domainHeadH = DOMAIN_HEAD_H,
-  hiddenLotIds?: Set<string>
+  hiddenLotIds?: Set<string>,
+  trackCountByLotId?: Record<string, number>
 ): { rows: RowEntry[]; totalH: number } {
   const rows: RowEntry[] = [];
   let y = 0;
@@ -41,10 +73,11 @@ export function computeRowOffsets(
     rows.push({ kind: "domain", id: domain.id, domainCode: domain.code, y, h: domainHeadH });
     y += domainHeadH;
     for (const lot of lots.filter((l) => l.domainId === domain.id)) {
-      // Skip hidden lots — they don't appear in the timeline or side panel
       if (hiddenLotIds?.has(lot.id)) continue;
-      rows.push({ kind: "lot", id: lot.id, domainCode: domain.code, y, h: rowH });
-      y += rowH;
+      const tracks = trackCountByLotId?.[lot.id] ?? 1;
+      const h = tracks * rowH;
+      rows.push({ kind: "lot", id: lot.id, domainCode: domain.code, y, h });
+      y += h;
     }
   }
   return { rows, totalH: y };

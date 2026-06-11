@@ -149,3 +149,140 @@
   color: #9ca3af;
   font-size: var(--text-13);
 }
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--klint-line);
+  margin-bottom: 24px;
+}
+
+.tab {
+  padding: 8px 20px;
+  font-size: var(--text-13);
+  font-weight: var(--weight-medium);
+  color: #6b7280;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+  color: var(--klint-navy);
+}
+
+.tabActive {
+  color: var(--klint-navy);
+  border-bottom-color: var(--klint-accent, #001D63);
+  font-weight: var(--weight-semibold);
+}
+
+/* ── Connection logs table ── */
+.connTable {
+  overflow-x: auto;
+  border: 1px solid var(--klint-line);
+  border-radius: var(--radius-card);
+  background: var(--klint-white);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-13);
+}
+
+.table thead th {
+  padding: 10px 14px;
+  font-size: var(--text-11);
+  font-weight: var(--weight-semibold);
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  background: #f9fafb;
+  border-bottom: 1px solid var(--klint-line);
+}
+
+.table tbody tr {
+  border-bottom: 1px solid var(--klint-line);
+  transition: background 0.1s;
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.table tbody td {
+  padding: 10px 14px;
+  color: #374151;
+  vertical-align: middle;
+}
+
+.alertRow {
+  background: #fff7ed !important;
+}
+
+.alertRow:hover {
+  background: #ffedd5 !important;
+}
+
+.tdEmail {
+  font-weight: var(--weight-medium);
+  color: var(--klint-navy) !important;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tdMono {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-12) !important;
+  color: #6b7280 !important;
+}
+
+.tdUa {
+  font-size: var(--text-12) !important;
+  color: #9ca3af !important;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tdDate {
+  font-size: var(--text-12) !important;
+  color: #9ca3af !important;
+  white-space: nowrap;
+}
+
+.countryCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.flag {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.alertBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+  font-size: var(--text-11);
+  font-weight: var(--weight-semibold);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
