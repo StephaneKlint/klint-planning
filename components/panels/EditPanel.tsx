@@ -15,7 +15,7 @@ import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
   updatePhaseDates, updatePhaseColor, updatePhaseLabel,
   updateMilestone, togglePhaseAssignee,
-  createLot, createPhase,
+  createLot, createPhase, createDomain,
 } from "@/lib/actions/planning";
 import { useOptimisticPhase, planningQueryKey } from "@/lib/queries/usePlanning";
 import styles from "./EditPanel.module.css";
@@ -37,6 +37,18 @@ const PHASE_TYPE_LABELS: Record<string, string> = {
 const PALETTE = [
   "#E8568A", "#6B7280", "#3B82F6", "#F59E0B",
   "#16A34A", "#9069E0", "#0D9488",
+];
+
+// Domain color presets: [bg, strong, phaseColor, label]
+const DOMAIN_PRESETS: [string, string, string, string][] = [
+  ["#EEF2FF", "#001036", "#3B82F6", "Bleu"],
+  ["#F0FDF4", "#14532D", "#16A34A", "Vert"],
+  ["#FFF7ED", "#7C2D12", "#EA580C", "Orange"],
+  ["#FEF2F2", "#7F1D1D", "#DC2626", "Rouge"],
+  ["#FAF5FF", "#4A1D96", "#9069E0", "Violet"],
+  ["#F0FDFA", "#0D3B3A", "#0D9488", "Teal"],
+  ["#FDF2F8", "#831843", "#E8568A", "Rose"],
+  ["#F8FAFC", "#1E293B", "#64748B", "Gris"],
 ];
 
 interface EditPanelProps {
@@ -65,6 +77,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   const [createPhaseStart, setCreatePhaseStart] = useState("");
   const [createPhaseEnd, setCreatePhaseEnd] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
+  // Domain creation state
+  const [domainPresetIdx, setDomainPresetIdx] = useState(0);
+  const [domainCode, setDomainCode] = useState("");
+  const [domainName, setDomainName] = useState("");
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -90,6 +106,9 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
     setCreatePhaseStart("");
     setCreatePhaseEnd("");
     setCreateError(null);
+    setDomainPresetIdx(0);
+    setDomainCode("");
+    setDomainName("");
   }, [editTarget]);
 
   if (!editTarget) return null;
@@ -755,6 +774,143 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
 
         <div className={styles.footer}>
           <Button variant="ghost" size="sm" onClick={closeEdit}>Fermer</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ──────────────────────────── MODE CREATE-DOMAIN ────────────────────────────
+  if (editTarget.kind === "create-domain") {
+    const [bg, strong, phaseColor] = DOMAIN_PRESETS[domainPresetIdx];
+
+    const autoCode = (n: string) =>
+      n.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5) || "DOM";
+
+    const handleCreate = () => {
+      if (!domainName.trim()) { setCreateError("Le nom du domaine est requis."); return; }
+      const code = (domainCode.trim() || autoCode(domainName)).toUpperCase().slice(0, 10);
+      setCreateError(null);
+      startTransition(async () => {
+        try {
+          await createDomain({
+            planningId: editTarget.planningId,
+            code,
+            name: domainName.trim(),
+            bg,
+            bgAlt: bg,
+            strong,
+            phaseColor,
+          });
+          closeEdit();
+          router.refresh();
+        } catch (e) {
+          setCreateError(e instanceof Error ? e.message : "Erreur lors de la création.");
+        }
+      });
+    };
+
+    return (
+      <div className={styles.panel} role="dialog" aria-label="Nouveau domaine">
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <span className={styles.modeTag} style={{ background: bg, color: strong }}>+ Domaine</span>
+          </div>
+          <button className={styles.closeBtn} onClick={closeEdit}><Icon name="close" size={14} /></button>
+        </div>
+        <div className={styles.titleRow}>
+          <h2 className={styles.title}>Nouveau domaine</h2>
+          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6B7280" }}>
+            Un domaine regroupe des projets (lots) et leurs phases.
+          </p>
+        </div>
+        <div className={styles.body}>
+          {/* Color preset */}
+          <div className={styles.fieldRow} style={{ flexDirection: "column", gap: 8 }}>
+            <span className={styles.fieldLabel}>Couleur du domaine</span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {DOMAIN_PRESETS.map(([pBg, pStrong, , label], idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setDomainPresetIdx(idx)}
+                  title={label}
+                  style={{
+                    width: 28, height: 28, borderRadius: 7,
+                    background: pBg,
+                    border: idx === domainPresetIdx
+                      ? `2.5px solid ${pStrong}`
+                      : "2px solid #E5E7EB",
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    position: "relative",
+                  }}
+                >
+                  <span style={{
+                    width: 12, height: 12, borderRadius: 3,
+                    background: DOMAIN_PRESETS[idx][2],
+                    display: "block",
+                  }} />
+                </button>
+              ))}
+            </div>
+            {/* Preview chip */}
+            <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
+              <span style={{
+                background: bg, color: strong,
+                padding: "3px 10px", borderRadius: 6,
+                fontSize: 11, fontWeight: 800,
+                textTransform: "uppercase", letterSpacing: "0.08em",
+              }}>
+                {domainCode || autoCode(domainName) || "CODE"}
+              </span>
+              <span style={{
+                background: phaseColor, color: "#fff",
+                padding: "3px 10px", borderRadius: 5,
+                fontSize: 11, fontWeight: 600,
+              }}>
+                Phase
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.fieldRow}>
+            <span className={styles.fieldLabel}>Nom du domaine *</span>
+            <input
+              type="text"
+              className={styles.input}
+              value={domainName}
+              onChange={(e) => setDomainName(e.target.value)}
+              placeholder="ex. CRM, Marketing, Data…"
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            />
+          </div>
+
+          <div className={styles.fieldRow}>
+            <span className={styles.fieldLabel}>Code (5 car. max)</span>
+            <input
+              type="text"
+              className={styles.input}
+              value={domainCode}
+              onChange={(e) => setDomainCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))}
+              placeholder={autoCode(domainName) || "CRM"}
+              maxLength={5}
+              style={{ maxWidth: 100, textTransform: "uppercase" }}
+            />
+          </div>
+
+          {createError && (
+            <p style={{ color: "#DC2626", fontSize: 12, margin: 0 }}>{createError}</p>
+          )}
+        </div>
+        <div className={styles.footer}>
+          <Button variant="ghost" size="sm" onClick={closeEdit}>Annuler</Button>
+          <button
+            className={styles.createSubmitBtn}
+            onClick={handleCreate}
+            disabled={isPending || !domainName.trim()}
+          >
+            {isPending ? "Création…" : "Créer le domaine"}
+          </button>
         </div>
       </div>
     );

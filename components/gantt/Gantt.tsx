@@ -22,7 +22,7 @@ const SIDE_W = 340;
 const HEADER_H = 52; // monthsRow (30) + daysRow (22)
 
 export function Gantt({
-  planningId: _planningId, // eslint-disable-line @typescript-eslint/no-unused-vars
+  planningId,
   domains,
   lots,
   phases,
@@ -149,6 +149,7 @@ export function Gantt({
             totalH={totalH}
             domains={domains}
             lots={lots}
+            planningId={planningId}
             lotProgress={lotProgress}
             lotStatus={lotStatus}
             width={SIDE_W}

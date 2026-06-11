@@ -89,14 +89,14 @@ export async function createPlanning(formData: FormData) {
 // Duplicate Planning
 // ---------------------------------------------------------------------------
 
-export async function duplicatePlanning(sourcePlanningId: string): Promise<string> {
+export async function duplicatePlanning(sourcePlanningId: string, customName?: string): Promise<string> {
   // 1. Source planning
   const [src] = await db.select().from(plannings).where(eq(plannings.id, sourcePlanningId));
   if (!src) throw new Error("Planning source introuvable.");
 
   // 2. Create new planning (sans membres ni logs)
   const [newP] = await db.insert(plannings).values({
-    name:          `${src.name} (copie)`,
+    name:          customName?.trim() || `${src.name} (copie)`,
     type:          src.type,
     year:          src.year,
     viewStart:     src.viewStart,

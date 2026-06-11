@@ -8,7 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { phases, lots, milestones, activityLog, planningMembers, users, phaseAssignees } from "@/lib/db/schema";
+import { phases, lots, domains, milestones, activityLog, planningMembers, users, phaseAssignees } from "@/lib/db/schema";
 import { eq, inArray, gte, and } from "drizzle-orm";
 import { getGanttData } from "@/lib/db/queries";
 import type { GanttData } from "@/lib/db/queries";
@@ -201,6 +201,46 @@ export async function bulkUpdatePhaseStatus(input: z.infer<typeof BulkUpdateStat
     { phaseIds: data.phaseIds, status: data.status });
 
   revalidatePath(`/p/${data.planningId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Domain creation
+// ---------------------------------------------------------------------------
+
+const CreateDomainSchema = z.object({
+  planningId: z.string().uuid(),
+  code:       z.string().min(1).max(10).toUpperCase(),
+  name:       z.string().min(1).max(80),
+  bg:         z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+  bgAlt:      z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  strong:     z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+  phaseColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+});
+
+export async function createDomain(input: z.infer<typeof CreateDomainSchema>) {
+  const data = CreateDomainSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  // Sort order = count of existing domains + 1
+  const existing = await db.select({ id: domains.id }).from(domains)
+    .where(eq(domains.planningId, data.planningId));
+
+  const [newDomain] = await db.insert(domains).values({
+    planningId: data.planningId,
+    code:       data.code.toUpperCase().slice(0, 10),
+    name:       data.name,
+    bg:         data.bg,
+    bgAlt:      data.bgAlt ?? data.bg,
+    strong:     data.strong,
+    phaseColor: data.phaseColor,
+    sortOrder:  existing.length,
+    collapsed:  false,
+    cadence:    { livraison: 0, pmep: 10, cab: 12, mep: 15 },
+  }).returning({ id: domains.id, name: domains.name });
+
+  await logActivity(data.planningId, "created", "domain", newDomain.id, `Nouveau domaine : ${data.name}`);
+  revalidatePath(`/p/${data.planningId}`);
+  return newDomain;
 }
 
 // ---------------------------------------------------------------------------

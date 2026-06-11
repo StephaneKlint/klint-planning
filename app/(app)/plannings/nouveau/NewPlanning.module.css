@@ -123,6 +123,138 @@
   opacity: 0.88;
 }
 
+/* ── Mode selector ── */
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  max-width: 720px;
+  margin-bottom: 24px;
+}
+
+.modeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 16px;
+  border: 2px solid var(--klint-line);
+  border-radius: var(--radius-card);
+  background: var(--klint-white);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 120ms, background 120ms, box-shadow 120ms;
+  font-family: var(--font-display);
+}
+
+.modeCard:hover {
+  border-color: var(--klint-navy);
+  background: #f8faff;
+}
+
+.modeCardActive {
+  border-color: var(--klint-navy);
+  background: #EEF2FF;
+  box-shadow: 0 0 0 3px rgba(0, 16, 54, 0.08);
+}
+
+.modeIcon {
+  font-size: 24px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.modeTitle {
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+  color: var(--klint-navy);
+}
+
+.modeDesc {
+  font-size: var(--text-12);
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* ── Planning picker (Dupliquer/Modèle modes) ── */
+.planningPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1.5px solid var(--klint-line);
+  border-radius: var(--radius-card);
+  padding: 6px;
+  background: var(--klint-paper);
+}
+
+.planningPickerItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-btn);
+  background: var(--klint-white);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font-family: var(--font-display);
+  transition: border-color 100ms, background 100ms;
+}
+
+.planningPickerItem:hover {
+  border-color: var(--klint-line);
+  background: #f8faff;
+}
+
+.planningPickerItemSelected {
+  border-color: var(--klint-navy) !important;
+  background: #EEF2FF !important;
+}
+
+.planningPickerIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.planningPickerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.planningPickerName {
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+  color: var(--klint-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.planningPickerMeta {
+  font-size: var(--text-11);
+  color: #9CA3AF;
+}
+
+.planningPickerCheck {
+  font-size: 14px;
+  color: var(--klint-navy);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.emptyPickerState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
 /* ── Type de planning ── */
 .typeGrid {
   display: grid;

@@ -1,6 +1,6 @@
 /**
  * Page Aide — Guide utilisateur mode formation (avec recherche)
- * Couvre l'ensemble des fonctionnalités (Jalons 0-7)
+ * Couvre l'ensemble des fonctionnalités (Jalons 0-8)
  */
 "use client";
 
@@ -189,8 +189,8 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
-  { id: "plannings", num: "1", title: "Mes plannings", keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono" },
-  { id: "gantt", num: "2", title: "Vue Gantt", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter filtres" },
+  { id: "plannings", num: "1", title: "Mes plannings", keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono modele vide" },
+  { id: "gantt", num: "2", title: "Vue Gantt", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter filtres vide empty état domaine créer" },
   { id: "toolbar", num: "3", title: "Barre d'outils", keywords: "toolbar barre outils panneau aujourd hui pdf json projets sélection filtrer annuler undo" },
   { id: "edit", num: "4", title: "Édition des phases et jalons", keywords: "éditer phase jalon dates statut avancement couleur note assigné responsable sélection multiple recherche palette commandes ctrl k" },
   { id: "raccourcis", num: "5", title: "Raccourcis clavier", keywords: "raccourcis clavier ctrl k esc flèches zoom selection escape undo annuler ctrl z" },
@@ -273,17 +273,13 @@ export default function AidePage() {
               <dd style={S.dd}>Cliquez sur <strong>Plannings</strong> dans le rail de navigation gauche pour voir tous vos plannings actifs sous forme de cartes.</dd>
             </div>
             <div>
-              <dt style={S.dt}>Créer un planning</dt>
+              <dt style={S.dt}>Créer un planning — 3 modes</dt>
               <dd style={S.dd}>
-                Cliquez sur <strong>+ Nouveau planning</strong>. Choisissez le type :<br />
-                — <strong>Multi-projets</strong> : plusieurs domaines et projets en parallèle (portefeuille, plan de transformation).<br />
-                — <strong>Mono-projet</strong> : un seul projet avec ses phases (CRM, applicatif unique).<br />
-                Renseignez le nom, l&apos;année et les dates de début/fin de la vue.
+                Cliquez sur <strong>+ Nouveau planning</strong>. Choisissez un point de départ :<br />
+                — <strong>Planning vide</strong> : crée un planning vierge. Choisissez le type (Multi-projets ou Mono-projet), le nom, l&apos;année et les dates. Le planning s&apos;ouvrira avec un état vide vous invitant à créer votre premier domaine.<br />
+                — <strong>Dupliquer un planning</strong> : copie complète d&apos;un planning existant (domaines, lots, phases, jalons, paramètres). Sélectionnez le planning source, personnalisez le nom, puis cliquez sur « Dupliquer ».<br />
+                — <strong>Depuis un modèle</strong> : même fonctionnement que la duplication, mais à partir d&apos;un planning de référence servant de modèle.
               </dd>
-            </div>
-            <div>
-              <dt style={S.dt}>Dupliquer un planning</dt>
-              <dd style={S.dd}>Depuis la liste, cliquez sur <strong>⧉ Dupliquer</strong>. Une copie complète est créée (domaines, lots, phases, jalons, paramètres) avec le suffixe « (copie) ».</dd>
             </div>
             <div>
               <dt style={S.dt}>Exporter en JSON</dt>
@@ -312,6 +308,13 @@ export default function AidePage() {
         <section style={S.section} id="gantt">
           <h2 style={S.h2}><span style={S.pill}>2</span> Vue Gantt</h2>
           <dl style={S.dl}>
+            <div>
+              <dt style={S.dt}>Planning vide — créer le premier domaine</dt>
+              <dd style={S.dd}>
+                Lorsqu&apos;un planning ne contient encore aucun domaine, le panneau gauche affiche un état vide avec un bouton <strong>+ Créer un domaine</strong>. Cliquez dessus (ou sur <strong>+ Domaine</strong> en haut du panneau) pour ouvrir le formulaire de création.<br />
+                Choisissez une <strong>couleur</strong> parmi les 8 palettes prédéfinies, saisissez le <strong>nom</strong> du domaine (le code est généré automatiquement), puis validez. Répétez pour chaque domaine, puis ajoutez les projets (lots) et les phases.
+              </dd>
+            </div>
             <div>
               <dt style={S.dt}>Naviguer dans le temps</dt>
               <dd style={S.dd}>Faites défiler horizontalement avec la molette ou le trackpad. Utilisez les boutons <strong>‹ ›</strong> de la barre d&apos;outils pour avancer ou reculer d&apos;une période entière.</dd>
@@ -599,7 +602,7 @@ export default function AidePage() {
 
       {/* Footer */}
       <div style={{ marginTop: 48, paddingTop: 20, borderTop: "1px solid var(--klint-line, #E6E8EE)", fontSize: 12, color: "#9CA3AF" }}>
-        Klint Planning v1.0 — Jalons 0–7 · Klint Consulting © 2026
+        Klint Planning v1.0 — Jalons 0–8 · Klint Consulting © 2026
       </div>
     </div>
   );
