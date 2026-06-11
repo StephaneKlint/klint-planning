@@ -380,6 +380,38 @@ export async function updateLot(input: z.infer<typeof UpdateLotSchema>) {
 }
 
 // ---------------------------------------------------------------------------
+// Delete mutations
+// ---------------------------------------------------------------------------
+
+export async function deletePhase(phaseId: string, planningId: string) {
+  await assertCanEdit(planningId);
+  await db.delete(phases).where(eq(phases.id, phaseId));
+  await logActivity(planningId, "deleted", "phase", phaseId, "Phase supprimée");
+  revalidatePath(`/p/${planningId}`);
+}
+
+export async function deleteMilestone(milestoneId: string, planningId: string) {
+  await assertCanEdit(planningId);
+  await db.delete(milestones).where(eq(milestones.id, milestoneId));
+  await logActivity(planningId, "deleted", "milestone", milestoneId, "Jalon supprimé");
+  revalidatePath(`/p/${planningId}`);
+}
+
+export async function deleteLot(lotId: string, planningId: string) {
+  await assertCanEdit(planningId);
+  await db.delete(lots).where(eq(lots.id, lotId));
+  await logActivity(planningId, "deleted", "lot", lotId, "Projet supprimé");
+  revalidatePath(`/p/${planningId}`);
+}
+
+export async function deleteDomain(domainId: string, planningId: string) {
+  await assertCanEdit(planningId);
+  await db.delete(domains).where(eq(domains.id, domainId));
+  await logActivity(planningId, "deleted", "domain", domainId, "Domaine supprimé");
+  revalidatePath(`/p/${planningId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Milestone mutations
 // ---------------------------------------------------------------------------
 

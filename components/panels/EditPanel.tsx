@@ -16,6 +16,7 @@ import {
   updatePhaseDates, updatePhaseColor, updatePhaseLabel,
   updateMilestone, togglePhaseAssignee,
   createLot, createPhase, createDomain, updateDomain, updateLot,
+  deletePhase, deleteMilestone, deleteLot, deleteDomain,
 } from "@/lib/actions/planning";
 import { useOptimisticPhase, planningQueryKey } from "@/lib/queries/usePlanning";
 import styles from "./EditPanel.module.css";
@@ -504,7 +505,18 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             <Icon name="link" size={12} />
             Dépendances
           </Button>
-          <button className={styles.deleteBtn} aria-label="Supprimer la phase">
+          <button
+            className={styles.deleteBtn}
+            aria-label="Supprimer la phase"
+            onClick={() => {
+              if (!confirm(`Supprimer cette phase ? Cette action est irréversible.`)) return;
+              startTransition(async () => {
+                await deletePhase(phase.id, planningId);
+                closeEdit();
+                router.refresh();
+              });
+            }}
+          >
             <Icon name="trash" size={14} />
           </button>
         </div>
@@ -616,6 +628,21 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
           )}
         </div>
         <div className={styles.footer}>
+          <button
+            className={styles.deleteBtn}
+            style={{ marginRight: "auto" }}
+            title={`Supprimer "${lot.name}" et toutes ses phases`}
+            onClick={() => {
+              if (!confirm(`Supprimer le projet "${lot.name}" ?\n\nToutes ses phases et jalons seront supprimés. Irréversible.`)) return;
+              startTransition(async () => {
+                await deleteLot(lotId, lotPlanningId);
+                closeEdit();
+                router.refresh();
+              });
+            }}
+          >
+            <Icon name="trash" size={14} />
+          </button>
           <Button variant="ghost" size="sm" onClick={closeEdit}>Annuler</Button>
           <button
             className={styles.createSubmitBtn}
@@ -849,6 +876,20 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
         </div>
 
         <div className={styles.footer}>
+          <button
+            className={styles.deleteBtn}
+            aria-label="Supprimer le jalon"
+            onClick={() => {
+              if (!confirm(`Supprimer ce jalon ? Cette action est irréversible.`)) return;
+              startTransition(async () => {
+                await deleteMilestone(ms.id, planningId);
+                closeEdit();
+                router.refresh();
+              });
+            }}
+          >
+            <Icon name="trash" size={14} />
+          </button>
           <Button variant="ghost" size="sm" onClick={closeEdit}>Fermer</Button>
         </div>
       </div>
@@ -963,6 +1004,21 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
           )}
         </div>
         <div className={styles.footer}>
+          <button
+            className={styles.deleteBtn}
+            style={{ marginRight: "auto" }}
+            title={`Supprimer le domaine "${domain.name}" et tout son contenu`}
+            onClick={() => {
+              if (!confirm(`Supprimer le domaine "${domain.name}" ?\n\nTous les projets, phases et jalons de ce domaine seront supprimés. Irréversible.`)) return;
+              startTransition(async () => {
+                await deleteDomain(editTarget.domainId, editTarget.planningId);
+                closeEdit();
+                router.refresh();
+              });
+            }}
+          >
+            <Icon name="trash" size={14} />
+          </button>
           <Button variant="ghost" size="sm" onClick={closeEdit}>Annuler</Button>
           <button
             className={styles.createSubmitBtn}

@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { listPlannings, getGanttData } from "@/lib/db/queries";
 import styles from "./Synthese.module.css";
+import { SyntheseClient } from "./SyntheseClient";
+import type { DomainSummary } from "./SyntheseClient";
 
 function fmt(d: string) {
   const [y, m, day] = d.split("-");
@@ -55,15 +57,50 @@ export default async function SynthesePage({ searchParams }: Props) {
       ? Math.round(phases.reduce((s, p) => s + p.progress, 0) / total)
       : 0;
 
-  // --- Domain progress ---
-  const domainProgress = domains.map((domain) => {
+  // --- Domain summaries (with lots breakdown) ---
+  const domainSummaries: DomainSummary[] = domains.map((domain) => {
     const domLots = lots.filter((l) => l.domainId === domain.id);
     const domPhases = phases.filter((p) => domLots.some((l) => l.id === p.lotId));
     const avg =
       domPhases.length > 0
         ? Math.round(domPhases.reduce((s, p) => s + p.progress, 0) / domPhases.length)
         : 0;
-    return { domain, avg, phaseCount: domPhases.length, lotCount: domLots.length };
+
+    const lotSummaries = domLots.map((lot) => {
+      const lotPhases = phases.filter((p) => p.lotId === lot.id);
+      const lotAvg =
+        lotPhases.length > 0
+          ? Math.round(lotPhases.reduce((s, p) => s + p.progress, 0) / lotPhases.length)
+          : 0;
+      return {
+        id: lot.id,
+        name: lot.name,
+        subtitle: lot.subtitle ?? null,
+        avg: lotAvg,
+        phaseCount: lotPhases.length,
+        statusCounts: {
+          planned:     lotPhases.filter((p) => p.status === "planned").length,
+          in_progress: lotPhases.filter((p) => p.status === "in_progress").length,
+          done:        lotPhases.filter((p) => p.status === "done").length,
+          risk:        lotPhases.filter((p) => p.status === "risk").length,
+          late:        lotPhases.filter((p) => p.status === "late").length,
+          review:      lotPhases.filter((p) => p.status === "review").length,
+        },
+      };
+    }).filter((l) => l.phaseCount > 0);
+
+    return {
+      id: domain.id,
+      code: domain.code,
+      name: domain.name,
+      bg: `var(--d-${domain.code}-bg)`,
+      strong: `var(--d-${domain.code}-strong)`,
+      phaseColor: `var(--d-${domain.code}-phase)`,
+      avg,
+      phaseCount: domPhases.length,
+      lotCount: domLots.filter((l) => phases.some((p) => p.lotId === l.id)).length,
+      lots: lotSummaries,
+    };
   }).filter((d) => d.phaseCount > 0);
 
   // --- Upcoming milestones J+30 / J+60 / J+90 ---
@@ -153,28 +190,10 @@ export default async function SynthesePage({ searchParams }: Props) {
         </div>
       </div>
 
-      {/* Domain progress */}
+      {/* Domain progress — interactive (Client Component) */}
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Avancement par domaine</h2>
-        <div className={styles.domainList}>
-          {domainProgress.map(({ domain, avg, phaseCount }) => (
-            <div key={domain.id} className={styles.domainRow}>
-              <div className={styles.domainMeta}>
-                <span className={styles.domainCode}
-                  style={{ background: `var(--d-${domain.code}-bg)`, color: `var(--d-${domain.code}-strong)` }}>
-                  {domain.code.toUpperCase()}
-                </span>
-                <span className={styles.domainName}>{domain.name}</span>
-                <span className={styles.domainCount}>{phaseCount} phases</span>
-              </div>
-              <div className={styles.progressBar}>
-                <div className={styles.progressFill}
-                  style={{ width: `${avg}%`, background: `var(--d-${domain.code}-phase)` }} />
-              </div>
-              <span className={styles.progressPct}>{avg}%</span>
-            </div>
-          ))}
-        </div>
+        <SyntheseClient domainSummaries={domainSummaries} />
       </section>
 
       <div className={styles.twoCol}>

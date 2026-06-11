@@ -128,10 +128,9 @@
 }
 
 .domainRow {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .domainMeta {
@@ -171,7 +170,6 @@
   background: var(--klint-line);
   border-radius: 999px;
   overflow: hidden;
-  flex-shrink: 0;
 }
 
 .progressFill {
@@ -259,6 +257,122 @@
   color: var(--st-done-c);
   margin: 0;
   padding: 4px 0;
+}
+
+/* Domain row header (clickable, expandable) */
+.domainRowHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  padding: 6px 0;
+  border-radius: var(--radius-input);
+}
+
+.domainRowHeader:hover {
+  opacity: 0.85;
+}
+
+.domainToggle {
+  display: inline-block;
+  font-size: var(--text-11);
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  line-height: 1;
+}
+
+.domainToggleOpen {
+  transform: rotate(90deg);
+}
+
+.lotsBlock {
+  display: none;
+  margin-top: 8px;
+  border-left: 2px solid var(--klint-line);
+  padding-left: 14px;
+  margin-left: 4px;
+}
+
+.lotsBlockOpen {
+  display: block;
+}
+
+.lotItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--klint-line);
+}
+
+.lotItem:last-child {
+  border-bottom: none;
+}
+
+.lotInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lotName {
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  color: var(--klint-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lotSubtitle {
+  font-size: var(--text-11);
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lotProgress {
+  width: 100px;
+  height: 4px;
+  background: var(--klint-line);
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.lotProgressFill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.lotPct {
+  font-size: var(--text-11);
+  font-weight: var(--weight-semibold);
+  color: var(--klint-navy);
+  width: 30px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.lotStatusChips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.lotStatusChip {
+  font-size: var(--text-10);
+  font-weight: var(--weight-semibold);
+  padding: 1px 5px;
+  border-radius: 999px;
+  white-space: nowrap;
+  letter-spacing: 0;
 }
 
 /* Jalons groupes J+30/60/90 */
