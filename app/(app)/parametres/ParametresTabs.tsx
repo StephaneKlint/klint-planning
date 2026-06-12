@@ -1120,7 +1120,7 @@ export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppS
               <li>Minimum 8 caractères</li>
               <li>Utilisez une combinaison de lettres, chiffres et symboles</li>
               <li>Ne réutilisez pas un mot de passe déjà utilisé</li>
-              <li>En cas d'oubli, contactez un administrateur</li>
+              <li>En cas d&apos;oubli, contactez un administrateur</li>
             </ul>
           </div>
         </div>
