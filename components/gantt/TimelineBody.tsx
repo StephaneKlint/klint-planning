@@ -286,6 +286,8 @@ export function TimelineBody({
               top={pillTop}
               height={PILL_H}
               label={phaseLabel(phase)}
+              startDate={phase.startDate}
+              endDate={phase.endDate}
               progress={phase.progress}
               bg={bg}
               fg={fg}

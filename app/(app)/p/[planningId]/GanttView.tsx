@@ -54,6 +54,7 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     undoStack, popUndo,
     projectFilterOpen, setProjectFilterOpen,
     hiddenLotIds,
+    editTarget, closeEdit,
   } = useGanttStore();
 
   const qc = useQueryClient();
@@ -176,8 +177,18 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
             `padding: 0 !important`,
           ].join(";");
 
-          // Supprime toutes les contraintes de débordement dans les enfants
+          // Trouve le flex row .gantt (parent direct de sideScroll) — doit garder overflow:hidden
+          // pour que le SVG timeline ne saigne pas sur le side panel
+          const sideEl      = el.querySelector<HTMLElement>("[data-gantt-side]");
+          const sideRowsEl  = el.querySelector<HTMLElement>("[data-gantt-side-rows]");
+          const timelineEl  = el.querySelector<HTMLElement>("[data-gantt-timeline]");
+          const bodyCloneEl = el.querySelector<HTMLElement>("[data-gantt-body]");
+          const ganttFlexRow = sideEl?.parentElement ?? null;
+
+          // Supprime les contraintes de débordement dans les enfants,
+          // SAUF sur le flex row .gantt qui clipe le SVG timeline
           el.querySelectorAll<HTMLElement>("*").forEach((child) => {
+            if (child === ganttFlexRow) return; // préserver overflow:hidden sur ce conteneur
             child.style.overflow  = "visible";
             child.style.overflowX = "visible";
             child.style.overflowY = "visible";
@@ -186,14 +197,11 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
           });
 
           // Force les hauteurs des conteneurs flex clés pour le rendu vertical complet
-          const sideEl      = el.querySelector<HTMLElement>("[data-gantt-side]");
-          const sideRowsEl  = el.querySelector<HTMLElement>("[data-gantt-side-rows]");
-          const timelineEl  = el.querySelector<HTMLElement>("[data-gantt-timeline]");
-          const bodyCloneEl = el.querySelector<HTMLElement>("[data-gantt-body]");
-
           if (sideEl) {
             sideEl.style.height    = `${exportH}px`;
             sideEl.style.minHeight = `${exportH}px`;
+            sideEl.style.position  = "relative";
+            sideEl.style.zIndex    = "10"; // au-dessus du SVG timeline
           }
           if (sideRowsEl) {
             sideRowsEl.style.height    = `${timelineH}px`;
@@ -203,6 +211,8 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
           if (timelineEl) {
             timelineEl.style.height    = `${exportH}px`;
             timelineEl.style.minHeight = `${exportH}px`;
+            timelineEl.style.position  = "relative";
+            timelineEl.style.zIndex    = "1";
           }
           if (bodyCloneEl) {
             bodyCloneEl.style.height    = `${timelineH}px`;
@@ -344,6 +354,14 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         />
       </div>
 
+      {/* Overlay transparent — ferme l'EditPanel au clic extérieur */}
+      {editTarget && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 19 }}
+          onClick={closeEdit}
+          aria-hidden="true"
+        />
+      )}
       <EditPanel planningId={props.planningId} data={liveData} />
       <BulkBar planningId={props.planningId} />
       <CommandPalette data={liveData} planningId={props.planningId} />

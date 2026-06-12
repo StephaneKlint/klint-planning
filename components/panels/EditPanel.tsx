@@ -222,6 +222,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             <input
               type="text"
               className={styles.input}
+              key={phase.id + "-label"}
               defaultValue={phase.label ?? PHASE_TYPE_LABELS[phase.type] ?? phase.type}
               placeholder="Libellé de la phase…"
               onBlur={(e) => {
@@ -238,6 +239,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
           <div className={styles.fieldRow}>
             <span className={styles.fieldLabel}>Début</span>
             <input
+              key={phase.id + "-start"}
               type="date"
               className={styles.dateInput}
               defaultValue={phase.startDate}
@@ -255,6 +257,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
           <div className={styles.fieldRow}>
             <span className={styles.fieldLabel}>Fin</span>
             <input
+              key={phase.id + "-end"}
               type="date"
               className={styles.dateInput}
               defaultValue={phase.endDate}

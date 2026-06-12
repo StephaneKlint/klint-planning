@@ -61,7 +61,7 @@ export function Gantt({
   ) + 1);
   // Stretch PPD when NOT in 12m view and container is measured
   const ppd = (() => {
-    if (zoom === "12m" || timelineContainerW < 100) return minPpd;
+    if (timelineContainerW < 100) return minPpd;
     const stretchPpd = timelineContainerW / nbDays;
     return Math.max(minPpd, stretchPpd);
   })();

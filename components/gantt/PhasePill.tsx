@@ -4,12 +4,19 @@
  * Supports click (open panel) + ⌘+click (multi-select).
  */
 
+function fmtDate(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 interface PhasePillProps {
   left: number;
   width: number;
   top: number;
   height?: number;
   label?: string | null;
+  startDate?: string;
+  endDate?: string;
   progress?: number;
   bg: string;
   fg: string;
@@ -22,7 +29,7 @@ interface PhasePillProps {
 
 export function PhasePill({
   left, width, top, height = 26,
-  label, progress = 0, bg, fg,
+  label, startDate, endDate, progress = 0, bg, fg,
   hasNote = false, selected = false, dimmed = false,
   onClick, style: pillStyle = "solid",
 }: PhasePillProps) {
@@ -74,7 +81,7 @@ export function PhasePill({
     <div
       style={pillStyles}
       onClick={onClick}
-      title={label ?? undefined}
+      title={[label, startDate && endDate ? `${fmtDate(startDate)} → ${fmtDate(endDate)}` : undefined].filter(Boolean).join(" · ")}
       role="button"
       tabIndex={0}
       aria-pressed={selected}

@@ -70,12 +70,13 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
       .where(eq(planningMembers.planningId, planningId)),
   ]);
 
-  // Load closure periods for this planning
+  // Load closure periods for this planning (catch si table absente en dev/migration partielle)
   const planningClosures = await db
     .select()
     .from(closurePeriods)
     .where(eq(closurePeriods.planningId, planningId))
-    .orderBy(asc(closurePeriods.sortOrder), asc(closurePeriods.startDate));
+    .orderBy(asc(closurePeriods.sortOrder), asc(closurePeriods.startDate))
+    .catch(() => [] as (typeof closurePeriods.$inferSelect)[]);
 
   if (planningLots.length === 0) {
     return {
