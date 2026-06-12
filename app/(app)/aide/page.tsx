@@ -201,6 +201,7 @@ const SECTIONS: SectionDef[] = [
   { id: "pdf",          num: "10", title: "Export PDF A3",                    keywords: "pdf export a3 imprimer impression format paysage capture download télécharger largeur adaptative" },
   { id: "calendrier",   num: "11", title: "Fermetures & Jours fériés",        keywords: "fermetures jours fériés calendrier congés été hiver gel gel-code période custom bande colorée affichage toggle" },
   { id: "historique",   num: "12", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log" },
+  { id: "securite",    num: "13", title: "Sécurité & Mot de passe",              keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt" },
 ];
 
 export default function AidePage() {
@@ -704,9 +705,42 @@ export default function AidePage() {
         </section>
       )}
 
+      {show("historique") && show("securite") && <hr style={S.divider} />}
+
+      {/* ── 13. Sécurité & Mot de passe ── */}
+      {show("securite") && (
+        <section style={S.section} id="securite">
+          <h2 style={S.h2}><span style={S.pill}>13</span> Sécurité &amp; Mot de passe</h2>
+          <dl style={S.dl}>
+            <div>
+              <dt style={S.dt}>Connexion par email et mot de passe</dt>
+              <dd style={S.dd}>L&apos;accès à Klint Planning se fait désormais avec votre <strong>adresse e-mail</strong> et un <strong>mot de passe</strong>. Aucun lien magique n&apos;est envoyé. Si vous vous connectez pour la première fois, utilisez le mot de passe temporaire communiqué par votre administrateur.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Changer son mot de passe</dt>
+              <dd style={S.dd}>Allez dans <strong>Paramètres → onglet Sécurité</strong>. Saisissez votre mot de passe actuel, puis le nouveau mot de passe deux fois pour confirmation. Le nouveau mot de passe doit contenir <strong>au moins 8 caractères</strong>. Le changement est effectif immédiatement.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Mot de passe oublié</dt>
+              <dd style={S.dd}>Contactez votre administrateur Klint Planning. Il pourra réinitialiser votre mot de passe via le script de migration ou directement en base de données. Il n&apos;existe pas de procédure automatique d&apos;envoi d&apos;email de réinitialisation.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Politique de sécurité recommandée</dt>
+              <dd style={S.dd}>
+                — Minimum 8 caractères<br />
+                — Mélangez lettres, chiffres et symboles<br />
+                — Ne réutilisez pas un mot de passe déjà utilisé sur un autre service<br />
+                — Changez votre mot de passe temporaire dès la première connexion
+              </dd>
+            </div>
+          </dl>
+          <Tip>Après un changement de mot de passe, votre session reste active. La prochaine connexion (depuis un autre appareil ou après déconnexion) utilisera le nouveau mot de passe.</Tip>
+        </section>
+      )}
+
       {/* Footer */}
       <div style={{ marginTop: 48, paddingTop: 20, borderTop: "1px solid var(--klint-line, #E6E8EE)", fontSize: 12, color: "#9CA3AF" }}>
-        Klint Planning v1.0 — Jalons 0–11 · Klint Consulting © 2026
+        Klint Planning v1.0 — Jalons 0–12 · Klint Consulting © 2026
       </div>
     </div>
   );
