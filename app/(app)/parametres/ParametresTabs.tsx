@@ -12,9 +12,10 @@ import {
 } from "@/lib/actions/settings";
 import { saveAppLogo, saveAppFavicon } from "@/lib/actions/appSettings";
 import { seedHolidays, createClosurePeriod, updateClosurePeriod, deleteClosurePeriod } from "@/lib/actions/closurePeriods";
+import { changePassword } from "@/lib/actions/authActions";
 import type { ClosurePeriodRow } from "@/lib/db/queries";
 
-type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "membres" | "apparence" | "calendrier";
+type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "membres" | "apparence" | "calendrier" | "securite";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "general",    label: "Général" },
@@ -25,6 +26,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "membres",    label: "Membres & Droits" },
   { id: "apparence",  label: "Apparence" },
   { id: "calendrier", label: "Calendrier" },
+  { id: "securite",   label: "Sécurité" },
 ];
 
 function fmtDate(d: string) {
@@ -80,6 +82,13 @@ export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppS
   const [faviconUnsaved,  setFaviconUnsaved]   = useState(false);
   const [faviconSaving,   setFaviconSaving]    = useState(false);
   const [faviconMsg,      setFaviconMsg]       = useState<string | null>(null);
+
+  // ── Sécurité — changement de mot de passe ─────────────────────────────
+  const [secCurrent, setSecCurrent]     = useState("");
+  const [secNew, setSecNew]             = useState("");
+  const [secConfirm, setSecConfirm]     = useState("");
+  const [secMsg, setSecMsg]             = useState<{ ok: boolean; text: string } | null>(null);
+  const [secPending, setSecPending]     = useState(false);
 
   // Phase type form state
   const [newPTCode, setNewPTCode] = useState("");
@@ -990,6 +999,130 @@ export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppS
               + Ajouter période
             </button>
           </form>
+        </div>
+      )}
+
+      {/* ── Sécurité ─────────────────────────────────────────────────── */}
+      {active === "securite" && (
+        <div className={styles.tabPanel}>
+          <p className={styles.tabDesc}>
+            Changez votre mot de passe de connexion à Klint Planning. Le nouveau mot de passe doit contenir au moins 8 caractères.
+          </p>
+
+          <form
+            className={styles.settingsForm}
+            style={{ maxWidth: 400 }}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setSecMsg(null);
+              if (secNew !== secConfirm) {
+                setSecMsg({ ok: false, text: "Les deux nouveaux mots de passe ne correspondent pas." });
+                return;
+              }
+              if (secNew.length < 8) {
+                setSecMsg({ ok: false, text: "Le mot de passe doit contenir au moins 8 caractères." });
+                return;
+              }
+              setSecPending(true);
+              const result = await changePassword({ currentPassword: secCurrent, newPassword: secNew });
+              setSecPending(false);
+              if (result.success) {
+                setSecMsg({ ok: true, text: "Mot de passe mis à jour avec succès." });
+                setSecCurrent(""); setSecNew(""); setSecConfirm("");
+              } else {
+                setSecMsg({ ok: false, text: result.error ?? "Erreur lors du changement de mot de passe." });
+              }
+            }}
+          >
+            <div className={styles.field} style={{ marginBottom: 14 }}>
+              <label className={styles.fieldLabel} htmlFor="secCurrent">
+                Mot de passe actuel
+              </label>
+              <input
+                id="secCurrent"
+                type="password"
+                autoComplete="current-password"
+                value={secCurrent}
+                onChange={(e) => setSecCurrent(e.target.value)}
+                required
+                disabled={secPending}
+                style={{
+                  width: "100%", padding: "9px 12px", fontSize: 13,
+                  border: "1.5px solid var(--klint-line)", borderRadius: 8,
+                  fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div className={styles.field} style={{ marginBottom: 14 }}>
+              <label className={styles.fieldLabel} htmlFor="secNew">
+                Nouveau mot de passe
+              </label>
+              <input
+                id="secNew"
+                type="password"
+                autoComplete="new-password"
+                value={secNew}
+                onChange={(e) => setSecNew(e.target.value)}
+                required
+                disabled={secPending}
+                style={{
+                  width: "100%", padding: "9px 12px", fontSize: 13,
+                  border: "1.5px solid var(--klint-line)", borderRadius: 8,
+                  fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div className={styles.field} style={{ marginBottom: 20 }}>
+              <label className={styles.fieldLabel} htmlFor="secConfirm">
+                Confirmer le nouveau mot de passe
+              </label>
+              <input
+                id="secConfirm"
+                type="password"
+                autoComplete="new-password"
+                value={secConfirm}
+                onChange={(e) => setSecConfirm(e.target.value)}
+                required
+                disabled={secPending}
+                style={{
+                  width: "100%", padding: "9px 12px", fontSize: 13,
+                  border: "1.5px solid var(--klint-line)", borderRadius: 8,
+                  fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            {secMsg && (
+              <p style={{
+                fontSize: 13, margin: "0 0 14px",
+                color: secMsg.ok ? "#16A34A" : "#DC2626",
+                background: secMsg.ok ? "#DCFCE7" : "#FEE2E2",
+                borderRadius: 6, padding: "8px 12px",
+              }}>
+                {secMsg.text}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className={styles.addBtn}
+              disabled={secPending || !secCurrent || !secNew || !secConfirm}
+            >
+              {secPending ? "Mise à jour…" : "Mettre à jour le mot de passe"}
+            </button>
+          </form>
+
+          <hr style={{ border: "none", borderTop: "1px solid var(--klint-line)", margin: "28px 0 20px" }} />
+
+          <div style={{ maxWidth: 400 }}>
+            <p className={styles.fieldLabel} style={{ marginBottom: 6 }}>Politique de sécurité</p>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#6B7280", lineHeight: 1.7 }}>
+              <li>Minimum 8 caractères</li>
+              <li>Utilisez une combinaison de lettres, chiffres et symboles</li>
+              <li>Ne réutilisez pas un mot de passe déjà utilisé</li>
+              <li>En cas d'oubli, contactez un administrateur</li>
+            </ul>
+          </div>
         </div>
       )}
     </div>

@@ -27,11 +27,10 @@ export default async function LoginPage({
 
         <h1 className={styles.heading}>Connexion</h1>
         <p className={styles.subheading}>
-          Entrez votre adresse e-mail pour recevoir un lien de connexion sécurisé.
+          Connectez-vous avec votre email et votre mot de passe.
         </p>
 
         <LoginForm
-          verify={params.verify === "1"}
           error={params.error === "1"}
         />
       </div>

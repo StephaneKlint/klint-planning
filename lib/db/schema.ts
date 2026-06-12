@@ -40,6 +40,7 @@ export const users = pgTable("users", {
   avatarColor: varchar("avatar_color", { length: 9 }),
   image: text("image"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  passwordHash: text("password_hash"),
 });
 
 export const accounts = pgTable(
