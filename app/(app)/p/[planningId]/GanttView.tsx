@@ -318,6 +318,84 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     window.location.href = `/api/export/${props.planningId}`;
   };
 
+  // ── Export Excel (.xlsx) ────────────────────────────────────────────────────
+  const handleExportExcel = async () => {
+    const XLSX = (await import("xlsx")).default;
+
+    const domainsById = new Map(liveData.domains.map((d) => [d.id, d]));
+    const lotsById    = new Map(liveData.lots.map((l) => [l.id, l]));
+    const ptMap  = new Map(liveData.phaseTypes.map((pt) => [pt.code, pt.label]));
+    const mtMap  = new Map(liveData.milestoneTypes.map((mt) => [mt.code, mt.label]));
+    const stMap  = new Map(liveData.statuses.map((s) => [s.code, s.label]));
+    const mbrMap = new Map(liveData.members.map((m) => [m.id, m]));
+
+    const assigneesMap = new Map<string, string[]>();
+    for (const a of liveData.phaseAssignees) {
+      const m = mbrMap.get(a.memberId);
+      if (m) {
+        if (!assigneesMap.has(a.phaseId)) assigneesMap.set(a.phaseId, []);
+        assigneesMap.get(a.phaseId)!.push(m.initials ?? m.userName ?? "?");
+      }
+    }
+
+    const fmt = (d: string) => {
+      const [y, mo, day] = d.split("-");
+      return `${day}/${mo}/${y}`;
+    };
+
+    const phasesData = liveData.phases.map((p) => {
+      const lot    = lotsById.get(p.lotId);
+      const domain = lot ? domainsById.get(lot.domainId) : undefined;
+      const dur    = Math.round((new Date(p.endDate).getTime() - new Date(p.startDate).getTime()) / 86400000) + 1;
+      return {
+        "Domaine":         domain?.name ?? "",
+        "Lot":             lot?.name ?? "",
+        "Type":            ptMap.get(p.type) ?? p.type,
+        "Libellé":         p.label ?? "",
+        "Début":           fmt(p.startDate),
+        "Fin":             fmt(p.endDate),
+        "Durée (j)":       dur,
+        "Statut":          p.status ? (stMap.get(p.status) ?? p.status) : "",
+        "Avancement (%)":  p.progress,
+        "Responsables":    (assigneesMap.get(p.id) ?? []).join(", "),
+        "Note":            p.note ?? "",
+      };
+    });
+
+    const milestonesData = liveData.milestones.map((ms) => {
+      const lot    = lotsById.get(ms.lotId);
+      const domain = lot ? domainsById.get(lot.domainId) : undefined;
+      return {
+        "Domaine": domain?.name ?? "",
+        "Lot":     lot?.name ?? "",
+        "Type":    mtMap.get(ms.type) ?? ms.type,
+        "Libellé": ms.label,
+        "Date":    fmt(ms.date),
+        "Note":    ms.note ?? "",
+      };
+    });
+
+    const wsPhases     = XLSX.utils.json_to_sheet(phasesData);
+    const wsMilestones = XLSX.utils.json_to_sheet(milestonesData);
+
+    wsPhases["!cols"] = [
+      { wch: 22 }, { wch: 32 }, { wch: 16 }, { wch: 40 },
+      { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 16 },
+      { wch: 14 }, { wch: 22 }, { wch: 40 },
+    ];
+    wsMilestones["!cols"] = [
+      { wch: 22 }, { wch: 32 }, { wch: 16 }, { wch: 40 },
+      { wch: 12 }, { wch: 40 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsPhases, "Phases");
+    XLSX.utils.book_append_sheet(wb, wsMilestones, "Jalons");
+
+    const safeName = liveData.planning.name.replace(/[^a-zA-Z0-9_\-]/g, "_");
+    XLSX.writeFile(wb, `${safeName}_planning.xlsx`);
+  };
+
   // ── Share link ──────────────────────────────────────────────────────────────
   const handleOpenShare = async () => {
     setShareOpen(true);
@@ -366,6 +444,7 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         exportPdfPending={exportPending}
         onExportPng={handleExportPng}
         exportPngPending={exportPngPending}
+        onExportExcel={handleExportExcel}
         onExportJson={handleExportJson}
         onShare={handleOpenShare}
         onProjectFilter={() => setProjectFilterOpen(!projectFilterOpen)}

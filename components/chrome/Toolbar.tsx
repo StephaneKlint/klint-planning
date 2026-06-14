@@ -25,6 +25,7 @@ interface ToolbarProps {
   exportPdfPending?: boolean;
   onExportPng?: () => void;
   exportPngPending?: boolean;
+  onExportExcel?: () => void;
   onExportJson?: () => void;
   onShare?: () => void;
   onProjectFilter?: () => void;
@@ -75,6 +76,7 @@ export function Toolbar({
   exportPdfPending = false,
   onExportPng,
   exportPngPending = false,
+  onExportExcel,
   onExportJson,
   onShare,
   onProjectFilter,
@@ -292,6 +294,19 @@ export function Toolbar({
           <Icon name="sort" size={14} />
           <span>Projets</span>
         </button>
+
+        {/* Export Excel */}
+        {onExportExcel && (
+          <button
+            className={styles.btn}
+            onClick={onExportExcel}
+            aria-label="Exporter en Excel"
+            title="Télécharger le planning en .xlsx (Phases + Jalons)"
+          >
+            <Icon name="download" size={14} />
+            <span>Excel</span>
+          </button>
+        )}
 
         {/* Partager — lien lecture seule */}
         {onShare && (
