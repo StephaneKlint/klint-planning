@@ -1,6 +1,6 @@
 /**
  * Page Aide — Guide utilisateur mode formation (avec recherche)
- * Couvre l'ensemble des fonctionnalités (Jalons 0-10)
+ * Couvre l'ensemble des fonctionnalités (Jalons 0-18)
  */
 "use client";
 
@@ -202,7 +202,8 @@ const SECTIONS: SectionDef[] = [
   { id: "calendrier",   num: "11", title: "Fermetures & Jours fériés",        keywords: "fermetures jours fériés calendrier congés été hiver gel gel-code période custom bande colorée affichage toggle" },
   { id: "historique",   num: "12", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log" },
   { id: "securite",     num: "13", title: "Sécurité & Mot de passe",              keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt" },
-  { id: "portefeuille", num: "14", title: "Vue Portefeuille",                    keywords: "portefeuille dashboard multi-plannings vue globale consolidée jalons à venir dépassés retard risque filtre statut progression cards timeline cross-planning" },
+  { id: "portefeuille",  num: "14", title: "Vue Portefeuille",                    keywords: "portefeuille dashboard multi-plannings vue globale consolidée jalons à venir dépassés retard risque filtre statut progression cards timeline cross-planning" },
+  { id: "presentation", num: "15", title: "Présentation & Exports",              keywords: "présentation plein écran fullscreen tout afficher fit-view zoom scroll export pdf a3 png powerpoint excel xlsx json dropdown exporter visuels données capture" },
 ];
 
 export default function AidePage() {
@@ -412,12 +413,13 @@ export default function AidePage() {
               <dd style={S.dd}>Le bouton <strong>Projets</strong> ouvre le sélecteur de visibilité des lots. Cochez ou décochez chaque lot (sous-projet) pour l&apos;afficher ou le masquer dans le Gantt. Utilisez « Tout afficher » / « Tout masquer » pour réinitialiser rapidement.</dd>
             </div>
             <div>
-              <dt style={S.dt}>Exporter en JSON</dt>
-              <dd style={S.dd}>Le bouton <strong>JSON</strong> déclenche le téléchargement de l&apos;export complet du planning au format JSON.</dd>
-            </div>
-            <div>
-              <dt style={S.dt}>Export PDF A3</dt>
-              <dd style={S.dd}>Cliquez sur <strong>PDF A3</strong> pour ouvrir la boîte de dialogue d&apos;impression. Voir la section <a href="#pdf" style={{ color: "#3B82F6" }}>Export PDF</a>.</dd>
+              <dt style={S.dt}>Exporter ▼ (dropdown unifié)</dt>
+              <dd style={S.dd}>
+                Le bouton <strong>Exporter ▼</strong> regroupe tous les formats d&apos;export en deux sections :<br />
+                — <strong>Visuels</strong> : <em>PDF A3 paysage</em> (aperçu avant impression) et <em>PNG ×3 — PowerPoint</em> (image haute résolution 3×).<br />
+                — <strong>Données</strong> : <em>Excel .xlsx</em> (deux feuilles : Phases et Jalons) et <em>JSON</em> (export complet de la structure).<br />
+                Voir aussi la section <a href="#presentation" style={{ color: "#3B82F6" }}>Présentation &amp; Exports</a> pour les détails de capture.
+              </dd>
             </div>
             <div>
               <dt style={S.dt}>Annuler (Ctrl+Z)</dt>
@@ -776,9 +778,49 @@ export default function AidePage() {
         </section>
       )}
 
+      {show("portefeuille") && show("presentation") && <hr style={S.divider} />}
+
+      {/* ── 15. Présentation & Exports ── */}
+      {show("presentation") && (
+        <section style={S.section} id="presentation">
+          <h2 style={S.h2}><span style={S.pill}>15</span> Présentation &amp; Exports</h2>
+          <dl style={S.dl}>
+            <div>
+              <dt style={S.dt}>Mode Présentation</dt>
+              <dd style={S.dd}>Cliquez sur l&apos;icône <strong>Présentation</strong> dans le rail de navigation (en bas) pour ouvrir la vue dédiée. Le Gantt s&apos;affiche en lecture seule, sans panneau d&apos;édition. Une barre de contrôle minimaliste permet de naviguer dans le temps et de changer le zoom.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Plein écran</dt>
+              <dd style={S.dd}>Cliquez sur <strong>⛶ Plein écran</strong> (ou appuyez sur <Kbd>F</Kbd>) pour passer en plein écran navigateur. Le fond passe en bleu marine et le Gantt occupe tout l&apos;espace disponible. Appuyez à nouveau sur <Kbd>F</Kbd> ou cliquez sur <strong>⊡ Quitter plein écran</strong> pour revenir.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Tout afficher — ajuster la hauteur des lignes</dt>
+              <dd style={S.dd}>Lorsqu&apos;un planning comporte de nombreux projets, le Gantt peut nécessiter un scroll vertical. Cliquez sur <strong>↕ Tout afficher</strong> dans la barre de présentation pour compresser automatiquement la hauteur des lignes afin que tous les projets tiennent sans scroll. Cliquez sur <strong>↕ Normal</strong> pour revenir à la densité d&apos;affichage standard.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Export PDF A3 paysage</dt>
+              <dd style={S.dd}>Dans la barre d&apos;outils du Gantt, cliquez sur <strong>Exporter ▼ → PDF A3 paysage</strong>. Une fenêtre d&apos;aperçu s&apos;ouvre avec une barre d&apos;impression. L&apos;export capture l&apos;intégralité du planning — tous les projets verticalement, toute la plage de dates horizontalement — sans coupure.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Export PNG haute résolution (PowerPoint)</dt>
+              <dd style={S.dd}>Cliquez sur <strong>Exporter ▼ → PNG ×3 — PowerPoint</strong>. Une image PNG en résolution triple (3×) est téléchargée directement. Elle est optimisée pour être collée dans une diapositive PowerPoint ou Keynote sans perte de qualité. La capture couvre l&apos;ensemble des projets et de la plage de dates.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Export Excel .xlsx</dt>
+              <dd style={S.dd}>Cliquez sur <strong>Exporter ▼ → Excel .xlsx</strong>. Un fichier Excel est généré avec deux feuilles : <em>Phases</em> (domaine, lot, type, libellé, début, fin, durée, statut, avancement, responsables, note) et <em>Jalons</em> (domaine, lot, type, libellé, date, note).</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Export JSON</dt>
+              <dd style={S.dd}>Cliquez sur <strong>Exporter ▼ → JSON</strong> pour télécharger un export complet de la structure du planning. Ce fichier peut être réimporté via <strong>⬆ Importer JSON</strong> depuis la liste des plannings.</dd>
+            </div>
+          </dl>
+          <Tip>Les exports PDF et PNG capturent la totalité du planning, même si seule une partie est visible à l&apos;écran. Le zoom affiché n&apos;influence pas la largeur capturée.</Tip>
+        </section>
+      )}
+
       {/* Footer */}
       <div style={{ marginTop: 48, paddingTop: 20, borderTop: "1px solid var(--klint-line, #E6E8EE)", fontSize: 12, color: "#9CA3AF" }}>
-        Klint Planning v1.0 — Jalons 0–16 · Klint Consulting © 2026
+        Klint Planning v1.0 — Jalons 0–18 · Klint Consulting © 2026
       </div>
     </div>
   );
