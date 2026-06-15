@@ -18,12 +18,13 @@ interface NavItem {
 const PLANNING_AWARE = new Set(["/synthese", "/ressources", "/parametres"]);
 
 const TOP_NAV: NavItem[] = [
-  { href: "/plannings",  icon: "layers",    label: "Plannings"  },
-  { href: "/p",          icon: "calendar",  label: "Planning"   },
-  { href: "/synthese",   icon: "chartLine", label: "Synthèse"   },
-  { href: "/ressources", icon: "users",     label: "Ressources" },
-  { href: "/parametres", icon: "settings",  label: "Paramètres" },
-  { href: "/historique", icon: "history",   label: "Historique" },
+  { href: "/plannings",    icon: "layers",    label: "Plannings"    },
+  { href: "/portefeuille", icon: "grid",      label: "Portefeuille" },
+  { href: "/p",            icon: "calendar",  label: "Planning"     },
+  { href: "/synthese",     icon: "chartLine", label: "Synthèse"     },
+  { href: "/ressources",   icon: "users",     label: "Ressources"   },
+  { href: "/parametres",   icon: "settings",  label: "Paramètres"   },
+  { href: "/historique",   icon: "history",   label: "Historique"   },
 ];
 
 const BOTTOM_NAV: NavItem[] = [

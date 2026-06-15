@@ -1,0 +1,339 @@
+.page {
+  padding: 32px 40px;
+  max-width: 1400px;
+  min-height: 100%;
+}
+
+/* En-tête */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0F1D3A;
+  margin: 0;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+}
+
+.chip {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.chipLate {
+  background: #FEE2E2;
+  color: #B91C1C;
+}
+
+.chipRisk {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+/* Filtres */
+.filterBar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #E6E8EE;
+}
+
+.filterBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 13px;
+  color: #64748B;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.filterBtn:hover {
+  color: #0F1D3A;
+}
+
+.filterActive {
+  color: #001D63;
+  border-bottom-color: #001D63;
+  font-weight: 500;
+}
+
+.filterCount {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #E6E8EE;
+  color: #64748B;
+  transition: background 0.15s, color 0.15s;
+}
+
+.filterActive .filterCount {
+  background: #001D63;
+  color: #fff;
+}
+
+.empty {
+  margin-top: 60px;
+  text-align: center;
+  color: #94A3B8;
+  font-size: 14px;
+}
+
+/* Grille */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+/* Card */
+.card {
+  background: #fff;
+  border: 1px solid #E6E8EE;
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 0.15s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0, 29, 99, 0.08);
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0F1D3A;
+  line-height: 1.3;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pillDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Progression */
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: #E6E8EE;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 3px;
+  background: #00B27A;
+  transition: width 0.4s ease;
+}
+
+.pct {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Stats ligne */
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748B;
+}
+
+.sep {
+  color: #CBD5E1;
+}
+
+.lateStat {
+  color: #DC2626;
+  font-weight: 500;
+}
+
+/* Sections jalons dans les cards */
+.msSection {
+  background: #F8FAFC;
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.msSectionLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94A3B8;
+  margin-bottom: 2px;
+}
+
+.msRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.msDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.msLabel {
+  flex: 1;
+  font-size: 12px;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msDate {
+  font-size: 12px;
+  color: #64748B;
+  flex-shrink: 0;
+}
+
+.noMs {
+  font-size: 12px;
+  color: #94A3B8;
+  text-align: center;
+  padding: 6px 0;
+  margin: 0;
+}
+
+/* Pied de card */
+.cardFoot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.openLink {
+  font-size: 12px;
+  color: #001D63;
+  text-decoration: none;
+  font-weight: 500;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+.openLink:hover {
+  opacity: 1;
+}
+
+/* Timeline globale */
+.timeline {
+  border-top: 1px solid #E6E8EE;
+  padding-top: 32px;
+  padding-bottom: 40px;
+}
+
+.timelineTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 16px;
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+}
+
+.timelineRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.tlDate {
+  font-size: 12px;
+  color: #64748B;
+  min-width: 68px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tlDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tlLabel {
+  flex: 1;
+  font-size: 13px;
+  color: #0F1D3A;
+}
+
+.tlPlanning {
+  font-size: 11px;
+  color: #64748B;
+  text-decoration: none;
+  background: #F1F5F9;
+  padding: 2px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.tlPlanning:hover {
+  background: #E2E8F0;
+}

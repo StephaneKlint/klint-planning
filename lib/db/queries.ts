@@ -284,3 +284,96 @@ export async function getGanttDataByToken(token: string): Promise<GanttData | nu
 
   return getGanttData(shareToken.planningId);
 }
+
+// ── Vue Portefeuille ─────────────────────────────────────────────────────────
+
+export type PortfolioCard = {
+  id: string;
+  name: string;
+  phaseCount: number;
+  milestoneCount: number;
+  avgProgress: number;
+  latePhaseCount: number;
+  upcomingMilestones: { id: string; label: string; date: string; color: string | null }[];
+  overdueMilestones:  { id: string; label: string; date: string; color: string | null }[];
+  status: "on-track" | "at-risk" | "late";
+};
+
+export async function getPortfolioData(): Promise<PortfolioCard[]> {
+  const planningList = await listPlannings("active");
+  if (planningList.length === 0) return [];
+
+  const planningIds = planningList.map((p) => p.id);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const in30  = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  const in7   = new Date(Date.now() +  7 * 86400000).toISOString().slice(0, 10);
+
+  const [allPhases, allMilestones] = await Promise.all([
+    db
+      .select({
+        id:        phases.id,
+        endDate:   phases.endDate,
+        progress:  phases.progress,
+        status:    phases.status,
+        planningId: lots.planningId,
+      })
+      .from(phases)
+      .innerJoin(lots, eq(phases.lotId, lots.id))
+      .where(inArray(lots.planningId, planningIds)),
+    db
+      .select({
+        id:        milestones.id,
+        label:     milestones.label,
+        date:      milestones.date,
+        color:     milestones.color,
+        planningId: lots.planningId,
+      })
+      .from(milestones)
+      .innerJoin(lots, eq(milestones.lotId, lots.id))
+      .where(inArray(lots.planningId, planningIds)),
+  ]);
+
+  return planningList.map((planning) => {
+    const pPhases    = allPhases.filter((p) => p.planningId === planning.id);
+    const pMilestones = allMilestones.filter((m) => m.planningId === planning.id);
+
+    const avgProgress =
+      pPhases.length > 0
+        ? Math.round(pPhases.reduce((sum, p) => sum + (p.progress ?? 0), 0) / pPhases.length)
+        : 0;
+
+    const latePhases = pPhases.filter((p) => p.endDate < today && p.status !== "done");
+
+    const upcomingMilestones = pMilestones
+      .filter((m) => m.date >= today && m.date <= in30)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const overdueMilestones = pMilestones
+      .filter((m) => m.date < today)
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    const status: "on-track" | "at-risk" | "late" =
+      latePhases.length > 0 || overdueMilestones.length > 0
+        ? "late"
+        : upcomingMilestones.some((m) => m.date <= in7)
+        ? "at-risk"
+        : "on-track";
+
+    return {
+      id: planning.id,
+      name: planning.name,
+      phaseCount:    pPhases.length,
+      milestoneCount: pMilestones.length,
+      avgProgress,
+      latePhaseCount: latePhases.length,
+      upcomingMilestones: upcomingMilestones.slice(0, 5).map((m) => ({
+        id: m.id, label: m.label, date: m.date, color: m.color,
+      })),
+      overdueMilestones: overdueMilestones.slice(0, 3).map((m) => ({
+        id: m.id, label: m.label, date: m.date, color: m.color,
+      })),
+      status,
+    };
+  });
+}
