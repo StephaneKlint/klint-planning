@@ -3,7 +3,7 @@
  */
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Icon } from "@/components/ui/Icon";
 import styles from "./Toolbar.module.css";
 
@@ -119,17 +119,28 @@ export function Toolbar({
 
   const [affichageOpen, setAffichageOpen] = useState(false);
   const affichageRef = useRef<HTMLDivElement>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  const closeOnOutside = useCallback((ref: React.RefObject<HTMLDivElement | null>, setter: (v: boolean) => void) => {
+    return (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setter(false);
+    };
+  }, []);
 
   useEffect(() => {
     if (!affichageOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (affichageRef.current && !affichageRef.current.contains(e.target as Node)) {
-        setAffichageOpen(false);
-      }
-    };
+    const handler = closeOnOutside(affichageRef, setAffichageOpen);
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [affichageOpen]);
+  }, [affichageOpen, closeOnOutside]);
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    const handler = closeOnOutside(exportRef, setExportOpen);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [exportOpen, closeOnOutside]);
 
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Barre d'outils du planning">
@@ -327,19 +338,6 @@ export function Toolbar({
           <span>Projets</span>
         </button>
 
-        {/* Export Excel */}
-        {onExportExcel && (
-          <button
-            className={styles.btn}
-            onClick={onExportExcel}
-            aria-label="Exporter en Excel"
-            title="Télécharger le planning en .xlsx (Phases + Jalons)"
-          >
-            <Icon name="download" size={14} />
-            <span>Excel</span>
-          </button>
-        )}
-
         {/* Partager — lien lecture seule */}
         {onShare && (
           <button
@@ -353,45 +351,77 @@ export function Toolbar({
           </button>
         )}
 
-        {/* Export JSON */}
-        {onExportJson && (
-          <button
-            className={styles.btn}
-            onClick={onExportJson}
-            aria-label="Exporter en JSON"
-            title="Exporter le planning en JSON"
-          >
-            <Icon name="download" size={14} />
-            <span>JSON</span>
-          </button>
-        )}
+        {/* Exporter — dropdown unifié */}
+        {(onExportPdf || onExportPng || onExportExcel || onExportJson) && (
+          <div ref={exportRef} style={{ position: "relative" }}>
+            <button
+              className={`${styles.btn} ${exportOpen ? styles.btnActive : ""}`}
+              onClick={() => setExportOpen((o) => !o)}
+              disabled={exportPdfPending || exportPngPending}
+              aria-label="Options d'export"
+              title="Exporter le planning"
+            >
+              <Icon name="download" size={14} />
+              <span>{exportPdfPending || exportPngPending ? "Capture…" : "Exporter"}</span>
+              <span style={{ fontSize: 10, marginLeft: 2 }}>{exportOpen ? "▲" : "▼"}</span>
+            </button>
 
-        {/* Export PNG haute résolution (PowerPoint) */}
-        {onExportPng && (
-          <button
-            className={styles.btn}
-            onClick={onExportPng}
-            disabled={exportPngPending || exportPdfPending}
-            aria-label="Exporter en image PNG haute résolution"
-            title="Image PNG 3× — idéale pour PowerPoint"
-          >
-            <Icon name="download" size={14} />
-            <span>{exportPngPending ? "Capture…" : "PNG"}</span>
-          </button>
-        )}
-
-        {/* Export PDF A3 */}
-        {onExportPdf && (
-          <button
-            className={`${styles.btn} ${styles.exportBtn}`}
-            onClick={onExportPdf}
-            disabled={exportPdfPending || exportPngPending}
-            aria-label="Exporter en PDF A3"
-            title="Aperçu et impression A3 paysage"
-          >
-            <Icon name="download" size={14} />
-            <span>{exportPdfPending ? "Capture…" : "PDF A3"}</span>
-          </button>
+            {exportOpen && (
+              <div className={styles.affichageDropdown}>
+                {(onExportPdf || onExportPng) && (
+                  <>
+                    <p className={styles.dropdownSection}>Visuels</p>
+                    {onExportPdf && (
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { setExportOpen(false); onExportPdf(); }}
+                        disabled={exportPdfPending || exportPngPending}
+                      >
+                        <span className={styles.dropdownCheck} />
+                        PDF A3 paysage
+                      </button>
+                    )}
+                    {onExportPng && (
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { setExportOpen(false); onExportPng(); }}
+                        disabled={exportPngPending || exportPdfPending}
+                      >
+                        <span className={styles.dropdownCheck} />
+                        PNG ×3 — PowerPoint
+                      </button>
+                    )}
+                  </>
+                )}
+                {(onExportPdf || onExportPng) && (onExportExcel || onExportJson) && (
+                  <div className={styles.dropdownDivider} />
+                )}
+                {(onExportExcel || onExportJson) && (
+                  <>
+                    <p className={styles.dropdownSection}>Données</p>
+                    {onExportExcel && (
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { setExportOpen(false); onExportExcel(); }}
+                      >
+                        <span className={styles.dropdownCheck} />
+                        Excel .xlsx
+                      </button>
+                    )}
+                    {onExportJson && (
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { setExportOpen(false); onExportJson(); }}
+                      >
+                        <span className={styles.dropdownCheck} />
+                        JSON
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -27,7 +27,10 @@ interface Props {
 
 export function PresentationView({ data, planningId }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const ganttWrapRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fitView, setFitView] = useState(false);
+  const [rowHOverride, setRowHOverride] = useState<number | undefined>(undefined);
 
   const {
     zoom, setZoom,
@@ -75,6 +78,24 @@ export function PresentationView({ data, planningId }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleFullscreen]);
+
+  // Calcule le rowH nécessaire pour que tous les lots tiennent sans scroll
+  const computeFitRowH = useCallback(() => {
+    if (!ganttWrapRef.current) return;
+    const bodyEl = ganttWrapRef.current.querySelector<HTMLElement>("[data-gantt-body]");
+    if (!bodyEl) return;
+    const contentH = bodyEl.scrollHeight;
+    const availH = ganttWrapRef.current.clientHeight;
+    if (contentH <= availH) { setRowHOverride(undefined); return; }
+    const ratio = availH / contentH;
+    setRowHOverride(Math.max(18, Math.floor(44 * ratio)));
+  }, []);
+
+  useEffect(() => {
+    if (!fitView) { setRowHOverride(undefined); return; }
+    const t = setTimeout(computeFitRowH, 80);
+    return () => clearTimeout(t);
+  }, [fitView, computeFitRowH]);
 
   const handleZoomIn = () => {
     const idx = ZOOM_ORDER.indexOf(zoom);
@@ -152,6 +173,17 @@ export function PresentationView({ data, planningId }: Props) {
 
         <div className={styles.separator} />
 
+        {/* Tout afficher — compresse les lignes pour éviter le scroll */}
+        <button
+          className={`${styles.barBtn} ${fitView ? styles.barBtnActive : ""}`}
+          onClick={() => setFitView((v) => !v)}
+          title="Ajuster la hauteur des lignes pour tout afficher sans scroll"
+        >
+          {fitView ? "↕ Normal" : "↕ Tout afficher"}
+        </button>
+
+        <div className={styles.separator} />
+
         {/* Plein écran */}
         <button
           className={styles.fullscreenBtn}
@@ -163,7 +195,7 @@ export function PresentationView({ data, planningId }: Props) {
       </div>
 
       {/* Zone Gantt — lecture seule (pas d'EditPanel ni de BulkBar) */}
-      <div className={styles.ganttWrap}>
+      <div ref={ganttWrapRef} className={styles.ganttWrap}>
         <Gantt
           planningId={planningId}
           domains={data.domains}
@@ -178,6 +210,7 @@ export function PresentationView({ data, planningId }: Props) {
           viewStart={data.planning.viewStart}
           viewEnd={data.planning.viewEnd}
           referenceDate={referenceDate}
+          rowHOverride={fitView ? rowHOverride : undefined}
         />
       </div>
     </div>

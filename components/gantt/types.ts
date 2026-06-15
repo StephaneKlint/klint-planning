@@ -29,4 +29,6 @@ export interface GanttProps {
   viewEnd: string;
   referenceDate: string;
   closurePeriods?: ClosurePeriodRow[];
+  /** Override row height (px) — used by presentation fit-view mode */
+  rowHOverride?: number;
 }

@@ -36,6 +36,7 @@ export function Gantt({
   viewEnd,
   referenceDate,
   closurePeriods,
+  rowHOverride,
 }: GanttProps) {
   const { zoom: zoomRaw, density: densityRaw, colorMode, showWeekends, showDomainBands, showHolidays, showClosures, panelMode, scrollRequest, requestScroll, hiddenLotIds } = useGanttStore();
   const zoom = zoomRaw as import("@/store/ganttStore").ZoomLevel;
@@ -66,7 +67,7 @@ export function Gantt({
     return Math.max(minPpd, stretchPpd);
   })();
 
-  const rowH = ROW_H[density];
+  const rowH = rowHOverride ?? ROW_H[density];
 
   // ── Track counts per lot (for overlapping phases) ───────────────────────────
   const phasesByLotForTracks = phases.reduce<Record<string, typeof phases>>((acc, p) => {

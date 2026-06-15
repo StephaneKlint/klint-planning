@@ -231,6 +231,14 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
           bodyCloneEl.style.minHeight = `${timelineH}px`;
           bodyCloneEl.style.flex      = "none";
         }
+        // ganttFlexRow (.gantt div) est exclu de la boucle overflow mais doit aussi être étendu
+        if (ganttFlexRow) {
+          ganttFlexRow.style.height    = `${exportH}px`;
+          ganttFlexRow.style.minHeight = `${exportH}px`;
+          ganttFlexRow.style.maxHeight = "none";
+          ganttFlexRow.style.overflow  = "visible";
+          ganttFlexRow.style.flex      = "none";
+        }
       },
     });
 
