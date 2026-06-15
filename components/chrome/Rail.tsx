@@ -22,9 +22,7 @@ const TOP_NAV: NavItem[] = [
   { href: "/portefeuille", icon: "grid",      label: "Portefeuille" },
   { href: "/p",            icon: "calendar",  label: "Planning"     },
   { href: "/synthese",     icon: "chartLine", label: "Synthèse"     },
-  { href: "/ressources",   icon: "users",     label: "Ressources"   },
   { href: "/parametres",   icon: "settings",  label: "Paramètres"   },
-  { href: "/historique",   icon: "history",   label: "Historique"   },
 ];
 
 const BOTTOM_NAV: NavItem[] = [

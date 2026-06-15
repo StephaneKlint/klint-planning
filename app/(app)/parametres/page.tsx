@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { listPlannings, getGanttData } from "@/lib/db/queries";
+import { listPlannings, getGanttData, listUsersNotInPlanning, getActivityLog, listConnectionLogs } from "@/lib/db/queries";
 import { getAppSettings } from "@/lib/actions/appSettings";
+import type { ExistingUserRow, ActivityEntry, ConnectionLogRow } from "@/lib/db/queries";
 import { ParametresTabs } from "./ParametresTabs";
 import styles from "./Parametres.module.css";
 
@@ -23,7 +24,12 @@ export default async function ParametresPage({ searchParams }: Props) {
   }
 
   const activePlanningId = qPlanningId ?? planningList[0].id;
-  const data = await getGanttData(activePlanningId);
+  const [data, existingUsers, activityEntries, connLogs] = await Promise.all([
+    getGanttData(activePlanningId),
+    listUsersNotInPlanning(activePlanningId),
+    getActivityLog(activePlanningId, 200),
+    listConnectionLogs(200),
+  ]);
   if (!data) return <div className={styles.empty}>Données introuvables.</div>;
 
   return (
@@ -45,7 +51,13 @@ export default async function ParametresPage({ searchParams }: Props) {
         </div>
       </header>
 
-      <ParametresTabs data={data} appCfg={appCfg} />
+      <ParametresTabs
+        data={data}
+        appCfg={appCfg}
+        existingUsers={existingUsers as ExistingUserRow[]}
+        activityEntries={activityEntries as ActivityEntry[]}
+        connLogs={connLogs as ConnectionLogRow[]}
+      />
     </div>
   );
 }

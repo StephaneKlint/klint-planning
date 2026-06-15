@@ -9,7 +9,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import {
   plannings, planningSettings, phaseTypes, milestoneTypes, statuses, domains,
-  lots, phases, milestones, activityLog,
+  lots, phases, milestones, activityLog, closurePeriods,
 } from "@/lib/db/schema";
 import { eq, inArray, isNotNull } from "drizzle-orm";
 
@@ -620,6 +620,178 @@ export async function updatePlanningFromJSON(planningId: string, jsonStr: string
 
   revalidatePath("/plannings");
   revalidatePath(`/p/${planningId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Import depuis l'ancien format (cci_planning_2026)
+// ---------------------------------------------------------------------------
+// Structure ancienne : { domains[], projects[], closedPeriods[] }
+// Structure nouvelle : { klintPlanningExport, planning, domains[{lots[]}] }
+// ---------------------------------------------------------------------------
+
+function hexLighten(hex: string, amount: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const v = (c: number) => Math.min(255, Math.round(c + (255 - c) * amount));
+  return `#${v(r).toString(16).padStart(2, "0")}${v(g).toString(16).padStart(2, "0")}${v(b).toString(16).padStart(2, "0")}`;
+}
+
+function hexDarken(hex: string, amount: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const v = (c: number) => Math.round(c * (1 - amount));
+  return `#${v(r).toString(16).padStart(2, "0")}${v(g).toString(16).padStart(2, "0")}${v(b).toString(16).padStart(2, "0")}`;
+}
+
+function seedColorToDomainColors(seed: string) {
+  const hex = seed.startsWith("#") ? seed : `#${seed}`;
+  return {
+    bg:         hexLighten(hex, 0.88),
+    bgAlt:      hexLighten(hex, 0.75),
+    strong:     hexDarken(hex, 0.4),
+    phaseColor: hex,
+  };
+}
+
+const LEGACY_STATUS_MAP: Record<string, string> = {
+  done:        "done",
+  in_progress: "in_progress",
+  planned:     "planned",
+  review:      "review",
+  risk:        "risk",
+  late:        "late",
+};
+
+export async function importLegacyPlanningJSON(planningId: string, jsonStr: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let data: any;
+  try {
+    data = JSON.parse(jsonStr);
+  } catch {
+    throw new Error("Fichier JSON invalide.");
+  }
+
+  if (!data?.domains || !data?.projects) {
+    throw new Error("Ce fichier ne semble pas être un export de l'ancienne application Klint Planning.");
+  }
+
+  // Verify planning exists
+  const [existing] = await db.select().from(plannings).where(eq(plannings.id, planningId));
+  if (!existing) throw new Error("Planning introuvable.");
+
+  // Build domain id map
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const domainMap: Record<string, string> = {}; // oldId → new DB id
+
+  for (let i = 0; i < data.domains.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d: any = data.domains[i];
+    const seed  = String(d.seedColor ?? "#3B82F6");
+    const { bg, bgAlt, strong, phaseColor } = seedColorToDomainColors(seed);
+    const name  = String(d.name ?? "Domaine");
+    const code  = name.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 40) || `DOM${i}`;
+
+    const [newDom] = await db.insert(domains).values({
+      planningId,
+      code,
+      name,
+      bg,
+      bgAlt,
+      strong,
+      phaseColor,
+      sortOrder: i,
+      collapsed: false,
+      cadence: { livraison: 0, pmep: 10, cab: 12, mep: 15 },
+    }).returning({ id: domains.id });
+
+    domainMap[String(d.id)] = newDom.id;
+  }
+
+  // Import projects → lots (each project = 1 lot in its domain)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projectsArr: any[] = Array.isArray(data.projects) ? data.projects : [];
+  for (let i = 0; i < projectsArr.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p: any = projectsArr[i];
+    const domainId = domainMap[String(p.domain ?? p.parentId ?? "")];
+    if (!domainId) continue; // skip orphaned projects
+
+    const [newLot] = await db.insert(lots).values({
+      planningId,
+      domainId,
+      name:      String(p.name ?? "Lot"),
+      subtitle:  p.subtitle ? String(p.subtitle) : null,
+      sortOrder: i,
+      hidden:    false,
+    }).returning({ id: lots.id });
+
+    // Phases
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const phasesArr: any[] = Array.isArray(p.phases) ? p.phases : [];
+    if (phasesArr.length > 0) {
+      await db.insert(phases).values(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        phasesArr.map((ph: any, idx: number) => ({
+          lotId:     newLot.id,
+          type:      String(ph.type ?? "custom"),
+          label:     ph.label ? String(ph.label) : null,
+          startDate: String(ph.start ?? ph.startDate),
+          endDate:   String(ph.end ?? ph.endDate),
+          status:    (ph.status ? (LEGACY_STATUS_MAP[ph.status] ?? null) : null) as "planned" | "in_progress" | "review" | "done" | "risk" | "late" | null,
+          progress:  0,
+          sortOrder: idx,
+        }))
+      );
+    }
+
+    // Milestones
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const msArr: any[] = Array.isArray(p.milestones) ? p.milestones : [];
+    if (msArr.length > 0) {
+      await db.insert(milestones).values(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        msArr.map((ms: any) => ({
+          lotId:    newLot.id,
+          type:     String(ms.type ?? "custom"),
+          label:    String(ms.label ?? ""),
+          date:     String(ms.date),
+          labelPos: "above" as const,
+        }))
+      );
+    }
+  }
+
+  // Import closed periods → closurePeriods
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const closedArr: any[] = Array.isArray(data.closedPeriods) ? data.closedPeriods : [];
+  if (closedArr.length > 0) {
+    await db.insert(closurePeriods).values(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      closedArr.map((cp: any, idx: number) => ({
+        planningId,
+        label:     String(cp.label ?? "Fermeture"),
+        startDate: String(cp.start ?? cp.startDate),
+        endDate:   String(cp.end ?? cp.endDate),
+        color:     "#FEF3C7",
+        type:      "custom" as const,
+        active:    true,
+        sortOrder: idx,
+      }))
+    );
+  }
+
+  await db.insert(activityLog).values({
+    planningId,
+    verb:       "imported",
+    targetType: "planning",
+    targetId:   planningId,
+    summary:    "Planning importé depuis l'ancien format (cci_planning_2026)",
+  }).catch(() => {});
+
+  revalidatePath(`/p/${planningId}`);
+  revalidatePath("/plannings");
 }
 
 // ---------------------------------------------------------------------------

@@ -24,6 +24,7 @@ import {
 } from "@/lib/actions/planning";
 import { restoreMember } from "@/lib/actions/members";
 import { getOrCreateShareToken, revokeShareToken } from "@/lib/actions/share";
+import { importLegacyPlanningJSON, updatePlanningFromJSON } from "@/lib/actions/plannings";
 import { createBaseline, deleteBaseline } from "@/lib/actions/baseline";
 import type { BaselineRow } from "@/lib/db/queries";
 import type { GanttProps } from "@/components/gantt/types";
@@ -41,6 +42,8 @@ interface GanttViewProps extends GanttProps {
 
 export function GanttView({ initialData, demoMemberId, initialBaseline, ...props }: GanttViewProps) {
   const ganttRef = useRef<HTMLDivElement>(null);
+  const importJsonRef = useRef<HTMLInputElement>(null);
+  const [importPending, setImportPending] = useState(false);
   const [exportPending, setExportPending] = useState(false);
   const [exportPngPending, setExportPngPending] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -342,6 +345,36 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
     window.location.href = `/api/export/${props.planningId}`;
   };
 
+  // ── Import JSON (nouveau format ou legacy) ──────────────────────────────────
+  const handleImportJson = () => {
+    importJsonRef.current?.click();
+  };
+
+  const handleImportJsonFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const text = await file.text();
+    setImportPending(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parsed: any = JSON.parse(text);
+      if (parsed?.klintPlanningExport) {
+        await updatePlanningFromJSON(props.planningId, text);
+      } else if (parsed?.projects) {
+        await importLegacyPlanningJSON(props.planningId, text);
+      } else {
+        alert("Format JSON non reconnu. Le fichier doit être un export Klint Planning ou un export de l'ancienne application.");
+        return;
+      }
+      qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    } catch (err) {
+      alert((err as Error).message ?? "Erreur lors de l'import.");
+    } finally {
+      setImportPending(false);
+    }
+  };
+
   // ── Export Excel (.xlsx) ────────────────────────────────────────────────────
   const handleExportExcel = async () => {
     const XLSX = (await import("xlsx")).default;
@@ -487,6 +520,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
         exportPngPending={exportPngPending}
         onExportExcel={handleExportExcel}
         onExportJson={handleExportJson}
+        onImportJson={handleImportJson}
         onShare={handleOpenShare}
         onProjectFilter={() => setProjectFilterOpen(!projectFilterOpen)}
         projectFilterActive={projectFilterOpen || hiddenLotIds.size > 0}
@@ -516,6 +550,23 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
         onCreateBaseline={handleCreateBaseline}
         onDeleteBaseline={handleDeleteBaseline}
       />
+
+      {/* Input file caché — import JSON */}
+      <input
+        ref={importJsonRef}
+        type="file"
+        accept=".json,application/json"
+        style={{ display: "none" }}
+        onChange={handleImportJsonFile}
+        aria-hidden
+      />
+      {importPending && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9998 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: "24px 32px", fontFamily: "var(--font-display)", fontSize: 14, color: "var(--klint-navy)" }}>
+            Import en cours…
+          </div>
+        </div>
+      )}
 
       {/* Modal sélecteur de projets */}
       {projectFilterOpen && (

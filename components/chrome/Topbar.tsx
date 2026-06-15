@@ -8,11 +8,10 @@ import styles from "./Topbar.module.css";
 
 interface TopbarProps {
   planningName?: string;
-  planningStats?: string;      // e.g. "23 lots · 72 phases · 9 domaines"
-  currentView?: string;        // e.g. "Gantt"
+  planningStats?: string;
+  currentView?: string;
   onPlanningClick?: () => void;
   onSearchClick?: () => void;
-  onExportClick?: () => void;
   onNotificationsClick?: () => void;
   onShareClick?: () => void;
   presenceAvatars?: React.ReactNode;
@@ -26,7 +25,6 @@ export function Topbar({
   onSearchClick,
   onNotificationsClick,
   onShareClick,
-  onExportClick,
   presenceAvatars,
 }: TopbarProps) {
   return (
@@ -86,14 +84,6 @@ export function Topbar({
         </button>
 
         <div className={styles.actions}>
-          <button
-            className={styles.iconBtn}
-            onClick={onExportClick}
-            aria-label="Exporter en PDF"
-            title="Exporter en PDF"
-          >
-            <Icon name="download" size={15} />
-          </button>
           <button
             className={styles.iconBtn}
             onClick={onNotificationsClick}

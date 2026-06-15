@@ -3,7 +3,7 @@
  */
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type CSSProperties } from "react";
 import { Icon } from "@/components/ui/Icon";
 import styles from "./Toolbar.module.css";
 
@@ -28,6 +28,7 @@ interface ToolbarProps {
   onExportExcel?: () => void;
   onExportJson?: () => void;
   onShare?: () => void;
+  onImportJson?: () => void;
   onProjectFilter?: () => void;
   projectFilterActive?: boolean;
   /** @deprecated Use colorMode instead */
@@ -85,6 +86,7 @@ export function Toolbar({
   onExportExcel,
   onExportJson,
   onShare,
+  onImportJson,
   onProjectFilter,
   projectFilterActive = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -119,8 +121,12 @@ export function Toolbar({
 
   const [affichageOpen, setAffichageOpen] = useState(false);
   const affichageRef = useRef<HTMLDivElement>(null);
+  const affichageBtnRef = useRef<HTMLButtonElement>(null);
+  const [affichagePos, setAffichagePos] = useState<{ top: number; left: number } | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+  const exportBtnRef = useRef<HTMLButtonElement>(null);
+  const [exportPos, setExportPos] = useState<{ top: number; right: number } | null>(null);
 
   const closeOnOutside = useCallback((ref: React.RefObject<HTMLDivElement | null>, setter: (v: boolean) => void) => {
     return (e: MouseEvent) => {
@@ -241,8 +247,15 @@ export function Toolbar({
         {/* Groupe Affichage — dropdown */}
         <div ref={affichageRef} style={{ position: "relative" }}>
           <button
+            ref={affichageBtnRef}
             className={`${styles.btn} ${affichageOpen ? styles.btnActive : ""}`}
-            onClick={() => setAffichageOpen((o) => !o)}
+            onClick={() => {
+              if (affichageBtnRef.current) {
+                const r = affichageBtnRef.current.getBoundingClientRect();
+                setAffichagePos({ top: r.bottom + 6, left: r.left });
+              }
+              setAffichageOpen((o) => !o);
+            }}
             aria-label="Options d'affichage"
             title="Affichage"
           >
@@ -251,8 +264,11 @@ export function Toolbar({
             <span style={{ fontSize: 10, marginLeft: 2 }}>{affichageOpen ? "▲" : "▼"}</span>
           </button>
 
-          {affichageOpen && (
-            <div className={styles.affichageDropdown}>
+          {affichageOpen && affichagePos && (
+            <div
+              className={styles.affichageDropdown}
+              style={{ position: "fixed", top: affichagePos.top, left: affichagePos.left, right: "auto", zIndex: 9999 } as CSSProperties}
+            >
               {/* Visibilité */}
               <p className={styles.dropdownSection}>Éléments visibles</p>
               {[
@@ -352,11 +368,18 @@ export function Toolbar({
         )}
 
         {/* Exporter — dropdown unifié */}
-        {(onExportPdf || onExportPng || onExportExcel || onExportJson) && (
+        {(onExportPdf || onExportPng || onExportExcel || onExportJson || onImportJson) && (
           <div ref={exportRef} style={{ position: "relative" }}>
             <button
+              ref={exportBtnRef}
               className={`${styles.btn} ${exportOpen ? styles.btnActive : ""}`}
-              onClick={() => setExportOpen((o) => !o)}
+              onClick={() => {
+                if (exportBtnRef.current) {
+                  const r = exportBtnRef.current.getBoundingClientRect();
+                  setExportPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+                }
+                setExportOpen((o) => !o);
+              }}
               disabled={exportPdfPending || exportPngPending}
               aria-label="Options d'export"
               title="Exporter le planning"
@@ -366,8 +389,11 @@ export function Toolbar({
               <span style={{ fontSize: 10, marginLeft: 2 }}>{exportOpen ? "▲" : "▼"}</span>
             </button>
 
-            {exportOpen && (
-              <div className={styles.affichageDropdown}>
+            {exportOpen && exportPos && (
+              <div
+                className={styles.affichageDropdown}
+                style={{ position: "fixed", top: exportPos.top, right: exportPos.right, zIndex: 9999 } as CSSProperties}
+              >
                 {(onExportPdf || onExportPng) && (
                   <>
                     <p className={styles.dropdownSection}>Visuels</p>
@@ -417,6 +443,19 @@ export function Toolbar({
                         JSON
                       </button>
                     )}
+                  </>
+                )}
+                {onImportJson && (
+                  <>
+                    <div className={styles.dropdownDivider} />
+                    <p className={styles.dropdownSection}>Import</p>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => { setExportOpen(false); onImportJson(); }}
+                    >
+                      <span className={styles.dropdownCheck} />
+                      Mettre à jour depuis JSON
+                    </button>
                   </>
                 )}
               </div>

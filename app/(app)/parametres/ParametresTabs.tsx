@@ -14,9 +14,10 @@ import { saveAppLogo, saveAppFavicon } from "@/lib/actions/appSettings";
 import { seedHolidays, createClosurePeriod, updateClosurePeriod, deleteClosurePeriod } from "@/lib/actions/closurePeriods";
 import { changePassword } from "@/lib/actions/authActions";
 import { setTemplateFlag } from "@/lib/actions/plannings";
-import type { ClosurePeriodRow } from "@/lib/db/queries";
+import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow } from "@/lib/db/queries";
+import { RessourcesClient } from "@/app/(app)/ressources/RessourcesClient";
 
-type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "membres" | "apparence" | "calendrier" | "securite";
+type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "membres" | "apparence" | "calendrier" | "securite" | "ressources" | "historique";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "general",    label: "Général" },
@@ -25,10 +26,39 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "jalons",     label: "Types de jalons" },
   { id: "statuts",    label: "Statuts" },
   { id: "membres",    label: "Membres & Droits" },
+  { id: "ressources", label: "Ressources" },
+  { id: "historique", label: "Historique" },
   { id: "apparence",  label: "Apparence" },
   { id: "calendrier", label: "Calendrier" },
   { id: "securite",   label: "Sécurité" },
 ];
+
+const VERB_LABELS: Record<string, string> = {
+  status_changed:      "Statut modifié",
+  progress_updated:    "Avancement mis à jour",
+  moved:               "Déplacé",
+  bulk_status_changed: "Statut modifié (masse)",
+  created:             "Créé",
+  deleted:             "Supprimé",
+  restored:            "Restauré",
+  archived:            "Archivé",
+  imported:            "Importé",
+  updated:             "Modifié",
+};
+
+function fmtDatetime(d: Date) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  }).format(d);
+}
+
+function countryFlag(code: string | null) {
+  if (!code || code.length !== 2) return "";
+  const cp1 = code.toUpperCase().charCodeAt(0) - 65 + 0x1F1E6;
+  const cp2 = code.toUpperCase().charCodeAt(1) - 65 + 0x1F1E6;
+  return String.fromCodePoint(cp1) + String.fromCodePoint(cp2);
+}
 
 function fmtDate(d: string) {
   const [y, m, day] = d.split("-");
@@ -46,7 +76,15 @@ const PERMISSION_LABELS: Record<string, string> = {
   viewer: "Lecteur",
 };
 
-export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppSettings }) {
+interface ParametresTabsProps {
+  data: GanttData;
+  appCfg: AppSettings;
+  existingUsers?: ExistingUserRow[];
+  activityEntries?: ActivityEntry[];
+  connLogs?: ConnectionLogRow[];
+}
+
+export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntries = [], connLogs = [] }: ParametresTabsProps) {
   const router = useRouter();
   const [active, setActive] = useState<Tab>("general");
   const [isPending, startTransition] = useTransition();
@@ -1156,7 +1194,118 @@ export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppS
           </div>
         </div>
       )}
+
+      {/* ── Ressources ──────────────────────────────────────────────────── */}
+      {active === "ressources" && (
+        <div className={styles.tabPanel} style={{ padding: 0 }}>
+          <RessourcesClient data={data} existingUsers={existingUsers} />
+        </div>
+      )}
+
+      {/* ── Historique ──────────────────────────────────────────────────── */}
+      {active === "historique" && (
+        <HistoriquePanel activityEntries={activityEntries} connLogs={connLogs} />
+      )}
     </div>
+  );
+}
+
+function HistoriquePanel({ activityEntries, connLogs }: { activityEntries: ActivityEntry[]; connLogs: ConnectionLogRow[] }) {
+  const [histSub, setHistSub] = useState<"activite" | "connexions">("activite");
+  return (
+        <div className={styles.tabPanel}>
+          <div style={{ display: "flex", gap: 2, marginBottom: 20 }}>
+            {(["activite", "connexions"] as const).map((sub) => (
+              <button
+                key={sub}
+                onClick={() => setHistSub(sub)}
+                style={{
+                  padding: "6px 14px", borderRadius: 6, border: "none", cursor: "pointer",
+                  fontSize: 12, fontWeight: 600, fontFamily: "var(--font-display)",
+                  background: histSub === sub ? "var(--klint-navy)" : "transparent",
+                  color: histSub === sub ? "#fff" : "var(--klint-navy)",
+                }}
+              >
+                {sub === "activite" ? "Activité" : "Connexions"}
+              </button>
+            ))}
+          </div>
+
+          {/* Activité */}
+          {histSub === "activite" && (<>
+          <p className={styles.tabDesc} style={{ marginBottom: 16 }}>
+            Les 200 derniers événements sur ce planning.
+          </p>
+          {activityEntries.length === 0 ? (
+            <p style={{ color: "#6B7280", fontSize: 13 }}>Aucun événement enregistré.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 520, overflowY: "auto" }}>
+              {activityEntries.map((entry) => (
+                <div key={entry.id} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+                    background: entry.actorColor ?? "#001D63",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 11, fontWeight: 700, color: "#fff",
+                  }}>
+                    {entry.actorInitials ?? "?"}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 2 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--klint-navy)" }}>
+                        {VERB_LABELS[entry.verb] ?? entry.verb}
+                      </span>
+                      {entry.targetType && (
+                        <span style={{ fontSize: 11, background: "#F1F5F9", borderRadius: 4, padding: "1px 6px", color: "#6B7280" }}>
+                          {entry.targetType}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, color: "#9CA3AF" }}>{entry.actorName ?? "Système"}</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{entry.summary}</p>
+                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>{fmtDatetime(entry.createdAt)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          </>)}
+
+          {/* Connexions */}
+          {histSub === "connexions" && (
+            connLogs.length === 0 ? (
+              <p style={{ color: "#6B7280", fontSize: 13 }}>Aucune connexion enregistrée.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table className={styles.table} style={{ fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      <th>Utilisateur</th>
+                      <th>IP</th>
+                      <th>Pays</th>
+                      <th>Ville</th>
+                      <th>Date</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {connLogs.slice(0, 100).map((log) => (
+                      <tr key={log.id} style={log.isAlert ? { background: "#FEF2F2" } : undefined}>
+                        <td>{log.email}</td>
+                        <td style={{ fontFamily: "monospace" }}>{log.ip ?? "—"}</td>
+                        <td>{countryFlag(log.countryCode)} {log.country ?? "—"}</td>
+                        <td>{log.city ?? "—"}</td>
+                        <td>{fmtDatetime(log.createdAt)}</td>
+                        <td>{log.isAlert && <span style={{ color: "#DC2626", fontWeight: 700, fontSize: 11 }}>⚠ Alerte</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+        </div>
   );
 }
 
