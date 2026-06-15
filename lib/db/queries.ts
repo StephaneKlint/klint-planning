@@ -5,7 +5,7 @@ import {
   phaseTypes, milestoneTypes, statuses, planningSettings,
   activityLog, closurePeriods, connectionLogs, shareTokens, baselines,
 } from "./schema";
-import { eq, asc, desc, inArray, and } from "drizzle-orm";
+import { eq, asc, desc, inArray, and, isNull, isNotNull, sql } from "drizzle-orm";
 
 export type DomainRow = typeof domains.$inferSelect;
 export type LotRow = typeof lots.$inferSelect;
@@ -115,7 +115,8 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
   };
 }
 
-export async function listPlannings(filter: "active" | "archived" | "disabled" | "all" | "templates" = "active") {
+export async function listPlannings(filter: "active" | "archived" | "disabled" | "all" | "templates" | "trashed" = "active") {
+  const notDeleted = isNull(plannings.deletedAt);
   const rows = await db
     .select({
       id: plannings.id,
@@ -125,17 +126,20 @@ export async function listPlannings(filter: "active" | "archived" | "disabled" |
       archived: plannings.archived,
       disabled: plannings.disabled,
       isTemplate: plannings.isTemplate,
+      deletedAt: plannings.deletedAt,
       viewStart: plannings.viewStart,
       viewEnd: plannings.viewEnd,
       createdAt: plannings.createdAt,
+      domainCount: sql<number>`(SELECT COUNT(*) FROM domains WHERE domains.planning_id = ${plannings.id})::int`,
     })
     .from(plannings)
     .where(
-      filter === "active"    ? and(eq(plannings.archived, false), eq(plannings.disabled, false), eq(plannings.isTemplate, false)) :
-      filter === "templates" ? and(eq(plannings.archived, false), eq(plannings.disabled, false), eq(plannings.isTemplate, true)) :
-      filter === "archived"  ? eq(plannings.archived, true) :
-      filter === "disabled"  ? and(eq(plannings.archived, false), eq(plannings.disabled, true)) :
-      undefined
+      filter === "active"    ? and(notDeleted, eq(plannings.archived, false), eq(plannings.disabled, false), eq(plannings.isTemplate, false)) :
+      filter === "templates" ? and(notDeleted, eq(plannings.archived, false), eq(plannings.disabled, false), eq(plannings.isTemplate, true)) :
+      filter === "archived"  ? and(notDeleted, eq(plannings.archived, true)) :
+      filter === "disabled"  ? and(notDeleted, eq(plannings.archived, false), eq(plannings.disabled, true)) :
+      filter === "trashed"   ? isNotNull(plannings.deletedAt) :
+      undefined  // "all"
     )
     .orderBy(desc(plannings.createdAt));
   return rows;

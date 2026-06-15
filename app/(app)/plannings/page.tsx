@@ -6,10 +6,11 @@ import { PlanningListClient } from "./PlanningListClient";
 import styles from "./Plannings.module.css";
 
 export default async function PlanningsPage() {
-  const [active, archived, disabled] = await Promise.all([
+  const [active, archived, disabled, trashed] = await Promise.all([
     listPlannings("active"),
     listPlannings("archived"),
     listPlannings("disabled"),
+    listPlannings("trashed"),
   ]);
 
   return (
@@ -24,7 +25,7 @@ export default async function PlanningsPage() {
         </Link>
       </header>
 
-      <PlanningListClient active={active} archived={archived} disabled={disabled} />
+      <PlanningListClient active={active} archived={archived} disabled={disabled} trashed={trashed} />
     </div>
   );
 }

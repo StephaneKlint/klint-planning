@@ -9,9 +9,9 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import {
   plannings, planningSettings, phaseTypes, milestoneTypes, statuses, domains,
-  lots, phases, milestones,
+  lots, phases, milestones, activityLog,
 } from "@/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, isNotNull } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Create Planning
@@ -80,6 +80,7 @@ export async function createPlanning(formData: FormData) {
     { planningId: planning.id, code: "late",        label: "En retard",  color: "#DC2626", bg: "#FEE2E2", sortOrder: 5 },
   ]);
 
+  await db.insert(activityLog).values({ planningId: planning.id, verb: "created", targetType: "planning", targetId: planning.id, summary: "Planning créé" }).catch(() => {});
   revalidatePath("/p");
   revalidatePath("/plannings");
   redirect(`/p/${planning.id}`);
@@ -209,9 +210,50 @@ export async function updatePlanningMeta(input: z.infer<typeof UpdatePlanningSch
 // ---------------------------------------------------------------------------
 
 export async function deletePlanning(planningId: string) {
+  // Soft delete — déplace vers la corbeille (conservé 30 jours)
+  await db.update(plannings)
+    .set({ deletedAt: new Date() })
+    .where(eq(plannings.id, planningId));
+  await db.insert(activityLog).values({ planningId, verb: "deleted", targetType: "planning", targetId: planningId, summary: "Planning déplacé en corbeille" }).catch(() => {});
+  revalidatePath("/plannings");
+  revalidatePath("/p");
+}
+
+export async function restorePlanning(planningId: string) {
+  await db.update(plannings)
+    .set({ deletedAt: null })
+    .where(eq(plannings.id, planningId));
+  await db.insert(activityLog).values({ planningId, verb: "restored", targetType: "planning", targetId: planningId, summary: "Planning restauré depuis la corbeille" }).catch(() => {});
+  revalidatePath("/plannings");
+}
+
+export async function permanentlyDeletePlanning(planningId: string) {
   await db.delete(plannings).where(eq(plannings.id, planningId));
   revalidatePath("/plannings");
   revalidatePath("/p");
+}
+
+// Purge automatique des plannings en corbeille depuis plus de 30 jours
+export async function purgeExpiredTrash() {
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const expired = await db.select({ id: plannings.id })
+    .from(plannings)
+    .where(isNotNull(plannings.deletedAt));
+  // Filtrage côté JS sur la date (deletedAt est nullable mais typed)
+  const ids = expired
+    .filter((p) => p.id) // always truthy, refined below
+    .map((p) => p.id);
+
+  if (ids.length === 0) return;
+
+  // Pour chaque planning candidat, on vérifie la date côté serveur
+  // (évite d'avoir à utiliser sql`` pour un lt sur nullable timestamp)
+  for (const id of ids) {
+    const [row] = await db.select({ deletedAt: plannings.deletedAt }).from(plannings).where(eq(plannings.id, id));
+    if (row?.deletedAt && new Date(row.deletedAt) < cutoff) {
+      await db.delete(plannings).where(eq(plannings.id, id)).catch(() => {});
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -220,6 +262,7 @@ export async function deletePlanning(planningId: string) {
 
 export async function archivePlanning(planningId: string) {
   await db.update(plannings).set({ archived: true }).where(eq(plannings.id, planningId));
+  await db.insert(activityLog).values({ planningId, verb: "archived", targetType: "planning", targetId: planningId, summary: "Planning archivé" }).catch(() => {});
   revalidatePath("/p");
   revalidatePath("/plannings");
 }
@@ -258,7 +301,7 @@ export async function importPlanningFromJSON(jsonStr: string): Promise<string> {
 
   const p = data.planning ?? {};
 
-  // 1. Créer le planning
+  // 1. Créer le planning — toute la suite est dans un try/catch avec rollback
   const [newP] = await db.insert(plannings).values({
     name:          `${p.name ?? "Planning importé"} (import)`,
     type:          p.type ?? "multi",
@@ -270,6 +313,8 @@ export async function importPlanningFromJSON(jsonStr: string): Promise<string> {
   }).returning({ id: plannings.id });
 
   const newId = newP.id;
+
+  try {
 
   // 2. Settings
   const s = data.settings;
@@ -390,6 +435,13 @@ export async function importPlanningFromJSON(jsonStr: string): Promise<string> {
     }
   }
 
+  } catch (err) {
+    // Rollback : suppression physique du planning créé pour éviter une coquille vide
+    await db.delete(plannings).where(eq(plannings.id, newId)).catch(() => {});
+    throw err;
+  }
+
+  await db.insert(activityLog).values({ planningId: newId, verb: "imported", targetType: "planning", targetId: newId, summary: "Planning importé depuis JSON" }).catch(() => {});
   revalidatePath("/plannings");
   revalidatePath("/p");
   return newId;

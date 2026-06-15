@@ -8,6 +8,7 @@ import {
   duplicatePlanning, archivePlanning, deletePlanning, updatePlanningMeta,
   importPlanningFromJSON, updatePlanningFromJSON,
   disablePlanning, enablePlanning, unarchivePlanning,
+  restorePlanning, permanentlyDeletePlanning,
 } from "@/lib/actions/plannings";
 import styles from "./Plannings.module.css";
 
@@ -18,15 +19,18 @@ type PlanningRow = {
   type: string;
   archived: boolean;
   disabled: boolean;
+  deletedAt: Date | null;
   viewStart: string;
   viewEnd: string;
   createdAt: Date;
+  domainCount: number;
 };
 
 interface Props {
   active: PlanningRow[];
   archived: PlanningRow[];
   disabled: PlanningRow[];
+  trashed: PlanningRow[];
 }
 
 function fmtDate(d: string) {
@@ -137,7 +141,7 @@ function RenameModal({ planning, onClose, onSaved }: RenameModalProps) {
 }
 
 // ── Planning card ─────────────────────────────────────────────────────────────
-type TabName = "active" | "archived" | "disabled";
+type TabName = "active" | "archived" | "disabled" | "trashed";
 
 interface CardProps {
   p: PlanningRow;
@@ -153,6 +157,8 @@ interface CardProps {
   onDisable?: (p: PlanningRow) => void;
   onEnable?: (p: PlanningRow) => void;
   onUnarchive?: (p: PlanningRow) => void;
+  onRestore?: (p: PlanningRow) => void;
+  onPermanentDelete?: (p: PlanningRow) => void;
   isPending: boolean;
 }
 
@@ -161,6 +167,7 @@ function PlanningCard({
   selected = false, onSelect,
   onRename, onDuplicate, onDelete,
   onArchive, onDisable, onEnable, onUnarchive,
+  onRestore, onPermanentDelete,
   isPending,
 }: CardProps) {
   const isThis = loadingId === p.id;
@@ -185,6 +192,11 @@ function PlanningCard({
       <div className={styles.cardHead}>
         <span className={styles.cardType}>{TYPE_LABELS[p.type] ?? p.type}</span>
         <span className={styles.cardYear}>{p.year}</span>
+        {p.domainCount === 0 && tab !== "trashed" && (
+          <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999, background: "#FEF3C7", color: "#92400E", letterSpacing: "0.04em" }}>
+            VIDE
+          </span>
+        )}
       </div>
 
       <div className={styles.cardTitleRow}>
@@ -195,51 +207,58 @@ function PlanningCard({
 
       {/* Icon actions bar */}
       <div className={styles.cardIconActions}>
-        {/* Primary open button */}
-        <Link href={`/p/${p.id}`} className={styles.openBtn} style={{ fontSize: 12, padding: "5px 12px" }}>
-          Ouvrir →
-        </Link>
+        {/* Primary open button — masqué en corbeille */}
+        {tab !== "trashed" && (
+          <>
+            <Link href={`/p/${p.id}`} className={styles.openBtn} style={{ fontSize: 12, padding: "5px 12px" }}>
+              Ouvrir →
+            </Link>
+            <div className={styles.cardIconSep} />
+          </>
+        )}
 
-        <div className={styles.cardIconSep} />
+        {/* Duplicate / JSON / Rename — masqués en corbeille */}
+        {tab !== "trashed" && (
+          <>
+            <button
+              className={styles.cardIconBtn}
+              title="Dupliquer"
+              aria-label="Dupliquer"
+              onClick={() => onDuplicate(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "dup"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="layers" size={14} aria-hidden />}
+            </button>
 
-        {/* Duplicate */}
-        <button
-          className={styles.cardIconBtn}
-          title="Dupliquer"
-          aria-label="Dupliquer"
-          onClick={() => onDuplicate(p)}
-          disabled={isPending}
-        >
-          {isThis && loadingAction === "dup"
-            ? <span style={{ fontSize: 11 }}>…</span>
-            : <Icon name="layers" size={14} aria-hidden />}
-        </button>
+            <a
+              href={`/api/export/${p.id}`}
+              className={styles.cardIconBtn}
+              title="Exporter JSON"
+              aria-label="Exporter JSON"
+              download
+            >
+              <Icon name="download" size={14} aria-hidden />
+            </a>
 
-        {/* Export JSON */}
-        <a
-          href={`/api/export/${p.id}`}
-          className={styles.cardIconBtn}
-          title="Exporter JSON"
-          aria-label="Exporter JSON"
-          download
-        >
-          <Icon name="download" size={14} aria-hidden />
-        </a>
+            <div style={{ marginLeft: "auto" }} />
 
-        {/* Spacer */}
-        <div style={{ marginLeft: "auto" }} />
+            <button
+              className={styles.cardIconBtn}
+              title="Renommer / Modifier"
+              aria-label="Renommer"
+              onClick={() => onRename(p)}
+            >
+              <Icon name="edit" size={14} aria-hidden />
+            </button>
 
-        {/* Rename */}
-        <button
-          className={styles.cardIconBtn}
-          title="Renommer / Modifier"
-          aria-label="Renommer"
-          onClick={() => onRename(p)}
-        >
-          <Icon name="edit" size={14} aria-hidden />
-        </button>
+            <div className={styles.cardIconSep} />
+          </>
+        )}
 
-        <div className={styles.cardIconSep} />
+        {/* Spacer pour la corbeille */}
+        {tab === "trashed" && <div style={{ marginLeft: "auto" }} />}
 
         {/* Tab-specific actions */}
         {tab === "active" && (
@@ -307,6 +326,33 @@ function PlanningCard({
           </>
         )}
 
+        {tab === "trashed" && (
+          <>
+            <button
+              className={styles.cardIconBtn}
+              title="Restaurer depuis la corbeille"
+              aria-label="Restaurer"
+              onClick={() => onRestore?.(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "restore"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="undo" size={14} aria-hidden />}
+            </button>
+            <button
+              className={`${styles.cardIconBtn} ${styles.cardIconBtnDanger}`}
+              title="Supprimer définitivement (irréversible)"
+              aria-label="Supprimer définitivement"
+              onClick={() => onPermanentDelete?.(p)}
+              disabled={isPending}
+            >
+              {isThis && loadingAction === "perm-delete"
+                ? <span style={{ fontSize: 11 }}>…</span>
+                : <Icon name="trash" size={14} aria-hidden />}
+            </button>
+          </>
+        )}
+
         {tab === "disabled" && (
           <>
             <button
@@ -340,7 +386,7 @@ function PlanningCard({
 
 // ── Main client component ────────────────────────────────────────────────────
 
-export function PlanningListClient({ active, archived, disabled }: Props) {
+export function PlanningListClient({ active, archived, disabled, trashed }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [loadingId, setLoadingId]   = useState<string | null>(null);
@@ -445,6 +491,27 @@ export function PlanningListClient({ active, archived, disabled }: Props) {
     });
   };
 
+  const handleRestore = (p: PlanningRow) => {
+    if (isPending) return;
+    busy(p.id, "restore");
+    startTransition(async () => {
+      await restorePlanning(p.id);
+      notBusy();
+      router.refresh();
+    });
+  };
+
+  const handlePermanentDelete = (p: PlanningRow) => {
+    if (!confirm(`Supprimer définitivement "${p.name}" ?\n\nCette action est irréversible — toutes les données seront effacées.`)) return;
+    if (isPending) return;
+    busy(p.id, "perm-delete");
+    startTransition(async () => {
+      await permanentlyDeletePlanning(p.id);
+      notBusy();
+      router.refresh();
+    });
+  };
+
   // ── Bulk actions ──
 
   const handleBulkArchive = () => {
@@ -521,7 +588,7 @@ export function PlanningListClient({ active, archived, disabled }: Props) {
   };
 
   // ── Current list ──
-  const currentList = tab === "active" ? active : tab === "archived" ? archived : disabled;
+  const currentList = tab === "active" ? active : tab === "archived" ? archived : tab === "disabled" ? disabled : trashed;
 
   const sharedCardProps = {
     loadingId,
@@ -564,13 +631,22 @@ export function PlanningListClient({ active, archived, disabled }: Props) {
         >
           Désactivés ({disabled.length})
         </button>
+        {trashed.length > 0 && (
+          <button
+            className={`${styles.tab} ${tab === "trashed" ? styles.tabActive : ""}`}
+            onClick={() => handleTabChange("trashed")}
+            style={tab !== "trashed" ? { color: "#DC2626" } : undefined}
+          >
+            🗑 Corbeille ({trashed.length})
+          </button>
+        )}
       </div>
 
       {/* Grid */}
       {currentList.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>
-            {tab === "active" ? "Aucun planning actif" : tab === "archived" ? "Aucun planning archivé" : "Aucun planning désactivé"}
+            {tab === "active" ? "Aucun planning actif" : tab === "archived" ? "Aucun planning archivé" : tab === "disabled" ? "Aucun planning désactivé" : "La corbeille est vide"}
           </p>
           {tab === "active" && (
             <>
@@ -598,6 +674,8 @@ export function PlanningListClient({ active, archived, disabled }: Props) {
               onDisable={handleDisable}
               onEnable={handleEnable}
               onUnarchive={handleUnarchive}
+              onRestore={handleRestore}
+              onPermanentDelete={handlePermanentDelete}
             />
           ))}
         </div>
