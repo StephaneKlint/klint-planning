@@ -569,3 +569,79 @@ export async function updatePlanningFromJSON(planningId: string, jsonStr: string
   revalidatePath("/plannings");
   revalidatePath(`/p/${planningId}`);
 }
+
+// ---------------------------------------------------------------------------
+// Bibliothèque de modèles (templates)
+// ---------------------------------------------------------------------------
+
+export async function setTemplateFlag(planningId: string, isTemplate: boolean): Promise<void> {
+  await db.update(plannings).set({ isTemplate }).where(eq(plannings.id, planningId));
+  revalidatePath("/plannings");
+  revalidatePath("/plannings/nouveau");
+}
+
+export async function createPlanningFromTemplate(
+  templateId: string,
+  name: string,
+  referenceDate: string
+): Promise<string> {
+  // 1. Duplicate the template (reuses all config + structure)
+  const newId = await duplicatePlanning(templateId, name);
+
+  // 2. Find earliest date in the new planning
+  const newLots = await db.select({ id: lots.id }).from(lots).where(eq(lots.planningId, newId));
+  if (!newLots.length) return newId;
+
+  const lotIds = newLots.map((l) => l.id);
+  const [newPhases, newMilestones] = await Promise.all([
+    db.select({ id: phases.id, startDate: phases.startDate, endDate: phases.endDate })
+      .from(phases).where(inArray(phases.lotId, lotIds)),
+    db.select({ id: milestones.id, date: milestones.date })
+      .from(milestones).where(inArray(milestones.lotId, lotIds)),
+  ]);
+
+  const allDates = [
+    ...newPhases.map((p) => p.startDate),
+    ...newMilestones.map((m) => m.date),
+  ];
+  if (!allDates.length) return newId;
+
+  const earliest = allDates.reduce((a, b) => (a < b ? a : b));
+  const offsetDays = Math.round(
+    (new Date(referenceDate).getTime() - new Date(earliest).getTime()) / 86400000
+  );
+
+  if (offsetDays === 0) return newId;
+
+  const shiftDate = (d: string): string => {
+    const dt = new Date(d + "T12:00:00Z");
+    dt.setUTCDate(dt.getUTCDate() + offsetDays);
+    return dt.toISOString().slice(0, 10);
+  };
+
+  // 3. Shift all phases, milestones, and planning view dates
+  await Promise.all([
+    ...newPhases.map((p) =>
+      db.update(phases)
+        .set({ startDate: shiftDate(p.startDate), endDate: shiftDate(p.endDate) })
+        .where(eq(phases.id, p.id))
+    ),
+    ...newMilestones.map((m) =>
+      db.update(milestones)
+        .set({ date: shiftDate(m.date) })
+        .where(eq(milestones.id, m.id))
+    ),
+  ]);
+
+  const [src] = await db.select().from(plannings).where(eq(plannings.id, templateId));
+  if (src) {
+    await db.update(plannings).set({
+      viewStart:     shiftDate(src.viewStart),
+      viewEnd:       shiftDate(src.viewEnd),
+      referenceDate: src.referenceDate ? shiftDate(src.referenceDate) : null,
+    }).where(eq(plannings.id, newId));
+  }
+
+  revalidatePath("/plannings");
+  return newId;
+}

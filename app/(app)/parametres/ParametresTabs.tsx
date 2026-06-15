@@ -13,6 +13,7 @@ import {
 import { saveAppLogo, saveAppFavicon } from "@/lib/actions/appSettings";
 import { seedHolidays, createClosurePeriod, updateClosurePeriod, deleteClosurePeriod } from "@/lib/actions/closurePeriods";
 import { changePassword } from "@/lib/actions/authActions";
+import { setTemplateFlag } from "@/lib/actions/plannings";
 import type { ClosurePeriodRow } from "@/lib/db/queries";
 
 type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "membres" | "apparence" | "calendrier" | "securite";
@@ -82,6 +83,9 @@ export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppS
   const [faviconUnsaved,  setFaviconUnsaved]   = useState(false);
   const [faviconSaving,   setFaviconSaving]    = useState(false);
   const [faviconMsg,      setFaviconMsg]       = useState<string | null>(null);
+
+  // ── Template flag ─────────────────────────────────────────────────────
+  const [isTemplateLocal, setIsTemplateLocal] = useState(data.planning.isTemplate ?? false);
 
   // ── Sécurité — changement de mot de passe ─────────────────────────────
   const [secCurrent, setSecCurrent]     = useState("");
@@ -188,6 +192,33 @@ export function ParametresTabs({ data, appCfg }: { data: GanttData; appCfg: AppS
                 </button>
               </div>
             )}
+
+            {/* ── Modèle de planning ─────────────────────────────────── */}
+            <div className={styles.settingsBlock} style={{ marginTop: 16 }}>
+              <p className={styles.blockTitle} style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+                Bibliothèque de modèles
+              </p>
+              <div className={styles.settingRow}>
+                <label className={styles.settingLabel}>
+                  <input
+                    type="checkbox"
+                    checked={isTemplateLocal}
+                    onChange={(e) => {
+                      const val = e.target.checked;
+                      setIsTemplateLocal(val);
+                      startTransition(async () => {
+                        await setTemplateFlag(planning.id, val);
+                        router.refresh();
+                      });
+                    }}
+                  />
+                  Utiliser ce planning comme modèle
+                </label>
+              </div>
+              <p style={{ fontSize: 12, color: "#64748B", margin: "4px 0 0 22px" }}>
+                Les modèles apparaissent dans &quot;Nouveau planning → Depuis un modèle&quot; avec recalage automatique des dates.
+              </p>
+            </div>
           </form>
         </div>
       )}

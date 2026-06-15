@@ -1,14 +1,14 @@
 "use client";
 /**
  * NouveauPlanningClient — 3-mode creation flow:
- * 1. Vide         — create empty planning (existing form)
- * 2. Dupliquer    — clone an existing planning with all its structure
- * 3. Depuis modèle — same as dupliquer (template tag coming later)
+ * 1. Vide         — create empty planning
+ * 2. Dupliquer    — clone any active planning
+ * 3. Depuis modèle — clone a template planning with date recalculation
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createPlanning, duplicatePlanning } from "@/lib/actions/plannings";
+import { createPlanning, duplicatePlanning, createPlanningFromTemplate } from "@/lib/actions/plannings";
 import styles from "./NewPlanning.module.css";
 
 type Mode = "vide" | "dupliquer" | "modele";
@@ -20,10 +20,12 @@ interface PlanningItem {
   type: string;
   viewStart: string;
   viewEnd: string;
+  isTemplate: boolean;
 }
 
 interface Props {
   plannings: PlanningItem[];
+  templates: PlanningItem[];
 }
 
 const MODES: { id: Mode; icon: string; title: string; desc: string }[] = [
@@ -43,17 +45,18 @@ const MODES: { id: Mode; icon: string; title: string; desc: string }[] = [
     id: "modele",
     icon: "🗂️",
     title: "Depuis un modèle",
-    desc: "Démarrer depuis un planning de référence pour l'adapter à un nouveau contexte.",
+    desc: "Démarrer depuis un modèle et recaler toutes les dates sur une nouvelle date de début.",
   },
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-export function NouveauPlanningClient({ plannings }: Props) {
+export function NouveauPlanningClient({ plannings, templates }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("vide");
   const [selectedId, setSelectedId] = useState<string>("");
   const [dupName, setDupName] = useState("");
+  const [referenceDate, setReferenceDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -70,6 +73,23 @@ export function NouveauPlanningClient({ plannings }: Props) {
     });
   };
 
+  const handleFromTemplate = () => {
+    if (!selectedId) { setError("Veuillez sélectionner un modèle."); return; }
+    if (!referenceDate) { setError("Veuillez saisir une date de début."); return; }
+    if (!dupName.trim()) { setError("Veuillez nommer le nouveau planning."); return; }
+    setError(null);
+    startTransition(async () => {
+      try {
+        const newId = await createPlanningFromTemplate(selectedId, dupName.trim(), referenceDate);
+        router.push(`/p/${newId}`);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Erreur lors de la création depuis le modèle.");
+      }
+    });
+  };
+
+  const currentList = mode === "modele" ? templates : plannings;
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -83,7 +103,7 @@ export function NouveauPlanningClient({ plannings }: Props) {
           <button
             key={m.id}
             className={`${styles.modeCard} ${mode === m.id ? styles.modeCardActive : ""}`}
-            onClick={() => { setMode(m.id); setSelectedId(""); setDupName(""); setError(null); }}
+            onClick={() => { setMode(m.id); setSelectedId(""); setDupName(""); setReferenceDate(""); setError(null); }}
           >
             <span className={styles.modeIcon}>{m.icon}</span>
             <span className={styles.modeTitle}>{m.title}</span>
@@ -179,8 +199,8 @@ export function NouveauPlanningClient({ plannings }: Props) {
         </form>
       )}
 
-      {/* ── MODE DUPLIQUER ou MODÈLE ── */}
-      {(mode === "dupliquer" || mode === "modele") && (
+      {/* ── MODE DUPLIQUER ── */}
+      {mode === "dupliquer" && (
         <div className={styles.form}>
           {plannings.length === 0 ? (
             <div className={styles.emptyPickerState}>
@@ -193,8 +213,7 @@ export function NouveauPlanningClient({ plannings }: Props) {
             <>
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>
-                  {mode === "modele" ? "Choisir le planning modèle" : "Planning à dupliquer"}{" "}
-                  <span className={styles.required}>*</span>
+                  Planning à dupliquer <span className={styles.required}>*</span>
                 </label>
                 <div className={styles.planningPicker}>
                   {plannings.map((p) => (
@@ -240,9 +259,7 @@ export function NouveauPlanningClient({ plannings }: Props) {
                 </div>
               )}
 
-              {error && (
-                <p style={{ color: "#DC2626", fontSize: 12, margin: 0 }}>{error}</p>
-              )}
+              {error && <p style={{ color: "#DC2626", fontSize: 12, margin: 0 }}>{error}</p>}
 
               <div className={styles.actions}>
                 <Link href="/plannings" className={styles.cancelBtn}>Annuler</Link>
@@ -252,7 +269,100 @@ export function NouveauPlanningClient({ plannings }: Props) {
                   onClick={handleDuplicate}
                   disabled={isPending || !selectedId}
                 >
-                  {isPending ? "Duplication…" : mode === "modele" ? "Créer depuis ce modèle" : "Dupliquer le planning"}
+                  {isPending ? "Duplication…" : "Dupliquer le planning"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── MODE MODÈLE ── */}
+      {mode === "modele" && (
+        <div className={styles.form}>
+          {templates.length === 0 ? (
+            <div className={styles.emptyPickerState}>
+              <span style={{ fontSize: 32 }}>🗂️</span>
+              <p style={{ margin: "8px 0 0", color: "#6B7280", fontSize: 13 }}>
+                Aucun modèle disponible. Marquez un planning comme modèle dans ses Paramètres → Général.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className={styles.fieldGroup}>
+                <label className={styles.label}>
+                  Modèle à utiliser <span className={styles.required}>*</span>
+                </label>
+                <div className={styles.planningPicker}>
+                  {currentList.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`${styles.planningPickerItem} ${selectedId === p.id ? styles.planningPickerItemSelected : ""}`}
+                      onClick={() => { setSelectedId(p.id); setDupName(`${p.name} — copie`); setError(null); }}
+                    >
+                      <span className={styles.planningPickerIcon}>🗂️</span>
+                      <div className={styles.planningPickerText}>
+                        <span className={styles.planningPickerName}>{p.name}</span>
+                        <span className={styles.planningPickerMeta}>
+                          {p.year} · {p.type === "mono" ? "Mono-projet" : "Multi-projets"} · {p.viewStart} → {p.viewEnd}
+                        </span>
+                      </div>
+                      {selectedId === p.id && (
+                        <span className={styles.planningPickerCheck}>✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedId && (
+                <>
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.label} htmlFor="tplName">
+                      Nom du nouveau planning <span className={styles.required}>*</span>
+                    </label>
+                    <input
+                      id="tplName"
+                      type="text"
+                      value={dupName}
+                      onChange={(e) => setDupName(e.target.value)}
+                      maxLength={200}
+                      placeholder="ex. Planning CRM Client X 2027"
+                      className={styles.input}
+                      autoFocus
+                    />
+                  </div>
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.label} htmlFor="refDate">
+                      Date de début du projet <span className={styles.required}>*</span>
+                    </label>
+                    <p style={{ fontSize: 12, color: "#64748B", margin: "0 0 6px" }}>
+                      Toutes les dates seront recalées sur cette nouvelle date de démarrage.
+                    </p>
+                    <input
+                      id="refDate"
+                      type="date"
+                      value={referenceDate}
+                      onChange={(e) => setReferenceDate(e.target.value)}
+                      className={styles.input}
+                      style={{ maxWidth: 200 }}
+                    />
+                  </div>
+                </>
+              )}
+
+              {error && <p style={{ color: "#DC2626", fontSize: 12, margin: 0 }}>{error}</p>}
+
+              <div className={styles.actions}>
+                <Link href="/plannings" className={styles.cancelBtn}>Annuler</Link>
+                <button
+                  type="button"
+                  className={styles.submitBtn}
+                  onClick={handleFromTemplate}
+                  disabled={isPending || !selectedId || !referenceDate || !dupName.trim()}
+                >
+                  {isPending ? "Création…" : "Créer depuis ce modèle"}
                 </button>
               </div>
             </>

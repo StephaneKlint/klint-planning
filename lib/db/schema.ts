@@ -107,6 +107,7 @@ export const plannings = pgTable("plannings", {
   referenceDate: date("reference_date"),
   archived: boolean("archived").default(false).notNull(),
   disabled: boolean("disabled").default(false).notNull(),
+  isTemplate: boolean("is_template").default(false).notNull(),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -352,6 +353,27 @@ export const shareTokens = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }),
   },
   (t) => [index("share_tokens_by_planning").on(t.planningId)]
+);
+
+// ---- Baseline / Plan de référence ----------------------------------------
+
+export const baselines = pgTable(
+  "baselines",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    planningId: uuid("planning_id")
+      .notNull()
+      .references(() => plannings.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    snapshot: jsonb("snapshot")
+      .$type<{
+        phases: Record<string, { startDate: string; endDate: string }>;
+        milestones: Record<string, { date: string }>;
+      }>()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("baselines_by_planning").on(t.planningId)]
 );
 
 // ---- Journalisation des connexions --------------------------------------

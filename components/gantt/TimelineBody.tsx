@@ -4,6 +4,7 @@
  * Renders: weekend bands, domain bands, phase pills, milestones, today line.
  * Uses absolute positioning (same rowOffsets as GanttSide).
  */
+import React from "react";
 import type { RowEntry, ColorMode } from "./types";
 import type { DomainRow, LotRow, PhaseRow, MilestoneRow, MilestoneTypeRow, StatusRow, MemberRow, ClosurePeriodRow } from "@/lib/db/queries";
 import { PhasePill } from "./PhasePill";
@@ -70,7 +71,7 @@ export function TimelineBody({
   trackByPhaseId = {},
   rowH: singleRowH = 44,
 }: TimelineBodyProps) {
-  const { togglePhaseSelection, selectedPhaseIds, openEdit, editTarget } = useGanttStore();
+  const { togglePhaseSelection, selectedPhaseIds, openEdit, editTarget, baselinePhases, showBaseline } = useGanttStore();
   const domainById = Object.fromEntries(domains.map((d) => [d.id, d]));
   const lotById = Object.fromEntries(lots.map((l) => [l.id, l]));
   const statusByCode = Object.fromEntries(statuses.map((s) => [s.code, s]));
@@ -279,26 +280,49 @@ export function TimelineBody({
           // Dim non-selected when a selection is active
           const dimmed = selectedPhaseIds.size > 0 && !isSelected;
 
+          const bSnap = showBaseline && baselinePhases ? baselinePhases[phase.id] : null;
+          const bLeft  = bSnap ? xOfDate(bSnap.startDate) : 0;
+          const bRight = bSnap ? xOfDate(bSnap.endDate)   : 0;
+          const bWidth = Math.max(bRight - bLeft, 4);
+          const bChanged = bSnap && (bSnap.startDate !== phase.startDate || bSnap.endDate !== phase.endDate);
+
           return (
-            <PhasePill
-              key={phase.id}
-              left={left}
-              width={width}
-              top={pillTop}
-              height={PILL_H}
-              label={phaseLabel(phase)}
-              startDate={phase.startDate}
-              endDate={phase.endDate}
-              progress={phase.progress}
-              bg={bg}
-              fg={fg}
-              hasNote={!!phase.note}
-              selected={isSelected}
-              editing={isEditing}
-              status={phase.status}
-              dimmed={dimmed}
-              onClick={(e) => togglePhaseSelection(phase.id, e.metaKey || e.ctrlKey)}
-            />
+            <React.Fragment key={phase.id}>
+              <PhasePill
+                left={left}
+                width={width}
+                top={pillTop}
+                height={PILL_H}
+                label={phaseLabel(phase)}
+                startDate={phase.startDate}
+                endDate={phase.endDate}
+                progress={phase.progress}
+                bg={bg}
+                fg={fg}
+                hasNote={!!phase.note}
+                selected={isSelected}
+                editing={isEditing}
+                status={phase.status}
+                dimmed={dimmed}
+                onClick={(e) => togglePhaseSelection(phase.id, e.metaKey || e.ctrlKey)}
+              />
+              {bSnap && bChanged && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: bLeft,
+                    width: bWidth,
+                    top: pillTop + PILL_H + 1,
+                    height: 4,
+                    borderRadius: 2,
+                    background: "rgba(59,130,246,0.55)",
+                    pointerEvents: "none",
+                    zIndex: 1,
+                  }}
+                  title={`Baseline : ${bSnap.startDate} → ${bSnap.endDate}`}
+                />
+              )}
+            </React.Fragment>
           );
         });
 

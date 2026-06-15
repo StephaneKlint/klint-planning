@@ -2,7 +2,7 @@
  * /p/[planningId] — Vue Gantt principale (Server Component).
  */
 import { notFound } from "next/navigation";
-import { getGanttData } from "@/lib/db/queries";
+import { getGanttData, getLatestBaselineForPlanning } from "@/lib/db/queries";
 import { GanttView } from "./GanttView";
 
 interface Props {
@@ -11,7 +11,10 @@ interface Props {
 
 export default async function PlanningPage({ params }: Props) {
   const { planningId } = await params;
-  const data = await getGanttData(planningId);
+  const [data, initialBaseline] = await Promise.all([
+    getGanttData(planningId),
+    getLatestBaselineForPlanning(planningId),
+  ]);
   if (!data) notFound();
 
   const referenceDate = data.planning.referenceDate ?? new Date().toISOString().slice(0, 10);
@@ -23,6 +26,7 @@ export default async function PlanningPage({ params }: Props) {
   return (
     <GanttView
       initialData={data}
+      initialBaseline={initialBaseline}
       demoMemberId={demoMemberId}
       planningId={planningId}
       domains={data.domains}

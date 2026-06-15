@@ -3,7 +3,7 @@ import {
   plannings, domains, lots, phases, milestones,
   planningMembers, users, phaseAssignees,
   phaseTypes, milestoneTypes, statuses, planningSettings,
-  activityLog, closurePeriods, connectionLogs, shareTokens,
+  activityLog, closurePeriods, connectionLogs, shareTokens, baselines,
 } from "./schema";
 import { eq, asc, desc, inArray, and } from "drizzle-orm";
 
@@ -115,7 +115,7 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
   };
 }
 
-export async function listPlannings(filter: "active" | "archived" | "disabled" | "all" = "active") {
+export async function listPlannings(filter: "active" | "archived" | "disabled" | "all" | "templates" = "active") {
   const rows = await db
     .select({
       id: plannings.id,
@@ -124,15 +124,17 @@ export async function listPlannings(filter: "active" | "archived" | "disabled" |
       type: plannings.type,
       archived: plannings.archived,
       disabled: plannings.disabled,
+      isTemplate: plannings.isTemplate,
       viewStart: plannings.viewStart,
       viewEnd: plannings.viewEnd,
       createdAt: plannings.createdAt,
     })
     .from(plannings)
     .where(
-      filter === "active"   ? and(eq(plannings.archived, false), eq(plannings.disabled, false)) :
-      filter === "archived" ? eq(plannings.archived, true) :
-      filter === "disabled" ? and(eq(plannings.archived, false), eq(plannings.disabled, true)) :
+      filter === "active"    ? and(eq(plannings.archived, false), eq(plannings.disabled, false), eq(plannings.isTemplate, false)) :
+      filter === "templates" ? and(eq(plannings.archived, false), eq(plannings.disabled, false), eq(plannings.isTemplate, true)) :
+      filter === "archived"  ? eq(plannings.archived, true) :
+      filter === "disabled"  ? and(eq(plannings.archived, false), eq(plannings.disabled, true)) :
       undefined
     )
     .orderBy(desc(plannings.createdAt));
@@ -241,6 +243,33 @@ export async function listUsersNotInPlanning(planningId: string): Promise<Existi
     }
   }
   return result;
+}
+
+export type BaselineRow = {
+  id: string;
+  name: string;
+  createdAt: Date;
+  phases: Record<string, { startDate: string; endDate: string }>;
+  milestones: Record<string, { date: string }>;
+};
+
+export async function getLatestBaselineForPlanning(planningId: string): Promise<BaselineRow | null> {
+  const [row] = await db
+    .select()
+    .from(baselines)
+    .where(eq(baselines.planningId, planningId))
+    .orderBy(desc(baselines.createdAt))
+    .limit(1);
+
+  if (!row) return null;
+  const snap = row.snapshot as { phases: Record<string, { startDate: string; endDate: string }>; milestones: Record<string, { date: string }> };
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: row.createdAt,
+    phases: snap.phases ?? {},
+    milestones: snap.milestones ?? {},
+  };
 }
 
 export async function getGanttDataByToken(token: string): Promise<GanttData | null> {

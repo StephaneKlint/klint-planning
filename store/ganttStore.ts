@@ -103,6 +103,11 @@ interface GanttState {
   // Project visibility filter
   projectFilterOpen: boolean;
   setProjectFilterOpen: (open: boolean) => void;
+  // Baseline
+  baselinePhases: Record<string, { startDate: string; endDate: string }> | null;
+  showBaseline: boolean;
+  setBaselinePhases: (phases: Record<string, { startDate: string; endDate: string }> | null) => void;
+  toggleShowBaseline: () => void;
 }
 
 export const useGanttStore = create<GanttState>((set, get) => ({
@@ -124,6 +129,8 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   filterDateEnd: null,
   undoStack: [],
   projectFilterOpen: false,
+  baselinePhases: null,
+  showBaseline: false,
 
   setZoom: (zoom) => set({ zoom }),
   setDensity: (density) => set({ density }),
@@ -165,6 +172,9 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   requestScroll: (scrollRequest) => set({ scrollRequest }),
   setFilterDates: (filterDateStart, filterDateEnd) => set({ filterDateStart, filterDateEnd }),
   clearFilterDates: () => set({ filterDateStart: null, filterDateEnd: null }),
+
+  setBaselinePhases: (baselinePhases) => set({ baselinePhases }),
+  toggleShowBaseline: () => set((s) => ({ showBaseline: !s.showBaseline })),
 
   pushUndo: (entry) => set((s) => ({
     undoStack: [entry, ...s.undoStack].slice(0, UNDO_MAX),

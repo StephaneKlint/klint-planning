@@ -24,6 +24,8 @@ import {
 } from "@/lib/actions/planning";
 import { restoreMember } from "@/lib/actions/members";
 import { getOrCreateShareToken, revokeShareToken } from "@/lib/actions/share";
+import { createBaseline, deleteBaseline } from "@/lib/actions/baseline";
+import type { BaselineRow } from "@/lib/db/queries";
 import type { GanttProps } from "@/components/gantt/types";
 import type { GanttData } from "@/lib/db/queries";
 import type { UndoEntry } from "@/store/ganttStore";
@@ -33,9 +35,11 @@ interface GanttViewProps extends GanttProps {
   initialData: GanttData;
   /** Premier membre du planning — utilisé pour le heartbeat demo (Jalon 5: auth session) */
   demoMemberId?: string;
+  /** Baseline chargée côté serveur au démarrage (null si aucune) */
+  initialBaseline?: BaselineRow | null;
 }
 
-export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProps) {
+export function GanttView({ initialData, demoMemberId, initialBaseline, ...props }: GanttViewProps) {
   const ganttRef = useRef<HTMLDivElement>(null);
   const [exportPending, setExportPending] = useState(false);
   const [exportPngPending, setExportPngPending] = useState(false);
@@ -62,7 +66,19 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     projectFilterOpen, setProjectFilterOpen,
     hiddenLotIds,
     editTarget, closeEdit,
+    baselinePhases, setBaselinePhases,
+    showBaseline, toggleShowBaseline,
   } = useGanttStore();
+
+  const hasBaseline = baselinePhases !== null;
+
+  // Initialise le store avec la baseline chargée côté serveur
+  useEffect(() => {
+    if (initialBaseline) {
+      setBaselinePhases(initialBaseline.phases);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const qc = useQueryClient();
 
@@ -396,6 +412,23 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
     XLSX.writeFile(wb, `${safeName}_planning.xlsx`);
   };
 
+  // ── Baseline ────────────────────────────────────────────────────────────────
+  const handleCreateBaseline = async () => {
+    const today = new Date().toLocaleDateString("fr-FR");
+    await createBaseline(props.planningId, `Baseline du ${today}`);
+    const snapshot = Object.fromEntries(
+      liveData.phases.map((p) => [p.id, { startDate: p.startDate, endDate: p.endDate }])
+    );
+    setBaselinePhases(snapshot);
+    if (!showBaseline) toggleShowBaseline();
+  };
+
+  const handleDeleteBaseline = async () => {
+    await deleteBaseline(props.planningId);
+    setBaselinePhases(null);
+    if (showBaseline) toggleShowBaseline();
+  };
+
   // ── Share link ──────────────────────────────────────────────────────────────
   const handleOpenShare = async () => {
     setShareOpen(true);
@@ -469,6 +502,11 @@ export function GanttView({ initialData, demoMemberId, ...props }: GanttViewProp
         showClosures={showClosures}
         onToggleHolidays={toggleHolidays}
         onToggleClosures={toggleClosures}
+        hasBaseline={hasBaseline}
+        showBaseline={showBaseline}
+        onToggleBaseline={toggleShowBaseline}
+        onCreateBaseline={handleCreateBaseline}
+        onDeleteBaseline={handleDeleteBaseline}
       />
 
       {/* Modal sélecteur de projets */}

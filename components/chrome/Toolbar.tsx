@@ -55,6 +55,12 @@ interface ToolbarProps {
   onToggleClosures?: () => void;
   colorMode?: "domain" | "status" | "person";
   onColorModeChange?: (mode: "domain" | "status" | "person") => void;
+  // Baseline
+  hasBaseline?: boolean;
+  showBaseline?: boolean;
+  onToggleBaseline?: () => void;
+  onCreateBaseline?: () => void;
+  onDeleteBaseline?: () => void;
 }
 
 const ZOOM_LEVELS: ZoomLevel[] = ["1m", "3m", "6m", "12m"];
@@ -103,6 +109,11 @@ export function Toolbar({
   onToggleClosures,
   colorMode,
   onColorModeChange,
+  hasBaseline = false,
+  showBaseline = false,
+  onToggleBaseline,
+  onCreateBaseline,
+  onDeleteBaseline,
 }: ToolbarProps) {
   const hasFilter = !!(filterStart || filterEnd);
 
@@ -249,6 +260,27 @@ export function Toolbar({
                   {label}
                 </button>
               ))}
+
+              <div className={styles.dropdownDivider} />
+
+              {/* Baseline */}
+              <p className={styles.dropdownSection}>Plan de référence</p>
+              {hasBaseline && (
+                <button className={styles.dropdownItem} onClick={onToggleBaseline}>
+                  <span className={styles.dropdownCheck}>{showBaseline ? "✓" : ""}</span>
+                  Afficher la baseline
+                </button>
+              )}
+              <button className={styles.dropdownItem} onClick={onCreateBaseline}>
+                <span className={styles.dropdownCheck} />
+                {hasBaseline ? "Recréer la baseline" : "Créer une baseline"}
+              </button>
+              {hasBaseline && (
+                <button className={styles.dropdownItem} onClick={onDeleteBaseline} style={{ color: "#DC2626" }}>
+                  <span className={styles.dropdownCheck} />
+                  Supprimer la baseline
+                </button>
+              )}
 
               <div className={styles.dropdownDivider} />
 
