@@ -201,7 +201,8 @@ const SECTIONS: SectionDef[] = [
   { id: "pdf",          num: "10", title: "Export PDF A3",                    keywords: "pdf export a3 imprimer impression format paysage capture download télécharger largeur adaptative" },
   { id: "calendrier",   num: "11", title: "Fermetures & Jours fériés",        keywords: "fermetures jours fériés calendrier congés été hiver gel gel-code période custom bande colorée affichage toggle" },
   { id: "historique",   num: "12", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log" },
-  { id: "securite",    num: "13", title: "Sécurité & Mot de passe",              keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt" },
+  { id: "securite",     num: "13", title: "Sécurité & Mot de passe",              keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt" },
+  { id: "portefeuille", num: "14", title: "Vue Portefeuille",                    keywords: "portefeuille dashboard multi-plannings vue globale consolidée jalons à venir dépassés retard risque filtre statut progression cards timeline cross-planning" },
 ];
 
 export default function AidePage() {
@@ -738,9 +739,46 @@ export default function AidePage() {
         </section>
       )}
 
+      {show("securite") && show("portefeuille") && <hr style={S.divider} />}
+
+      {/* ── 14. Vue Portefeuille ── */}
+      {show("portefeuille") && (
+        <section style={S.section} id="portefeuille">
+          <h2 style={S.h2}><span style={S.pill}>14</span> Vue Portefeuille</h2>
+          <dl style={S.dl}>
+            <div>
+              <dt style={S.dt}>Accéder au Portefeuille</dt>
+              <dd style={S.dd}>Cliquez sur l&apos;icône <strong>grille</strong> (deuxième icône du rail, entre Plannings et Planning) pour ouvrir le tableau de bord consolidé. Il affiche tous vos plannings actifs en un coup d&apos;œil.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Cards de statut</dt>
+              <dd style={S.dd}>
+                Chaque planning est représenté par une card indiquant :<br />
+                — <strong>Statut automatique</strong> : <em>En retard</em> (rouge) si une phase est dépassée ou un jalon n&apos;est pas encore marqué terminé ; <em>À risque</em> (orange) si un jalon arrive dans moins de 7 jours ; <em>Dans les temps</em> (vert) sinon.<br />
+                — <strong>Barre de progression</strong> : moyenne de l&apos;avancement de toutes les phases du planning.<br />
+                — <strong>Compteurs</strong> : nombre de phases, jalons, et phases en retard le cas échéant.
+              </dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Jalons dépassés et à venir</dt>
+              <dd style={S.dd}>Chaque card liste les jalons dont la date est dépassée (fond rouge, date en rouge) et les jalons prévus dans les 30 prochains jours. Cliquez sur <strong>Ouvrir le planning →</strong> pour naviguer directement vers le Gantt correspondant.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Filtres par statut</dt>
+              <dd style={S.dd}>Les onglets <strong>Tous / En retard / À risque / Dans les temps</strong> filtrent les cards affichées. Le compteur dans chaque onglet indique combien de plannings correspondent.</dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Timeline globale</dt>
+              <dd style={S.dd}>En bas de la page, la section <strong>Tous les jalons — 30 prochains jours</strong> liste l&apos;ensemble des jalons à venir sur tous vos plannings, triés par date, avec le nom du planning associé. Utile pour une revue hebdomadaire croisée avant un COPIL.</dd>
+            </div>
+          </dl>
+          <Tip>Le statut d&apos;un planning est calculé à chaque chargement de la page. Il n&apos;existe pas de statut manuel : c&apos;est toujours le reflet des données réelles du planning.</Tip>
+        </section>
+      )}
+
       {/* Footer */}
       <div style={{ marginTop: 48, paddingTop: 20, borderTop: "1px solid var(--klint-line, #E6E8EE)", fontSize: 12, color: "#9CA3AF" }}>
-        Klint Planning v1.0 — Jalons 0–12 · Klint Consulting © 2026
+        Klint Planning v1.0 — Jalons 0–16 · Klint Consulting © 2026
       </div>
     </div>
   );
