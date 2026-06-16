@@ -653,6 +653,125 @@ export async function moveLot(lotId: string, newDomainId: string, planningId: st
 }
 
 // ---------------------------------------------------------------------------
+// Duplicate phase → another lot
+// ---------------------------------------------------------------------------
+
+const DuplicatePhaseSchema = z.object({
+  phaseId:     z.string().uuid(),
+  targetLotId: z.string().uuid(),
+  planningId:  z.string().uuid(),
+});
+
+export async function duplicatePhase(input: z.infer<typeof DuplicatePhaseSchema>) {
+  const data = DuplicatePhaseSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  const [src] = await db.select().from(phases).where(eq(phases.id, data.phaseId));
+  if (!src) throw new Error("Phase introuvable.");
+
+  const existing = await db
+    .select({ sortOrder: phases.sortOrder })
+    .from(phases)
+    .where(eq(phases.lotId, data.targetLotId));
+  const maxSort = existing.reduce((m, p) => Math.max(m, p.sortOrder), -1);
+
+  const [inserted] = await db.insert(phases).values({
+    lotId: data.targetLotId,
+    type: src.type, label: src.label,
+    startDate: src.startDate, endDate: src.endDate,
+    status: src.status, progress: src.progress,
+    color: src.color, note: src.note,
+    sortOrder: maxSort + 1,
+  }).returning({ id: phases.id });
+
+  await logActivity(data.planningId, "duplicated", "phase", inserted.id,
+    `Phase dupliquée : ${src.label ?? src.type}`);
+  revalidatePath(`/p/${data.planningId}`);
+  return inserted.id;
+}
+
+// ---------------------------------------------------------------------------
+// Duplicate all phases of a lot → another lot
+// ---------------------------------------------------------------------------
+
+const DuplicateLotPhasesSchema = z.object({
+  sourceLotId: z.string().uuid(),
+  targetLotId: z.string().uuid(),
+  planningId:  z.string().uuid(),
+});
+
+export async function duplicateLotPhases(input: z.infer<typeof DuplicateLotPhasesSchema>) {
+  const data = DuplicateLotPhasesSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  const srcPhases = await db.select().from(phases).where(eq(phases.lotId, data.sourceLotId));
+  if (srcPhases.length === 0) return;
+
+  const existing = await db
+    .select({ sortOrder: phases.sortOrder })
+    .from(phases)
+    .where(eq(phases.lotId, data.targetLotId));
+  const offset = existing.reduce((m, p) => Math.max(m, p.sortOrder), -1) + 1;
+
+  const sorted = [...srcPhases].sort((a, b) => a.sortOrder - b.sortOrder);
+  await db.insert(phases).values(
+    sorted.map((p, i) => ({
+      lotId: data.targetLotId,
+      type: p.type, label: p.label,
+      startDate: p.startDate, endDate: p.endDate,
+      status: p.status, progress: p.progress,
+      color: p.color, note: p.note,
+      sortOrder: offset + i,
+    }))
+  );
+
+  await logActivity(data.planningId, "duplicated", "lot", data.sourceLotId,
+    `${sorted.length} phase${sorted.length > 1 ? "s" : ""} copiée${sorted.length > 1 ? "s" : ""} vers le projet cible`);
+  revalidatePath(`/p/${data.planningId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Reorder lots within a domain
+// ---------------------------------------------------------------------------
+
+const ReorderLotsSchema = z.object({
+  domainId:   z.string().uuid(),
+  planningId: z.string().uuid(),
+  lotIds:     z.array(z.string().uuid()).min(1),
+});
+
+export async function reorderLots(input: z.infer<typeof ReorderLotsSchema>) {
+  const data = ReorderLotsSchema.parse(input);
+  await assertCanEdit(data.planningId);
+  await Promise.all(
+    data.lotIds.map((id, i) => db.update(lots).set({ sortOrder: i }).where(eq(lots.id, id)))
+  );
+  await logActivity(data.planningId, "reordered", "lot", data.lotIds[0],
+    `${data.lotIds.length} lots réordonnés`);
+  revalidatePath(`/p/${data.planningId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Reorder domains
+// ---------------------------------------------------------------------------
+
+const ReorderDomainsSchema = z.object({
+  planningId: z.string().uuid(),
+  domainIds:  z.array(z.string().uuid()).min(1),
+});
+
+export async function reorderDomains(input: z.infer<typeof ReorderDomainsSchema>) {
+  const data = ReorderDomainsSchema.parse(input);
+  await assertCanEdit(data.planningId);
+  await Promise.all(
+    data.domainIds.map((id, i) => db.update(domains).set({ sortOrder: i }).where(eq(domains.id, id)))
+  );
+  await logActivity(data.planningId, "reordered", "domain", data.domainIds[0],
+    `${data.domainIds.length} domaines réordonnés`);
+  revalidatePath(`/p/${data.planningId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Data fetch action (callable from client via TanStack Query)
 // Server Action boundary ensures DB code stays server-side.
 // ---------------------------------------------------------------------------

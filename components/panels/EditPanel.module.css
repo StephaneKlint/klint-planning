@@ -683,3 +683,72 @@
 }
 .createSubmitBtn:hover { background: #002070; }
 .createSubmitBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Duplicate lot picker ── */
+.dupPicker {
+  margin: 0 16px 16px;
+  padding: 12px 14px;
+  border: 1.5px solid #BFDBFE;
+  border-radius: 10px;
+  background: #EFF6FF;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dupPickerTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1E40AF;
+  margin: 0;
+}
+
+.dupSelect {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-family: var(--font-display, system-ui);
+  color: var(--klint-navy, #001036);
+  background: #ffffff;
+  border: 1.5px solid #BFDBFE;
+  border-radius: 7px;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
+}
+.dupSelect:focus { border-color: #3B82F6; }
+
+.dupActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.dupCancel {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: var(--font-display, system-ui);
+  font-weight: 600;
+  color: #6B7280;
+  background: transparent;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+.dupCancel:hover { background: #F3F4F6; }
+
+.dupConfirm {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: var(--font-display, system-ui);
+  font-weight: 700;
+  color: white;
+  background: #2563EB;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+.dupConfirm:hover:not(:disabled) { background: #1D4ED8; }
+.dupConfirm:disabled { opacity: 0.4; cursor: not-allowed; }

@@ -21,7 +21,7 @@ import {
   updatePhaseDates, updatePhaseColor, updatePhaseLabel,
   updateMilestone,
   restorePhase, restoreMilestone, restoreLot,
-  markLotDone,
+  markLotDone, reorderLots, reorderDomains,
 } from "@/lib/actions/planning";
 import { restoreMember } from "@/lib/actions/members";
 import { getOrCreateShareToken, revokeShareToken } from "@/lib/actions/share";
@@ -419,6 +419,17 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
     qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
   }, [props.planningId, qc]);
 
+  // ── Réordonnancement lots / domaines ────────────────────────────────────────
+  const handleReorderLots = useCallback(async (domainId: string, lotIds: string[]) => {
+    await reorderLots({ domainId, lotIds, planningId: props.planningId });
+    qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+  }, [props.planningId, qc]);
+
+  const handleReorderDomains = useCallback(async (domainIds: string[]) => {
+    await reorderDomains({ planningId: props.planningId, domainIds });
+    qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+  }, [props.planningId, qc]);
+
   // ── Export Excel (.xlsx) ────────────────────────────────────────────────────
   const handleExportExcel = async () => {
     const XLSX = (await import("xlsx")).default;
@@ -635,6 +646,8 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
           phaseAssignees={liveData.phaseAssignees}
           closurePeriods={liveData.closurePeriods}
           onMarkLotDone={handleMarkLotDone}
+          onReorderLots={handleReorderLots}
+          onReorderDomains={handleReorderDomains}
         />
       </div>
 

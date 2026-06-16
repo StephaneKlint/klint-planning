@@ -33,4 +33,8 @@ export interface GanttProps {
   rowHOverride?: number;
   /** Called when user clicks "mark all phases done" on a lot */
   onMarkLotDone?: (lotId: string) => void;
+  /** Called when user drag-reorders lots within a domain */
+  onReorderLots?: (domainId: string, orderedLotIds: string[]) => void;
+  /** Called when user drag-reorders domains */
+  onReorderDomains?: (orderedDomainIds: string[]) => void;
 }

@@ -17,7 +17,7 @@ import {
   updateMilestone, togglePhaseAssignee,
   createLot, createPhase, createMilestone, createDomain, updateDomain, updateLot,
   deletePhase, deleteMilestone, deleteLot, deleteDomain,
-  moveLot,
+  moveLot, duplicatePhase, duplicateLotPhases,
 } from "@/lib/actions/planning";
 import { useOptimisticPhase, planningQueryKey } from "@/lib/queries/usePlanning";
 import styles from "./EditPanel.module.css";
@@ -73,6 +73,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   // Refs pour validation croisée dates début/fin
   const startInputRef = useRef<HTMLInputElement>(null);
   const endInputRef   = useRef<HTMLInputElement>(null);
+
+  // Duplicate picker state (phase panel + lot panel)
+  const [showDupPicker, setShowDupPicker] = useState<"phase" | "lot" | null>(null);
+  const [dupTargetLotId, setDupTargetLotId] = useState("");
 
   // Create mode form state
   const [createName, setCreateName] = useState("");
@@ -559,9 +563,13 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             <Icon name="close" size={12} />
             Annuler
           </Button>
-          <Button variant="ghost" size="sm" style={{ opacity: 0.45, cursor: "not-allowed" }} title="Dépendances — disponible au Jalon 6">
-            <Icon name="link" size={12} />
-            Dépendances
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => { setShowDupPicker(showDupPicker === "phase" ? null : "phase"); setDupTargetLotId(""); }}
+            title="Dupliquer cette phase vers un autre projet"
+          >
+            <Icon name="layers" size={12} />
+            Dupliquer
           </Button>
           <button
             className={styles.deleteBtn}
@@ -588,6 +596,46 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             <Icon name="trash" size={14} />
           </button>
         </div>
+
+        {/* ── Duplicate lot picker ── */}
+        {showDupPicker === "phase" && (
+          <div className={styles.dupPicker}>
+            <p className={styles.dupPickerTitle}>Dupliquer vers le projet…</p>
+            <select
+              className={styles.dupSelect}
+              value={dupTargetLotId}
+              onChange={(e) => setDupTargetLotId(e.target.value)}
+            >
+              <option value="">— Choisir un projet —</option>
+              {data.domains.map((dom) => (
+                <optgroup key={dom.id} label={dom.name}>
+                  {data.lots.filter(l => l.domainId === dom.id).map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <div className={styles.dupActions}>
+              <button className={styles.dupCancel} onClick={() => setShowDupPicker(null)}>Annuler</button>
+              <button
+                className={styles.dupConfirm}
+                disabled={!dupTargetLotId || isPending}
+                onClick={() => {
+                  if (!dupTargetLotId) return;
+                  startTransition(async () => {
+                    await duplicatePhase({ phaseId: phase.id, targetLotId: dupTargetLotId, planningId });
+                    qc.invalidateQueries({ queryKey: planningQueryKey(planningId) });
+                    setShowDupPicker(null);
+                    setSaved(true);
+                    setTimeout(() => setSaved(false), 2000);
+                  });
+                }}
+              >
+                {isPending ? "Copie…" : "Confirmer"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -924,6 +972,14 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
           >
             ◆ Jalon
           </button>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => { setShowDupPicker(showDupPicker === "lot" ? null : "lot"); setDupTargetLotId(""); }}
+            title="Copier toutes les phases de ce projet vers un autre projet"
+          >
+            <Icon name="layers" size={12} />
+            Copier les phases
+          </Button>
           <Button variant="ghost" size="sm" onClick={closeEdit}>Annuler</Button>
           <button
             className={styles.createSubmitBtn}
@@ -933,6 +989,44 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             {isPending ? "Sauvegarde…" : "Enregistrer"}
           </button>
         </div>
+
+        {/* ── Copy lot phases picker ── */}
+        {showDupPicker === "lot" && (
+          <div className={styles.dupPicker}>
+            <p className={styles.dupPickerTitle}>Copier les phases vers le projet…</p>
+            <select
+              className={styles.dupSelect}
+              value={dupTargetLotId}
+              onChange={(e) => setDupTargetLotId(e.target.value)}
+            >
+              <option value="">— Choisir un projet destination —</option>
+              {data.domains.map((dom) => (
+                <optgroup key={dom.id} label={dom.name}>
+                  {data.lots.filter(l => l.domainId === dom.id && l.id !== lotId).map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <div className={styles.dupActions}>
+              <button className={styles.dupCancel} onClick={() => setShowDupPicker(null)}>Annuler</button>
+              <button
+                className={styles.dupConfirm}
+                disabled={!dupTargetLotId || isPending}
+                onClick={() => {
+                  if (!dupTargetLotId) return;
+                  startTransition(async () => {
+                    await duplicateLotPhases({ sourceLotId: lotId, targetLotId: dupTargetLotId, planningId: lotPlanningId });
+                    qc.invalidateQueries({ queryKey: planningQueryKey(lotPlanningId) });
+                    setShowDupPicker(null);
+                  });
+                }}
+              >
+                {isPending ? "Copie…" : "Confirmer"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

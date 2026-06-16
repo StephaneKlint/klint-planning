@@ -38,6 +38,8 @@ export function Gantt({
   closurePeriods,
   rowHOverride,
   onMarkLotDone,
+  onReorderLots,
+  onReorderDomains,
 }: GanttProps) {
   const { zoom: zoomRaw, density: densityRaw, colorMode, showWeekends, showDomainBands, showHolidays, showClosures, panelMode, scrollRequest, requestScroll, hiddenLotIds } = useGanttStore();
   const zoom = zoomRaw as import("@/store/ganttStore").ZoomLevel;
@@ -197,6 +199,8 @@ export function Gantt({
             width={SIDE_W}
             innerRef={sideInnerRef}
             onMarkLotDone={onMarkLotDone}
+            onReorderLots={onReorderLots}
+            onReorderDomains={onReorderDomains}
           />
         </div>
       )}

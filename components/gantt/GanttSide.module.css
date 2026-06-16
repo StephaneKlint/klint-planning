@@ -153,6 +153,86 @@
   border-style: solid;
 }
 
+/* ── Grip handle (drag-to-reorder) ── */
+.grip {
+  width: 18px;
+  height: 100%;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 140ms;
+  color: #9CA3AF;
+  font-size: 13px;
+  flex-shrink: 0;
+  user-select: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-right: 2px;
+}
+.domainHead:hover .grip,
+.lotRow:hover .grip {
+  opacity: 1;
+}
+.grip:active { cursor: grabbing; }
+
+.sideIsDragging { cursor: grabbing !important; }
+.sideIsDragging .grip { cursor: grabbing !important; }
+
+/* Row being dragged — ghost stays, original fades */
+.rowDragging {
+  opacity: 0.3;
+}
+
+/* Drop indicator — blue line showing where item will land */
+.dropIndicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #3B82F6;
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 200;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+
+/* Ghost element following cursor */
+.dragGhost {
+  position: fixed;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 40px;
+  background: rgba(255,255,255,0.95);
+  border: 1.5px solid #3B82F6;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  backdrop-filter: blur(4px);
+  opacity: 0.92;
+}
+.gripInline {
+  color: #9CA3AF;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.ghostLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #001036;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
 /* ── ✓ Tout à 100% ── */
 .doneBtn {
   width: 22px;
