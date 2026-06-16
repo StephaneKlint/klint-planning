@@ -175,6 +175,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
     const save = <T,>(fn: () => Promise<T>) => {
       startTransition(async () => {
         await fn();
+        qc.invalidateQueries({ queryKey: planningQueryKey(planningId) });
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
       });
@@ -268,6 +269,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                 setCreateError(null);
                 const prevStart = phase.startDate;
                 const prevEnd   = phase.endDate;
+                patchPhase(planningId, phase.id, { startDate: newStart, endDate: currentEnd });
                 save(() => updatePhaseDates({
                   phaseId: phase.id, planningId,
                   startDate: newStart, endDate: currentEnd,
@@ -295,6 +297,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
                 setCreateError(null);
                 const prevStart = phase.startDate;
                 const prevEnd   = phase.endDate;
+                patchPhase(planningId, phase.id, { startDate: currentStart, endDate: newEnd });
                 save(() => updatePhaseDates({
                   phaseId: phase.id, planningId,
                   startDate: currentStart, endDate: newEnd,
@@ -642,7 +645,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             })
           );
           setEditingPhaseDates(false);
-          router.refresh();
+          qc.invalidateQueries({ queryKey: planningQueryKey(lotPlanningId) });
         } catch (e) {
           setCreateError(e instanceof Error ? e.message : "Erreur lors de la sauvegarde des dates.");
         }
@@ -667,7 +670,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             })
           );
           setEditingMilestoneDates(false);
-          router.refresh();
+          qc.invalidateQueries({ queryKey: planningQueryKey(lotPlanningId) });
         } catch (e) {
           setCreateError(e instanceof Error ? e.message : "Erreur lors de la sauvegarde des jalons.");
         }
