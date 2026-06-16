@@ -64,7 +64,7 @@ export function MilestoneFlag({
       : flagTop - (rowCenterY + halfDiamond);
 
   // Estimate flag width
-  const estW = Math.max(28, label.length * 5.3 + 14);
+  const estW = Math.max(36, label.length * 6.0 + 16);
   const flagLeft = centerX - estW / 2;
 
   return (
@@ -114,8 +114,7 @@ export function MilestoneFlag({
           left: flagLeft,
           top: flagTop,
           height: labelH,
-          minWidth: 28,
-          maxWidth: 120,
+          minWidth: 36,
           background: color,
           color: "#ffffff",
           fontSize: 9.5,
@@ -127,8 +126,7 @@ export function MilestoneFlag({
           paddingLeft: 4,
           paddingRight: 4,
           whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
+          overflow: "visible",
           zIndex: 4,
           letterSpacing: "0.01em",
           cursor: onClick ? "pointer" : "default",
