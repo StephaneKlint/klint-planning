@@ -223,6 +223,14 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
           sideRowsEl.style.minHeight = `${timelineH}px`;
           sideRowsEl.style.flex      = "none";
         }
+        // Reset scroll-sync transform so all rows are visible from the top
+        const sideInnerEl = el.querySelector<HTMLElement>("[data-gantt-side-inner]");
+        if (sideInnerEl) {
+          sideInnerEl.style.transform = "translateY(0)";
+        }
+        if (bodyCloneEl) {
+          bodyCloneEl.scrollTop = 0;
+        }
         if (timelineEl) {
           timelineEl.style.height    = `${exportH}px`;
           timelineEl.style.minHeight = `${exportH}px`;

@@ -106,7 +106,7 @@ export function GanttSide({
       ) : (
         /* Rows container — transform synced by Gantt.tsx via innerRef */
         <div className={styles.rowsOuter} data-gantt-side-rows="true">
-          <div ref={innerRef} style={{ position: "relative", height: totalH }}>
+          <div ref={innerRef} data-gantt-side-inner="true" style={{ position: "relative", height: totalH }}>
             {rows.map((row) => {
               if (row.kind === "domain") {
                 const domain = domainById[row.id];
