@@ -37,6 +37,7 @@ export function Gantt({
   referenceDate,
   closurePeriods,
   rowHOverride,
+  onMarkLotDone,
 }: GanttProps) {
   const { zoom: zoomRaw, density: densityRaw, colorMode, showWeekends, showDomainBands, showHolidays, showClosures, panelMode, scrollRequest, requestScroll, hiddenLotIds } = useGanttStore();
   const zoom = zoomRaw as import("@/store/ganttStore").ZoomLevel;
@@ -195,6 +196,7 @@ export function Gantt({
             lotStatus={lotStatus}
             width={SIDE_W}
             innerRef={sideInnerRef}
+            onMarkLotDone={onMarkLotDone}
           />
         </div>
       )}

@@ -21,6 +21,7 @@ import {
   updatePhaseDates, updatePhaseColor, updatePhaseLabel,
   updateMilestone,
   restorePhase, restoreMilestone, restoreLot,
+  markLotDone,
 } from "@/lib/actions/planning";
 import { restoreMember } from "@/lib/actions/members";
 import { getOrCreateShareToken, revokeShareToken } from "@/lib/actions/share";
@@ -412,6 +413,12 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
     }
   };
 
+  // ── Marquer toutes les phases d'un lot à 100% ───────────────────────────────
+  const handleMarkLotDone = useCallback(async (lotId: string) => {
+    await markLotDone({ lotId, planningId: props.planningId });
+    qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+  }, [props.planningId, qc]);
+
   // ── Export Excel (.xlsx) ────────────────────────────────────────────────────
   const handleExportExcel = async () => {
     const XLSX = (await import("xlsx")).default;
@@ -627,6 +634,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
           statuses={liveData.statuses}
           phaseAssignees={liveData.phaseAssignees}
           closurePeriods={liveData.closurePeriods}
+          onMarkLotDone={handleMarkLotDone}
         />
       </div>
 

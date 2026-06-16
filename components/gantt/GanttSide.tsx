@@ -26,6 +26,8 @@ interface GanttSideProps {
   width?: number;
   /** ref forwarded to the inner rows div for CSS-transform scroll sync */
   innerRef?: React.RefObject<HTMLDivElement | null>;
+  /** Called when user clicks "mark all phases done" on a lot */
+  onMarkLotDone?: (lotId: string) => void;
 }
 
 const DOMAIN_HEAD_H = 36;
@@ -40,6 +42,7 @@ export function GanttSide({
   lotStatus,
   width = 340,
   innerRef,
+  onMarkLotDone,
 }: GanttSideProps) {
   const { openEdit } = useGanttStore();
   // Mini-menu state: which lot's + menu is open
@@ -170,6 +173,18 @@ export function GanttSide({
                       <span className={styles.lotSubtitle}>{lot.subtitle}</span>
                     )}
                   </div>
+                  {/* ✓ Tout à 100% */}
+                  {onMarkLotDone && (
+                    <button
+                      className={styles.doneBtn}
+                      onClick={(e) => { e.stopPropagation(); onMarkLotDone(row.id); }}
+                      title="Marquer toutes les phases à 100% (annulable)"
+                      aria-label="Tout marquer comme terminé"
+                    >
+                      ✓
+                    </button>
+                  )}
+
                   {/* + menu — Phase ou Jalon */}
                   <div
                     ref={addMenuLotId === row.id ? addMenuRef : undefined}

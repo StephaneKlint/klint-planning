@@ -180,6 +180,36 @@ export async function updatePhaseColor(input: z.infer<typeof UpdatePhaseColorSch
   return updated;
 }
 
+// Mark all phases of a lot as 100% done
+const MarkLotDoneSchema = z.object({
+  lotId: z.string().uuid(),
+  planningId: z.string().uuid(),
+});
+
+export async function markLotDone(input: z.infer<typeof MarkLotDoneSchema>) {
+  const data = MarkLotDoneSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  const updated = await db
+    .update(phases)
+    .set({ progress: 100, status: "done" })
+    .where(eq(phases.lotId, data.lotId))
+    .returning({ id: phases.id });
+
+  if (updated.length > 0) {
+    await logActivity(
+      data.planningId,
+      "lot_marked_done",
+      "lot",
+      data.lotId,
+      `${updated.length} phase${updated.length > 1 ? "s" : ""} marquée${updated.length > 1 ? "s" : ""} à 100%`
+    );
+  }
+
+  revalidatePath(`/p/${data.planningId}`);
+  return updated;
+}
+
 // Bulk status update
 const BulkUpdateStatusSchema = z.object({
   phaseIds: z.array(z.string().uuid()).min(1).max(100),

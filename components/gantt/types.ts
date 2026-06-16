@@ -31,4 +31,6 @@ export interface GanttProps {
   closurePeriods?: ClosurePeriodRow[];
   /** Override row height (px) — used by presentation fit-view mode */
   rowHOverride?: number;
+  /** Called when user clicks "mark all phases done" on a lot */
+  onMarkLotDone?: (lotId: string) => void;
 }

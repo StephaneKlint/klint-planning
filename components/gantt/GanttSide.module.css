@@ -153,6 +153,35 @@
   border-style: solid;
 }
 
+/* ── ✓ Tout à 100% ── */
+.doneBtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px dashed var(--klint-line, #E6E8EE);
+  background: transparent;
+  color: #9CA3AF;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 140ms, border-color 100ms, color 100ms, background 100ms;
+  padding: 0;
+  flex-shrink: 0;
+}
+.lotRow:hover .doneBtn {
+  opacity: 1;
+}
+.doneBtn:hover {
+  border-style: solid;
+  border-color: #16A34A;
+  color: #16A34A;
+  background: #F0FDF4;
+}
+
 /* ── + menu contextuel (Phase / Jalon) ── */
 .addMenu {
   position: absolute;
