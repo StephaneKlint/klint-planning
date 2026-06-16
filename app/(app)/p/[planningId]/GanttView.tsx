@@ -276,14 +276,19 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
   <meta charset="utf-8">
   <title>${planningName} — Planning A3</title>
   <style>
-    @page { size: A3 landscape; margin: 8mm; }
-    @media print { .toolbar { display:none !important; } body { margin:0; } .img-wrap { padding:0; } }
+    @page { size: A3 landscape; margin: 6mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; }
+    html, body {
+      height: 100%; overflow: hidden;
+      background: #e2e8f0;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    body { display: flex; flex-direction: column; }
     .toolbar {
+      flex: none;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 20px; background: #001036; color: white;
-      position: sticky; top: 0; z-index: 10; gap: 12px;
+      padding: 10px 20px; background: #001036; color: white;
+      z-index: 10; gap: 12px;
     }
     .toolbar h1 { font-size: 15px; font-weight: 700; flex: 1; }
     .toolbar-hint { font-size: 12px; color: rgba(255,255,255,0.55); }
@@ -300,8 +305,32 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
       font-weight: 600; font-size: 13px; cursor: pointer; font-family: inherit;
     }
     .close-btn:hover { background: rgba(255,255,255,0.1); }
-    .img-wrap { padding: 8mm; }
-    img { width: 100%; height: auto; display: block; }
+    /* Screen: image centrée, tient dans la fenêtre sans scroll */
+    .img-wrap {
+      flex: 1; min-height: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px; overflow: hidden;
+    }
+    img {
+      display: block;
+      max-width: 100%; max-height: 100%;
+      width: auto; height: auto;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    }
+    /* Impression : une seule page A3, image ajustée */
+    @media print {
+      html, body { background: white; }
+      .toolbar { display: none !important; }
+      .img-wrap {
+        position: fixed; inset: 0;
+        padding: 0; background: white;
+      }
+      img {
+        width: 100%; height: 100%;
+        object-fit: contain;
+        box-shadow: none;
+      }
+    }
   </style>
 </head>
 <body>
