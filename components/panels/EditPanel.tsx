@@ -972,14 +972,15 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
           >
             ◆ Jalon
           </button>
-          <Button
-            variant="ghost" size="sm"
+          <button
+            className={styles.deleteBtn}
+            style={{ color: "#2563EB", borderColor: "#BFDBFE", marginLeft: 0 }}
             onClick={() => { setShowDupPicker(showDupPicker === "lot" ? null : "lot"); setDupTargetLotId(""); }}
-            title="Copier toutes les phases de ce projet vers un autre projet"
+            title="Copier les phases vers un autre projet"
+            aria-label="Copier les phases"
           >
-            <Icon name="layers" size={12} />
-            Copier les phases
-          </Button>
+            <Icon name="layers" size={14} />
+          </button>
           <Button variant="ghost" size="sm" onClick={closeEdit}>Annuler</Button>
           <button
             className={styles.createSubmitBtn}
