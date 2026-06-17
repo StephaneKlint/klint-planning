@@ -335,7 +335,10 @@ export default function AidePage() {
             <div>
               <dt style={S.dt}>Niveaux de zoom</dt>
               <dd style={S.dd}>Choisissez parmi <strong>1m · 3m · 6m · 12m</strong> dans la barre d&apos;outils. Le zoom 12m affiche l&apos;année complète.<br />
-                L&apos;en-tête de la timeline affiche trois lignes : <strong>Mois · Semaine · Jour</strong>. En vue 6m/12m, la ligne Jour indique la date du lundi de chaque semaine ; en vue 1m/3m, elle affiche chaque numéro de jour.
+                L&apos;en-tête de la timeline affiche trois lignes :<br />
+                — <strong>Mois</strong> : le premier mois visible et chaque janvier incluent l&apos;année (ex. « Jan 2026 », « Janv. 2027 »). Les autres mois affichent uniquement leur nom. Un léger fond marque ces cellules pour indiquer les frontières d&apos;année.<br />
+                — <strong>Semaine</strong> : numéros de semaine ISO, avec libellé adaptatif selon la place disponible (« Semaine 25 », « Sem. 25 » ou « S25 »).<br />
+                — <strong>Jour</strong> : numéro du jour en vue 1m/3m ; date du lundi de chaque semaine en vue 6m/12m.
               </dd>
             </div>
             <div>
