@@ -54,11 +54,12 @@ export function TimelineHeader({ viewStart, viewEnd, ppd, zoom, totalW }: Timeli
       <div className={styles.monthsRow}>
         {months.map((seg, i) => {
           const isYearAnchor = i === 0 || seg.month === 0;
-          const isNewYear = seg.month === 0 && i > 0; // January after first cell
+          // Subtle background on first visible cell AND every January
+          const isYearHighlight = i === 0 || seg.month === 0;
           return (
             <div
               key={i}
-              className={`${styles.monthCell} ${isNewYear ? styles.monthCellNewYear : ""}`}
+              className={`${styles.monthCell} ${isYearHighlight ? styles.monthCellNewYear : ""}`}
               style={{ position: "absolute", left: seg.x, width: seg.width }}
             >
               {monthLabel(seg.month, seg.year, seg.width, isYearAnchor)}
