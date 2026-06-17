@@ -41,7 +41,10 @@ export function DraggableMilestone({
   centerX, rowY, rowH, side, level, color,
 }: DraggableMilestoneProps) {
   const patchMilestone = useOptimisticMilestone();
-  const { openEdit, pushUndo } = useGanttStore();
+  const { openEdit, pushUndo, toggleMilestoneSelection, selectedMilestoneIds } = useGanttStore();
+
+  const isSelected = selectedMilestoneIds.has(milestone.id);
+  const dimmed = selectedMilestoneIds.size > 0 && !isSelected;
 
   const [isDragging, setIsDragging] = useState(false);
   const [ghostPos, setGhostPos]     = useState<{ x: number; y: number } | null>(null);
@@ -184,9 +187,17 @@ export function DraggableMilestone({
         level={level}
         label={milestone.label}
         color={color}
-        onClick={isDragging ? undefined : (e) => { e.stopPropagation(); openEdit({ kind: "milestone", id: milestone.id }); }}
+        onClick={isDragging ? undefined : (e) => {
+          e.stopPropagation();
+          if (e.metaKey || e.ctrlKey) {
+            toggleMilestoneSelection(milestone.id, true);
+          } else {
+            openEdit({ kind: "milestone", id: milestone.id });
+          }
+        }}
         onDiamondMouseDown={handleMouseDown}
-        opacity={isDragging ? 0.25 : 1}
+        isSelected={isSelected}
+        opacity={isDragging ? 0.25 : dimmed ? 0.35 : 1}
       />
 
       {/* Ghost diamond follows cursor */}

@@ -263,7 +263,7 @@ export function computeMilestoneLayout(
       : [primary];
 
     let placed = false;
-    for (let lvl = 0; !placed && lvl < 8; lvl++) {
+    for (let lvl = 0; !placed && lvl < 3; lvl++) {
       for (const side of sides) {
         const r = tracks[side][lvl];
         if (r === undefined || it.left >= r + 3) {
@@ -275,7 +275,7 @@ export function computeMilestoneLayout(
       }
     }
     if (!placed) {
-      result[it.i] = { id: it.id, side: primary, level: 7, centerX: it.centerX };
+      result[it.i] = { id: it.id, side: primary, level: 2, centerX: it.centerX };
     }
   });
 

@@ -666,7 +666,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
         />
       )}
       <EditPanel planningId={props.planningId} data={liveData} />
-      <BulkBar planningId={props.planningId} />
+      <BulkBar planningId={props.planningId} lots={liveData.lots} />
       <CommandPalette data={liveData} planningId={props.planningId} />
 
       {shareOpen && (

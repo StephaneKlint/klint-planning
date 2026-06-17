@@ -25,6 +25,7 @@ export interface MilestoneFlagProps {
   onClick?: (e: React.MouseEvent) => void;
   onDiamondMouseDown?: (e: React.MouseEvent) => void;
   opacity?: number;
+  isSelected?: boolean;
 }
 
 const DEFAULT_LANE_H = 18;
@@ -45,6 +46,7 @@ export function MilestoneFlag({
   onClick,
   onDiamondMouseDown,
   opacity = 1,
+  isSelected = false,
 }: MilestoneFlagProps) {
   const halfDiamond = diamondSize / 2;
   const rowCenterY = rowY + rowH / 2;
@@ -90,6 +92,7 @@ export function MilestoneFlag({
           flexShrink: 0,
           cursor: onDiamondMouseDown ? "grab" : (onClick ? "pointer" : "default"),
           pointerEvents: "auto",
+          boxShadow: isSelected ? "0 0 0 2px #ffffff, 0 0 0 3.5px #3B82F6" : undefined,
         }}
         aria-hidden
       />

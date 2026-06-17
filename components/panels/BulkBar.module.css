@@ -70,3 +70,50 @@
 .statusBtn:disabled {
   opacity: 0.4;
 }
+
+.dupSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 1px solid rgba(255,255,255,0.15);
+  padding-left: 16px;
+}
+
+.dupSelect {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: var(--font-display, system-ui);
+  cursor: pointer;
+  max-width: 180px;
+}
+
+.dupSelect option {
+  background: #001036;
+  color: #ffffff;
+}
+
+.dupConfirm {
+  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-display, system-ui);
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.dupConfirm:hover:not(:disabled) {
+  background: rgba(255,255,255,0.22);
+}
+
+.dupConfirm:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

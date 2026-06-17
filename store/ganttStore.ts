@@ -70,6 +70,7 @@ interface GanttState {
   editTarget: EditTarget;
   // Bulk selection
   selectedPhaseIds: Set<string>;
+  selectedMilestoneIds: Set<string>;
   // Visibility overrides (lotId → hidden)
   hiddenLotIds: Set<string>;
   // Command palette
@@ -97,6 +98,7 @@ interface GanttState {
   openEdit: (target: EditTarget) => void;
   closeEdit: () => void;
   togglePhaseSelection: (phaseId: string, multi: boolean) => void;
+  toggleMilestoneSelection: (milestoneId: string, multi: boolean) => void;
   clearSelection: () => void;
   toggleLotVisibility: (lotId: string) => void;
   setCommandPaletteOpen: (open: boolean) => void;
@@ -125,6 +127,7 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   showClosures: true,
   editTarget: null,
   selectedPhaseIds: new Set(),
+  selectedMilestoneIds: new Set(),
   hiddenLotIds: new Set(),
   commandPaletteOpen: false,
   scrollRequest: null,
@@ -145,7 +148,7 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   toggleHolidays: () => set((s) => ({ showHolidays: !s.showHolidays })),
   toggleClosures: () => set((s) => ({ showClosures: !s.showClosures })),
 
-  openEdit: (editTarget) => set({ editTarget, selectedPhaseIds: new Set() }),
+  openEdit: (editTarget) => set({ editTarget, selectedPhaseIds: new Set(), selectedMilestoneIds: new Set() }),
   closeEdit: () => set({ editTarget: null }),
 
   togglePhaseSelection: (phaseId, multi) =>
@@ -161,7 +164,18 @@ export const useGanttStore = create<GanttState>((set, get) => ({
       return { selectedPhaseIds: next, editTarget: null };
     }),
 
-  clearSelection: () => set({ selectedPhaseIds: new Set(), editTarget: null }),
+  toggleMilestoneSelection: (milestoneId, multi) =>
+    set((s) => {
+      if (!multi) {
+        return { selectedMilestoneIds: new Set(), editTarget: { kind: "milestone", id: milestoneId } };
+      }
+      const next = new Set(s.selectedMilestoneIds);
+      if (next.has(milestoneId)) next.delete(milestoneId);
+      else next.add(milestoneId);
+      return { selectedMilestoneIds: next, editTarget: null };
+    }),
+
+  clearSelection: () => set({ selectedPhaseIds: new Set(), selectedMilestoneIds: new Set(), editTarget: null }),
 
   toggleLotVisibility: (lotId) =>
     set((s) => {
