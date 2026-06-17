@@ -4,7 +4,7 @@
  * Scrolls horizontally in sync with the timeline body.
  */
 import type { ZoomLevel } from "./types";
-import { buildMonthSegments, buildDayCells, MONTHS_LONG_FR } from "./ganttUtils";
+import { buildMonthSegments, buildWeekCells, buildDayCells, MONTHS_LONG_FR } from "./ganttUtils";
 import styles from "./TimelineHeader.module.css";
 
 interface TimelineHeaderProps {
@@ -15,9 +15,17 @@ interface TimelineHeaderProps {
   totalW: number;
 }
 
+function weekLabel(weekNum: number, width: number): string {
+  if (width >= 90) return `Semaine ${weekNum}`;
+  if (width >= 48) return `Sem. ${weekNum}`;
+  if (width >= 18) return `S${weekNum}`;
+  return "";
+}
+
 export function TimelineHeader({ viewStart, viewEnd, ppd, zoom, totalW }: TimelineHeaderProps) {
   const months = buildMonthSegments(viewStart, viewEnd, ppd);
-  const days = buildDayCells(viewStart, viewEnd, ppd, zoom);
+  const weeks  = buildWeekCells(viewStart, viewEnd, ppd);
+  const days   = buildDayCells(viewStart, viewEnd, ppd, zoom);
 
   return (
     <div className={styles.header} style={{ width: totalW }}>
@@ -40,38 +48,30 @@ export function TimelineHeader({ viewStart, viewEnd, ppd, zoom, totalW }: Timeli
         ))}
       </div>
 
-      {/* Row 2 — weeks or days */}
+      {/* Row 2 — week numbers */}
+      <div className={styles.weeksRow}>
+        {weeks.map((cell, i) => (
+          <div
+            key={i}
+            className={styles.weekCell}
+            style={{ position: "absolute", left: cell.x, width: Math.max(cell.width, 1) }}
+          >
+            {weekLabel(cell.weekNum, cell.width)}
+          </div>
+        ))}
+      </div>
+
+      {/* Row 3 — day numbers (or Monday dates for 6m/12m) */}
       <div className={styles.daysRow}>
-        {days.map((cell, i) => {
-          let displayLabel = "";
-          if (zoom === "6m" || zoom === "12m") {
-            // Weekly cells — adaptive: full "S25 23/6" or short "S25"
-            if (cell.width >= 55) displayLabel = cell.label;
-            else if (cell.width >= 26) displayLabel = cell.label.split(" ")[0];
-          } else if (zoom === "3m") {
-            // Daily cells — week number on Mondays (isMajor), nothing on other days
-            if (cell.isMajor) displayLabel = cell.label; // "S25"
-          } else {
-            // 1m — day numbers (38px cells, always wide enough)
-            if (cell.width >= 14) displayLabel = cell.label;
-          }
-          return (
-            <div
-              key={i}
-              className={`${styles.dayCell} ${cell.isMajor ? styles.dayCellMajor : ""}`}
-              style={{
-                position: "absolute",
-                left: cell.x,
-                width: Math.max(cell.width, 1),
-                // 3m Monday week labels may overflow into adjacent empty cells
-                overflow: zoom === "3m" && cell.isMajor ? "visible" : "hidden",
-                zIndex: zoom === "3m" && cell.isMajor ? 1 : undefined,
-              }}
-            >
-              {displayLabel}
-            </div>
-          );
-        })}
+        {days.map((cell, i) => (
+          <div
+            key={i}
+            className={`${styles.dayCell} ${cell.isMajor ? styles.dayCellMajor : ""}`}
+            style={{ position: "absolute", left: cell.x, width: Math.max(cell.width, 1) }}
+          >
+            {cell.width >= 10 ? cell.label : ""}
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ import { derivePhaseStatus } from "@/lib/domain";
 import styles from "./Gantt.module.css";
 
 const SIDE_W = 340;
-const HEADER_H = 52; // monthsRow (30) + daysRow (22)
+const HEADER_H = 72; // monthsRow (30) + weeksRow (22) + daysRow (20)
 
 export function Gantt({
   planningId,

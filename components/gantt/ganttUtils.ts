@@ -119,14 +119,41 @@ export function buildMonthSegments(viewStart: string, viewEnd: string, ppd: numb
   return segments;
 }
 
-/** Build day cells for second header row. */
+/** Build week cells for the week header row — one cell per ISO week, all zoom levels. */
+export function buildWeekCells(viewStart: string, viewEnd: string, ppd: number) {
+  const cells: { weekNum: number; x: number; width: number }[] = [];
+  const vsDate = new Date(viewStart + "T00:00:00Z");
+  const veDate = new Date(viewEnd + "T00:00:00Z");
+
+  // Start from the Monday on or before viewStart
+  const dow = vsDate.getUTCDay();
+  const daysBack = dow === 0 ? 6 : dow - 1;
+  let cur = new Date(Date.UTC(vsDate.getUTCFullYear(), vsDate.getUTCMonth(), vsDate.getUTCDate() - daysBack));
+
+  while (cur <= veDate) {
+    const nextMon = new Date(cur.getTime() + 7 * 86400000);
+    // Clamp to view bounds (like buildMonthSegments does for months)
+    const segStart = cur < vsDate ? vsDate : cur;
+    const segEnd   = nextMon > veDate ? new Date(veDate.getTime() + 86400000) : nextMon;
+    const x     = xOf(segStart.toISOString().slice(0, 10), viewStart, ppd);
+    const width = (segEnd.getTime() - segStart.getTime()) / 86400000 * ppd;
+    cells.push({ weekNum: isoWeek(cur), x, width: Math.max(1, width) });
+    cur = nextMon;
+  }
+  return cells;
+}
+
+/** Build day cells for the day header row (3rd row).
+ *  - 1m / 3m : one cell per day, label = "01"…"31"
+ *  - 6m / 12m: one cell per week (Monday), label = Monday's date "01"…"31"
+ */
 export function buildDayCells(viewStart: string, viewEnd: string, ppd: number, zoom: ZoomLevel) {
   const cells: { label: string; x: number; width: number; isMajor: boolean }[] = [];
   const start = new Date(viewStart + "T00:00:00Z");
-  const end = new Date(viewEnd + "T00:00:00Z");
-  const step = zoom === "12m" || zoom === "6m" ? 7 : 1;
+  const end   = new Date(viewEnd   + "T00:00:00Z");
+  const step  = zoom === "12m" || zoom === "6m" ? 7 : 1;
 
-  // Align to Monday for week view
+  // For week views align to next Monday (same logic as before, avoids partial first cell)
   let cur = new Date(start);
   if (step === 7) {
     const dow = cur.getUTCDay();
@@ -135,27 +162,10 @@ export function buildDayCells(viewStart: string, viewEnd: string, ppd: number, z
   }
 
   while (cur <= end) {
-    const x = xOf(cur.toISOString().slice(0, 10), viewStart, ppd);
-    const isMonday = cur.getUTCDay() === 1;
-
-    let label: string;
-    let isMajor: boolean;
-
-    if (step === 7) {
-      // 6m / 12m — weekly cells with week number + date
-      label = `S${isoWeek(cur)} ${cur.getUTCDate()}/${cur.getUTCMonth() + 1}`;
-      isMajor = cur.getUTCDate() === 1;
-    } else if (zoom === "3m") {
-      // 3m — daily cells: week number on Mondays, day number otherwise
-      label = isMonday ? `S${isoWeek(cur)}` : String(cur.getUTCDate());
-      isMajor = isMonday;
-    } else {
-      // 1m — daily cells: day number, first-of-month is major
-      label = String(cur.getUTCDate());
-      isMajor = cur.getUTCDate() === 1;
-    }
-
-    cells.push({ label, x, width: step * ppd, isMajor });
+    const x      = xOf(cur.toISOString().slice(0, 10), viewStart, ppd);
+    const dayNum = cur.getUTCDate();
+    const label  = String(dayNum).padStart(2, "0"); // "01"…"31"
+    cells.push({ label, x, width: step * ppd, isMajor: dayNum === 1 });
     cur = new Date(cur.getTime() + step * 86400000);
   }
   return cells;

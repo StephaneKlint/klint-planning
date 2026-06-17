@@ -47,11 +47,36 @@
   white-space: nowrap;
 }
 
-.daysRow {
+.weeksRow {
   position: relative;
   height: 22px;
   overflow: hidden;
-  background: rgba(0,0,0,0.015);
+  background: rgba(0,0,0,0.02);
+  border-bottom: 1px solid var(--klint-line, #E6E8EE);
+}
+
+.weekCell {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--klint-navy, #001036);
+  border-left: 1px solid var(--klint-line, #E6E8EE);
+  padding-left: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  font-family: var(--font-display, system-ui);
+  letter-spacing: 0.01em;
+}
+
+.daysRow {
+  position: relative;
+  height: 20px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.01);
 }
 
 .dayCell {
@@ -61,7 +86,7 @@
   display: flex;
   align-items: center;
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 500;
   color: #9CA3AF;
   border-left: 1px solid var(--klint-line, #E6E8EE);
   padding-left: 3px;
@@ -73,5 +98,5 @@
 
 .dayCellMajor {
   border-left: 1.5px solid #9CA3AF;
-  color: var(--klint-navy, #001036);
+  color: #6B7280;
 }

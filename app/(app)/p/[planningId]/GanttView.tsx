@@ -175,7 +175,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
     const timelineW = bodyEl?.scrollWidth  ?? 1200;
     const timelineH = bodyEl?.scrollHeight ?? 600;
     const SIDE_W   = 340;
-    const HEADER_H = 52;
+    const HEADER_H = 72; // monthsRow (30) + weeksRow (22) + daysRow (20)
     const exportW  = timelineW + SIDE_W;
     const exportH  = timelineH + HEADER_H;
 
