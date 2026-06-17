@@ -1,17 +1,17 @@
 "use client";
 /**
- * DraggablePhase — wraps PhasePill with horizontal drag (move + resize).
- * - move: drag the pill body → shifts startDate + endDate by Δdays
- * - resize-left: drag left edge → changes startDate (min 1 day)
- * - resize-right: drag right edge → changes endDate (min 1 day)
- * Snap to day. Ctrl+Z supported via pushUndo("phase-dates").
+ * DraggablePhase — wraps PhasePill with horizontal drag (move + resize) + inter-lot move.
+ * - move: drag pill body → shifts dates by Δdays; dragging vertically changes target lot
+ * - resize-left / resize-right: changes startDate / endDate (same lot only)
+ * Snap to day. Ctrl+Z via pushUndo("phase-dates" | "phase-move").
  */
 import { useRef, useState, useEffect } from "react";
 import { PhasePill } from "./PhasePill";
 import type { PhaseRow } from "@/lib/db/queries";
+import type { RowEntry } from "./types";
 import { useOptimisticPhase } from "@/lib/queries/usePlanning";
 import { useGanttStore } from "@/store/ganttStore";
-import { updatePhaseDates } from "@/lib/actions/planning";
+import { updatePhaseDates, movePhaseToLot } from "@/lib/actions/planning";
 import { addDays, xOf } from "./ganttUtils";
 
 type DragMode = "move" | "resize-left" | "resize-right";
@@ -24,6 +24,8 @@ export interface DraggablePhaseProps {
   viewStart: string;
   bodyRef: React.RefObject<HTMLDivElement | null>;
   headerRef?: React.RefObject<HTMLDivElement | null>;
+  rows: RowEntry[];
+  totalW: number;
   top: number;
   height: number;
   label: string | null;
@@ -41,16 +43,20 @@ export interface DraggablePhaseProps {
 export function DraggablePhase({
   phase, planningId, ppd, viewStart,
   bodyRef, headerRef,
+  rows, totalW,
   top, height, label, bg, fg, progress, hasNote, selected, editing, dimmed, status,
   onPhaseClick,
 }: DraggablePhaseProps) {
   const patchPhase = useOptimisticPhase();
   const { pushUndo } = useGanttStore();
 
-  // Local dates override original during drag (avoids full React Query re-render)
   const [localDates, setLocalDates] = useState<{ start: string; end: string } | null>(null);
-  // Cursor zone detected on hover
   const [hoverZone, setHoverZone] = useState<DragMode>("move");
+  const [targetRow, setTargetRow] = useState<RowEntry | null>(null);
+
+  // Keep latest rows accessible inside the stable useEffect closure
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
   const drag = useRef<{
     mode: DragMode;
@@ -58,8 +64,10 @@ export function DraggablePhase({
     startScrollLeft: number;
     origStart: string;
     origEnd: string;
+    origLotId: string;
     currentStart: string;
     currentEnd: string;
+    currentLotId: string;
     lastDelta: number;
     hasMoved: boolean;
   } | null>(null);
@@ -85,6 +93,14 @@ export function DraggablePhase({
     return "grab";
   };
 
+  const getLotAtY = (clientY: number): RowEntry | null => {
+    const body = bodyRef.current;
+    if (!body) return null;
+    const rect = body.getBoundingClientRect();
+    const timelineY = clientY - rect.top + body.scrollTop;
+    return rowsRef.current.find((r) => r.kind === "lot" && timelineY >= r.y && timelineY < r.y + r.h) ?? null;
+  };
+
   const handleMouseMove_local = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isDragging) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -104,17 +120,19 @@ export function DraggablePhase({
 
     drag.current = {
       mode,
-      startClientX: e.clientX,
+      startClientX:   e.clientX,
       startScrollLeft: body.scrollLeft,
-      origStart: phase.startDate,
-      origEnd:   phase.endDate,
-      currentStart: phase.startDate,
-      currentEnd:   phase.endDate,
-      lastDelta: 0,
-      hasMoved:  false,
+      origStart:  phase.startDate,
+      origEnd:    phase.endDate,
+      origLotId:  phase.lotId,
+      currentStart:  phase.startDate,
+      currentEnd:    phase.endDate,
+      currentLotId:  phase.lotId,
+      lastDelta:  0,
+      hasMoved:   false,
     };
 
-    document.body.style.cursor    = mode === "move" ? "grabbing" : "ew-resize";
+    document.body.style.cursor     = mode === "move" ? "grabbing" : "ew-resize";
     document.body.style.userSelect = "none";
   };
 
@@ -129,9 +147,6 @@ export function DraggablePhase({
       drag.current.hasMoved = true;
 
       const daysDelta = Math.round(totalPx / ppd);
-      if (daysDelta === drag.current.lastDelta) return;
-      drag.current.lastDelta = daysDelta;
-
       const { mode, origStart, origEnd } = drag.current;
       let newStart = origStart;
       let newEnd   = origEnd;
@@ -139,6 +154,10 @@ export function DraggablePhase({
       if (mode === "move") {
         newStart = addDays(origStart, daysDelta);
         newEnd   = addDays(origEnd,   daysDelta);
+        // Inter-lot: detect target lot from cursor Y
+        const row = getLotAtY(e.clientY);
+        drag.current.currentLotId = row?.id ?? drag.current.origLotId;
+        setTargetRow(row);
       } else if (mode === "resize-right") {
         newEnd = addDays(origEnd, daysDelta);
         if (newEnd <= newStart) newEnd = addDays(newStart, 1);
@@ -147,9 +166,12 @@ export function DraggablePhase({
         if (newStart >= newEnd) newStart = addDays(newEnd, -1);
       }
 
-      drag.current.currentStart = newStart;
-      drag.current.currentEnd   = newEnd;
-      setLocalDates({ start: newStart, end: newEnd });
+      if (daysDelta !== drag.current.lastDelta || mode === "move") {
+        drag.current.lastDelta   = daysDelta;
+        drag.current.currentStart = newStart;
+        drag.current.currentEnd   = newEnd;
+        setLocalDates({ start: newStart, end: newEnd });
+      }
     };
 
     const onMouseUp = () => {
@@ -158,21 +180,35 @@ export function DraggablePhase({
 
       const d = drag.current;
       drag.current = null;
+      setTargetRow(null);
 
       if (!d?.hasMoved) {
         setLocalDates(null);
         return;
       }
 
-      const { origStart, origEnd, currentStart, currentEnd } = d;
-      // 1. Patch React Query cache FIRST so clearing localDates shows correct data
-      patchPhase(planningId, phase.id, { startDate: currentStart, endDate: currentEnd });
-      // 2. Clear local visual override
+      const { origStart, origEnd, origLotId, currentStart, currentEnd, currentLotId } = d;
+      const lotChanged = currentLotId !== origLotId;
+
+      // 1. Patch React Query cache FIRST
+      patchPhase(planningId, phase.id, {
+        startDate: currentStart, endDate: currentEnd,
+        ...(lotChanged ? { lotId: currentLotId } : {}),
+      });
+      // 2. Clear local override
       setLocalDates(null);
-      // 3. Undo + persist
-      pushUndo({ type: "phase-dates", phaseId: phase.id, planningId, prevStart: origStart, prevEnd: origEnd });
-      updatePhaseDates({ phaseId: phase.id, planningId, startDate: currentStart, endDate: currentEnd })
-        .catch(() => patchPhase(planningId, phase.id, { startDate: origStart, endDate: origEnd }));
+
+      if (lotChanged) {
+        // 3a. Undo inter-lot move
+        pushUndo({ type: "phase-move", phaseId: phase.id, planningId, prevStart: origStart, prevEnd: origEnd, prevLotId: origLotId });
+        movePhaseToLot({ phaseId: phase.id, planningId, targetLotId: currentLotId, newStartDate: currentStart, newEndDate: currentEnd })
+          .catch(() => patchPhase(planningId, phase.id, { startDate: origStart, endDate: origEnd, lotId: origLotId }));
+      } else {
+        // 3b. Undo intra-lot move / resize
+        pushUndo({ type: "phase-dates", phaseId: phase.id, planningId, prevStart: origStart, prevEnd: origEnd });
+        updatePhaseDates({ phaseId: phase.id, planningId, startDate: currentStart, endDate: currentEnd })
+          .catch(() => patchPhase(planningId, phase.id, { startDate: origStart, endDate: origEnd }));
+      }
     };
 
     window.addEventListener("mousemove", onMouseMove);
@@ -184,28 +220,48 @@ export function DraggablePhase({
   }, [phase.id, planningId, ppd, bodyRef, patchPhase, pushUndo]);
 
   return (
-    <PhasePill
-      left={left}
-      width={width}
-      top={top}
-      height={height}
-      label={label}
-      startDate={displayStart}
-      endDate={displayEnd}
-      progress={progress}
-      bg={bg}
-      fg={fg}
-      hasNote={hasNote}
-      selected={selected}
-      editing={editing}
-      dimmed={dimmed}
-      status={status}
-      dragging={isDragging}
-      cursor={getCursor()}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove_local}
-      onMouseLeave_={() => { if (!isDragging) setHoverZone("move"); }}
-      onClick={isDragging ? undefined : onPhaseClick}
-    />
+    <>
+      {/* Target lot highlight — shown only when dragging "move" to a different lot */}
+      {isDragging && targetRow && targetRow.id !== phase.lotId && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: targetRow.y,
+            width: totalW,
+            height: targetRow.h,
+            background: "rgba(59,130,246,0.07)",
+            border: "1px dashed rgba(59,130,246,0.35)",
+            borderRadius: 3,
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+          aria-hidden
+        />
+      )}
+      <PhasePill
+        left={left}
+        width={width}
+        top={top}
+        height={height}
+        label={label}
+        startDate={displayStart}
+        endDate={displayEnd}
+        progress={progress}
+        bg={bg}
+        fg={fg}
+        hasNote={hasNote}
+        selected={selected}
+        editing={editing}
+        dimmed={dimmed}
+        status={status}
+        dragging={isDragging}
+        cursor={getCursor()}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove_local}
+        onMouseLeave_={() => { if (!isDragging) setHoverZone("move"); }}
+        onClick={isDragging ? undefined : onPhaseClick}
+      />
+    </>
   );
 }

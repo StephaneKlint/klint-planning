@@ -19,7 +19,7 @@ import { planningQueryKey } from "@/lib/queries/usePlanning";
 import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
   updatePhaseDates, updatePhaseColor, updatePhaseLabel,
-  updateMilestone, moveMilestoneToLot,
+  updateMilestone, moveMilestoneToLot, movePhaseToLot,
   restorePhase, restoreMilestone, restoreLot,
   markLotDone, reorderLots, reorderDomains,
 } from "@/lib/actions/planning";
@@ -110,6 +110,9 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
           break;
         case "phase-dates":
           await updatePhaseDates({ phaseId: entry.phaseId, planningId: entry.planningId, startDate: entry.prevStart, endDate: entry.prevEnd });
+          break;
+        case "phase-move":
+          await movePhaseToLot({ phaseId: entry.phaseId, planningId: entry.planningId, targetLotId: entry.prevLotId, newStartDate: entry.prevStart, newEndDate: entry.prevEnd });
           break;
         case "phase-label":
           await updatePhaseLabel({ phaseId: entry.phaseId, planningId: entry.planningId, label: entry.prev });

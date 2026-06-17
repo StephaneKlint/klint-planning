@@ -120,6 +120,26 @@ export async function updatePhaseDates(input: z.infer<typeof UpdatePhaseDatesSch
   return updated;
 }
 
+const MovePhaseToLotSchema = z.object({
+  phaseId:      z.string().uuid(),
+  targetLotId:  z.string().uuid(),
+  newStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  newEndDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  planningId:   z.string().uuid(),
+});
+
+export async function movePhaseToLot(input: z.infer<typeof MovePhaseToLotSchema>) {
+  const data = MovePhaseToLotSchema.parse(input);
+  await assertCanEdit(data.planningId);
+  if (data.newStartDate > data.newEndDate) throw new Error("Date début > date fin.");
+  await db.update(phases)
+    .set({ lotId: data.targetLotId, startDate: data.newStartDate, endDate: data.newEndDate })
+    .where(eq(phases.id, data.phaseId));
+  await logActivity(data.planningId, "moved", "phase", data.phaseId,
+    `Phase déplacée vers lot ${data.targetLotId} — ${data.newStartDate} → ${data.newEndDate}`);
+  revalidatePath(`/p/${data.planningId}`);
+}
+
 const UpdatePhaseLabelSchema = z.object({
   phaseId: z.string().uuid(),
   planningId: z.string().uuid(),

@@ -303,6 +303,8 @@ export function TimelineBody({
                   viewStart={viewStart}
                   bodyRef={bodyRef}
                   headerRef={headerRef}
+                  rows={rows}
+                  totalW={totalW}
                   top={pillTop}
                   height={PILL_H}
                   label={phaseLabel(phase)}
