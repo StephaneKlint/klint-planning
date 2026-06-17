@@ -7,7 +7,8 @@
 import React from "react";
 import type { RowEntry, ColorMode } from "./types";
 import type { DomainRow, LotRow, PhaseRow, MilestoneRow, MilestoneTypeRow, StatusRow, MemberRow, ClosurePeriodRow } from "@/lib/db/queries";
-import { PhasePill } from "./PhasePill";
+import { DraggablePhase } from "./DraggablePhase";
+import { DraggableMilestone } from "./DraggableMilestone";
 import { MilestoneFlag } from "./MilestoneFlag";
 import { TodayLine } from "./TodayLine";
 import { computeMilestoneLayout } from "@/lib/domain";
@@ -44,6 +45,9 @@ interface TimelineBodyProps {
   trackByPhaseId?: Record<string, number>;
   /** base row height (single track) — needed for pill Y calculation */
   rowH?: number;
+  planningId?: string;
+  bodyRef?: React.RefObject<HTMLDivElement | null>;
+  headerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function TimelineBody({
@@ -70,6 +74,9 @@ export function TimelineBody({
   showClosures = true,
   trackByPhaseId = {},
   rowH: singleRowH = 44,
+  planningId,
+  bodyRef,
+  headerRef,
 }: TimelineBodyProps) {
   const { togglePhaseSelection, selectedPhaseIds, openEdit, editTarget, baselinePhases, showBaseline } = useGanttStore();
   const domainById = Object.fromEntries(domains.map((d) => [d.id, d]));
@@ -288,24 +295,28 @@ export function TimelineBody({
 
           return (
             <React.Fragment key={phase.id}>
-              <PhasePill
-                left={left}
-                width={width}
-                top={pillTop}
-                height={PILL_H}
-                label={phaseLabel(phase)}
-                startDate={phase.startDate}
-                endDate={phase.endDate}
-                progress={phase.progress}
-                bg={bg}
-                fg={fg}
-                hasNote={!!phase.note}
-                selected={isSelected}
-                editing={isEditing}
-                status={phase.status}
-                dimmed={dimmed}
-                onClick={(e) => togglePhaseSelection(phase.id, e.metaKey || e.ctrlKey)}
-              />
+              {planningId && bodyRef ? (
+                <DraggablePhase
+                  phase={phase}
+                  planningId={planningId}
+                  ppd={ppd}
+                  viewStart={viewStart}
+                  bodyRef={bodyRef}
+                  headerRef={headerRef}
+                  top={pillTop}
+                  height={PILL_H}
+                  label={phaseLabel(phase)}
+                  bg={bg}
+                  fg={fg}
+                  progress={phase.progress}
+                  hasNote={!!phase.note}
+                  selected={isSelected}
+                  editing={isEditing}
+                  dimmed={dimmed}
+                  status={phase.status}
+                  onPhaseClick={(e) => togglePhaseSelection(phase.id, e.metaKey || e.ctrlKey)}
+                />
+              ) : null}
               {bSnap && bChanged && (
                 <div
                   style={{
@@ -339,6 +350,26 @@ export function TimelineBody({
           const ms = lotMilestones[i];
           const msType = msTypeByCode[ms.type];
           const color = ms.color ?? msType?.color ?? "#7C3AED";
+          if (planningId && bodyRef) {
+            return (
+              <DraggableMilestone
+                key={ms.id}
+                milestone={ms}
+                planningId={planningId}
+                ppd={ppd}
+                viewStart={viewStart}
+                bodyRef={bodyRef}
+                rows={rows}
+                totalW={totalW}
+                centerX={layout.centerX}
+                rowY={row.y}
+                rowH={row.h}
+                side={layout.side}
+                level={layout.level}
+                color={color}
+              />
+            );
+          }
           return (
             <MilestoneFlag
               key={ms.id}

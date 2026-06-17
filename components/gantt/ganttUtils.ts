@@ -15,6 +15,12 @@ export function daysSince(date: string, viewStart: string): number {
   return (new Date(date).getTime() - new Date(viewStart).getTime()) / 86400000;
 }
 
+export function addDays(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export function xOf(date: string, viewStart: string, ppd: number): number {
   return daysSince(date, viewStart) * ppd;
 }

@@ -34,3 +34,17 @@ export function useOptimisticPhase() {
     });
   };
 }
+
+export function useOptimisticMilestone() {
+  const qc = useQueryClient();
+  return function patchMilestone(
+    planningId: string,
+    milestoneId: string,
+    patch: Partial<GanttData["milestones"][0]>
+  ) {
+    qc.setQueryData<GanttData>(planningQueryKey(planningId), (old) => {
+      if (!old) return old;
+      return { ...old, milestones: old.milestones.map((m) => m.id === milestoneId ? { ...m, ...patch } : m) };
+    });
+  };
+}

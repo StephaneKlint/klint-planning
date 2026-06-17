@@ -772,6 +772,27 @@ export async function reorderDomains(input: z.infer<typeof ReorderDomainsSchema>
 }
 
 // ---------------------------------------------------------------------------
+// Move milestone to another lot (drag inter-lot)
+// ---------------------------------------------------------------------------
+const MoveMilestoneToLotSchema = z.object({
+  milestoneId: z.string().uuid(),
+  targetLotId: z.string().uuid(),
+  newDate:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  planningId:  z.string().uuid(),
+});
+
+export async function moveMilestoneToLot(input: z.infer<typeof MoveMilestoneToLotSchema>) {
+  const data = MoveMilestoneToLotSchema.parse(input);
+  await assertCanEdit(data.planningId);
+  await db.update(milestones)
+    .set({ lotId: data.targetLotId, date: data.newDate, labelPos: "auto" })
+    .where(eq(milestones.id, data.milestoneId));
+  await logActivity(data.planningId, "updated", "milestone", data.milestoneId,
+    `Jalon déplacé vers lot ${data.targetLotId} — ${data.newDate}`);
+  revalidatePath(`/p/${data.planningId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Data fetch action (callable from client via TanStack Query)
 // Server Action boundary ensures DB code stays server-side.
 // ---------------------------------------------------------------------------

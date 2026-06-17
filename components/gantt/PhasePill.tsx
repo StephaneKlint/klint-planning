@@ -29,6 +29,13 @@ interface PhasePillProps {
   status?: string | null;
   onClick?: (e: React.MouseEvent) => void;
   style?: "solid" | "tint" | "outline";
+  /** true while being dragged — disables hover transitions */
+  dragging?: boolean;
+  /** overrides the default pointer cursor */
+  cursor?: React.CSSProperties["cursor"];
+  onMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onMouseMove?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onMouseLeave_?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
 export function PhasePill({
@@ -36,6 +43,7 @@ export function PhasePill({
   label, startDate, endDate, progress = 0, bg, fg,
   hasNote = false, selected = false, editing = false, dimmed = false,
   status, onClick, style: pillStyle = "solid",
+  dragging = false, cursor, onMouseDown, onMouseMove, onMouseLeave_,
 }: PhasePillProps) {
   if (width < 2) return null;
 
@@ -64,7 +72,6 @@ export function PhasePill({
     position: "absolute",
     left, top, width, height,
     borderRadius: 999,
-    cursor: "pointer",
     overflow: isPlanned ? "visible" : "hidden",
     pointerEvents: "auto",
     display: "flex",
@@ -74,7 +81,8 @@ export function PhasePill({
     fontFamily: "var(--font-display, system-ui)",
     letterSpacing: "0.01em",
     userSelect: "none",
-    transition: "filter 140ms, transform 140ms, opacity 120ms",
+    transition: dragging ? "none" : "filter 140ms, transform 140ms, opacity 120ms",
+    cursor: cursor ?? "pointer",
     zIndex: editing ? 4 : selected ? 3 : 2,
     opacity: dimmed ? 0.35 : 1,
     outline: editing
@@ -109,8 +117,10 @@ export function PhasePill({
       tabIndex={0}
       aria-pressed={selected}
       onKeyDown={(e) => e.key === "Enter" && onClick?.(e as unknown as React.MouseEvent)}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
       onMouseEnter={(e) => {
-        if (!dimmed) {
+        if (!dimmed && !dragging) {
           (e.currentTarget as HTMLElement).style.filter = "brightness(1.08)";
           (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
         }
@@ -118,6 +128,7 @@ export function PhasePill({
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLElement).style.filter = "";
         (e.currentTarget as HTMLElement).style.transform = "";
+        onMouseLeave_?.(e);
       }}
     >
       {showProgress && (

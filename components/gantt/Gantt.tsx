@@ -249,6 +249,9 @@ export function Gantt({
             showClosures={showClosures}
             trackByPhaseId={trackByPhaseId}
             rowH={rowH}
+            planningId={planningId}
+            bodyRef={bodyRef}
+            headerRef={headerRef}
           />
         </div>
       </div>

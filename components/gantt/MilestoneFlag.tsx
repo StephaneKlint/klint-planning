@@ -23,6 +23,8 @@ export interface MilestoneFlagProps {
   diamondSize?: number;  // (default 10)
   labelH?: number;       // flag chip height (default 14)
   onClick?: (e: React.MouseEvent) => void;
+  onDiamondMouseDown?: (e: React.MouseEvent) => void;
+  opacity?: number;
 }
 
 const DEFAULT_LANE_H = 18;
@@ -41,6 +43,8 @@ export function MilestoneFlag({
   diamondSize = DEFAULT_DIAMOND,
   labelH = DEFAULT_LABEL_H,
   onClick,
+  onDiamondMouseDown,
+  opacity = 1,
 }: MilestoneFlagProps) {
   const halfDiamond = diamondSize / 2;
   const rowCenterY = rowY + rowH / 2;
@@ -68,10 +72,11 @@ export function MilestoneFlag({
   const flagLeft = centerX - estW / 2;
 
   return (
-    <>
+    <div style={{ opacity }}>
       {/* Diamond */}
       <div
         onClick={onClick}
+        onMouseDown={onDiamondMouseDown}
         style={{
           position: "absolute",
           left: centerX - halfDiamond,
@@ -83,7 +88,7 @@ export function MilestoneFlag({
           zIndex: 4,
           borderRadius: 2,
           flexShrink: 0,
-          cursor: onClick ? "pointer" : "default",
+          cursor: onDiamondMouseDown ? "grab" : (onClick ? "pointer" : "default"),
           pointerEvents: "auto",
         }}
         aria-hidden
@@ -139,7 +144,7 @@ export function MilestoneFlag({
       >
         {label}
       </div>
-    </>
+    </div>
   );
 }
 
