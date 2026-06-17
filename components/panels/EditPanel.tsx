@@ -17,7 +17,7 @@ import {
   updateMilestone, togglePhaseAssignee,
   createLot, createPhase, createMilestone, createDomain, updateDomain, updateLot,
   deletePhase, deleteMilestone, deleteLot, deleteDomain,
-  moveLot, duplicatePhase, duplicateLotPhases,
+  moveLot, duplicatePhase, duplicateLotPhases, duplicateMilestone,
 } from "@/lib/actions/planning";
 import { useOptimisticPhase, planningQueryKey } from "@/lib/queries/usePlanning";
 import styles from "./EditPanel.module.css";
@@ -75,7 +75,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   const endInputRef   = useRef<HTMLInputElement>(null);
 
   // Duplicate picker state (phase panel + lot panel)
-  const [showDupPicker, setShowDupPicker] = useState<"phase" | "lot" | null>(null);
+  const [showDupPicker, setShowDupPicker] = useState<"phase" | "lot" | "milestone" | null>(null);
   const [dupTargetLotId, setDupTargetLotId] = useState("");
 
   // Create mode form state
@@ -1274,8 +1274,54 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
           >
             <Icon name="trash" size={14} />
           </button>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => { setShowDupPicker(showDupPicker === "milestone" ? null : "milestone"); setDupTargetLotId(""); }}
+            title="Dupliquer ce jalon vers un autre projet"
+          >
+            <Icon name="layers" size={12} />
+            Dupliquer
+          </Button>
           <Button variant="ghost" size="sm" onClick={closeEdit}>Fermer</Button>
         </div>
+
+        {/* ── Duplicate lot picker — milestone ── */}
+        {showDupPicker === "milestone" && (
+          <div className={styles.dupPicker}>
+            <p className={styles.dupPickerTitle}>Dupliquer vers le projet…</p>
+            <select
+              className={styles.dupSelect}
+              value={dupTargetLotId}
+              onChange={(e) => setDupTargetLotId(e.target.value)}
+            >
+              <option value="">— Choisir un projet —</option>
+              {data.domains.map((dom) => (
+                <optgroup key={dom.id} label={dom.name}>
+                  {data.lots.filter((l) => l.domainId === dom.id).map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <div className={styles.dupActions}>
+              <button className={styles.dupCancel} onClick={() => setShowDupPicker(null)}>Annuler</button>
+              <button
+                className={styles.dupConfirm}
+                disabled={!dupTargetLotId || isPending}
+                onClick={() => {
+                  if (!dupTargetLotId) return;
+                  startTransition(async () => {
+                    await duplicateMilestone({ milestoneId: ms.id, targetLotId: dupTargetLotId, planningId });
+                    qc.invalidateQueries({ queryKey: planningQueryKey(planningId) });
+                    setShowDupPicker(null);
+                  });
+                }}
+              >
+                {isPending ? "Copie…" : "Confirmer"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

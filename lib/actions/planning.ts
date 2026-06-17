@@ -813,6 +813,38 @@ export async function moveMilestoneToLot(input: z.infer<typeof MoveMilestoneToLo
 }
 
 // ---------------------------------------------------------------------------
+// Duplicate milestone → another lot
+// ---------------------------------------------------------------------------
+const DuplicateMilestoneSchema = z.object({
+  milestoneId: z.string().uuid(),
+  targetLotId: z.string().uuid(),
+  planningId:  z.string().uuid(),
+});
+
+export async function duplicateMilestone(input: z.infer<typeof DuplicateMilestoneSchema>) {
+  const data = DuplicateMilestoneSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  const [src] = await db.select().from(milestones).where(eq(milestones.id, data.milestoneId));
+  if (!src) throw new Error("Jalon introuvable.");
+
+  const [inserted] = await db.insert(milestones).values({
+    lotId:    data.targetLotId,
+    type:     src.type,
+    label:    src.label,
+    date:     src.date,
+    color:    src.color,
+    note:     src.note,
+    labelPos: src.labelPos,
+  }).returning({ id: milestones.id });
+
+  await logActivity(data.planningId, "duplicated", "milestone", inserted.id,
+    `Jalon dupliqué : ${src.label}`);
+  revalidatePath(`/p/${data.planningId}`);
+  return inserted.id;
+}
+
+// ---------------------------------------------------------------------------
 // Data fetch action (callable from client via TanStack Query)
 // Server Action boundary ensures DB code stays server-side.
 // ---------------------------------------------------------------------------
