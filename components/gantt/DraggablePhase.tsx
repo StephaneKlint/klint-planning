@@ -58,6 +58,8 @@ export function DraggablePhase({
     startScrollLeft: number;
     origStart: string;
     origEnd: string;
+    currentStart: string;
+    currentEnd: string;
     lastDelta: number;
     hasMoved: boolean;
   } | null>(null);
@@ -106,6 +108,8 @@ export function DraggablePhase({
       startScrollLeft: body.scrollLeft,
       origStart: phase.startDate,
       origEnd:   phase.endDate,
+      currentStart: phase.startDate,
+      currentEnd:   phase.endDate,
       lastDelta: 0,
       hasMoved:  false,
     };
@@ -143,6 +147,8 @@ export function DraggablePhase({
         if (newStart >= newEnd) newStart = addDays(newEnd, -1);
       }
 
+      drag.current.currentStart = newStart;
+      drag.current.currentEnd   = newEnd;
       setLocalDates({ start: newStart, end: newEnd });
     };
 
@@ -158,15 +164,15 @@ export function DraggablePhase({
         return;
       }
 
-      setLocalDates((prev) => {
-        if (!prev) return null;
-        const { start: newStart, end: newEnd } = prev;
-        pushUndo({ type: "phase-dates", phaseId: phase.id, planningId, prevStart: d.origStart, prevEnd: d.origEnd });
-        patchPhase(planningId, phase.id, { startDate: newStart, endDate: newEnd });
-        updatePhaseDates({ phaseId: phase.id, planningId, startDate: newStart, endDate: newEnd })
-          .catch(() => patchPhase(planningId, phase.id, { startDate: d.origStart, endDate: d.origEnd }));
-        return null;
-      });
+      const { origStart, origEnd, currentStart, currentEnd } = d;
+      // 1. Patch React Query cache FIRST so clearing localDates shows correct data
+      patchPhase(planningId, phase.id, { startDate: currentStart, endDate: currentEnd });
+      // 2. Clear local visual override
+      setLocalDates(null);
+      // 3. Undo + persist
+      pushUndo({ type: "phase-dates", phaseId: phase.id, planningId, prevStart: origStart, prevEnd: origEnd });
+      updatePhaseDates({ phaseId: phase.id, planningId, startDate: currentStart, endDate: currentEnd })
+        .catch(() => patchPhase(planningId, phase.id, { startDate: origStart, endDate: origEnd }));
     };
 
     window.addEventListener("mousemove", onMouseMove);

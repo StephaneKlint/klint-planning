@@ -42,15 +42,29 @@ export function TimelineHeader({ viewStart, viewEnd, ppd, zoom, totalW }: Timeli
 
       {/* Row 2 — weeks or days */}
       <div className={styles.daysRow}>
-        {days.map((cell, i) => (
-          <div
-            key={i}
-            className={`${styles.dayCell} ${cell.isMajor ? styles.dayCellMajor : ""}`}
-            style={{ position: "absolute", left: cell.x, width: Math.max(cell.width, 1) }}
-          >
-            {cell.width >= (zoom === "1m" ? 14 : 30) ? cell.label : ""}
-          </div>
-        ))}
+        {days.map((cell, i) => {
+          // Adaptive label: never widen columns, shorten text instead
+          let displayLabel = "";
+          const isWeekView = zoom === "6m" || zoom === "12m";
+          if (isWeekView) {
+            if (cell.width >= 55) {
+              displayLabel = cell.label;              // "S25 23/6"  — full
+            } else if (cell.width >= 26) {
+              displayLabel = cell.label.split(" ")[0]; // "S25"       — short
+            }
+          } else {
+            if (cell.width >= 14) displayLabel = cell.label; // day number
+          }
+          return (
+            <div
+              key={i}
+              className={`${styles.dayCell} ${cell.isMajor ? styles.dayCellMajor : ""}`}
+              style={{ position: "absolute", left: cell.x, width: Math.max(cell.width, 1) }}
+            >
+              {displayLabel}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
