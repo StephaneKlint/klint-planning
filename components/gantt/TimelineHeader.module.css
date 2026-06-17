@@ -12,22 +12,6 @@
   overflow: hidden;
 }
 
-.yearPill {
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--klint-navy, #001036);
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
-  z-index: 2;
-  pointer-events: none;
-  font-family: var(--font-display, system-ui);
-}
-
 .monthCell {
   position: absolute;
   top: 0;
@@ -39,12 +23,18 @@
   font-weight: 700;
   color: var(--klint-navy, #001036);
   border-left: 1px solid var(--klint-line, #E6E8EE);
-  padding: 0 4px;
+  padding: 0 6px;
   text-align: center;
   font-family: var(--font-display, system-ui);
   letter-spacing: 0.01em;
   overflow: hidden;
   white-space: nowrap;
+}
+
+/* January cells (year boundary) — subtle navy tint + bolder border */
+.monthCellNewYear {
+  background: rgba(0, 16, 54, 0.04);
+  border-left: 2px solid rgba(0, 16, 54, 0.25);
 }
 
 .weeksRow {
