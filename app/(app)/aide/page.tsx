@@ -334,7 +334,24 @@ export default function AidePage() {
             </div>
             <div>
               <dt style={S.dt}>Niveaux de zoom</dt>
-              <dd style={S.dd}>Choisissez parmi <strong>1m · 3m · 6m · 12m</strong> dans la barre d&apos;outils. Le zoom 12m affiche l&apos;année complète.</dd>
+              <dd style={S.dd}>Choisissez parmi <strong>1m · 3m · 6m · 12m</strong> dans la barre d&apos;outils. Le zoom 12m affiche l&apos;année complète.<br />
+                L&apos;en-tête de la timeline affiche trois lignes : <strong>Mois · Semaine · Jour</strong>. En vue 6m/12m, la ligne Jour indique la date du lundi de chaque semaine ; en vue 1m/3m, elle affiche chaque numéro de jour.
+              </dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Déplacer une phase (glisser-déposer)</dt>
+              <dd style={S.dd}>
+                Cliquez-glissez une phase <strong>horizontalement</strong> pour décaler ses dates (toute la phase se déplace).<br />
+                Tirez le <strong>bord gauche</strong> pour modifier la date de début, le <strong>bord droit</strong> pour la date de fin.<br />
+                Glissez <strong>verticalement vers un autre sous-projet</strong> pour y rattacher la phase (une bande bleue indique la cible). La date est conservée.<br />
+                Toutes ces actions sont annulables avec <Kbd>Ctrl</Kbd>+<Kbd>Z</Kbd>.
+              </dd>
+            </div>
+            <div>
+              <dt style={S.dt}>Déplacer un jalon (glisser-déposer)</dt>
+              <dd style={S.dd}>
+                Cliquez-glissez le losange d&apos;un jalon pour changer sa date (axe horizontal) et/ou le rattacher à un autre sous-projet (axe vertical). Un losange fantôme suit le curseur pendant le glissement. Annulable avec <Kbd>Ctrl</Kbd>+<Kbd>Z</Kbd>.
+              </dd>
             </div>
             <div>
               <dt style={S.dt}>Coloration des phases</dt>

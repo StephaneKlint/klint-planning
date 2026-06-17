@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  height: 52px; /* matches HEADER_H in Gantt.tsx (monthsRow 30 + daysRow 22) */
+  height: 72px; /* matches HEADER_H in Gantt.tsx (monthsRow 30 + weeksRow 22 + daysRow 20) */
   border-bottom: 1px solid var(--klint-line, #E6E8EE);
   flex-shrink: 0;
   background: #ffffff;
