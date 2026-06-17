@@ -119,7 +119,7 @@ export function buildMonthSegments(viewStart: string, viewEnd: string, ppd: numb
   return segments;
 }
 
-/** Build day cells for second header row. Show every day for 1m/3m, every Mon for 6m/12m. */
+/** Build day cells for second header row. */
 export function buildDayCells(viewStart: string, viewEnd: string, ppd: number, zoom: ZoomLevel) {
   const cells: { label: string; x: number; width: number; isMajor: boolean }[] = [];
   const start = new Date(viewStart + "T00:00:00Z");
@@ -136,10 +136,25 @@ export function buildDayCells(viewStart: string, viewEnd: string, ppd: number, z
 
   while (cur <= end) {
     const x = xOf(cur.toISOString().slice(0, 10), viewStart, ppd);
-    const label = step === 7
-      ? `S${isoWeek(cur)} ${cur.getUTCDate()}/${cur.getUTCMonth() + 1}`
-      : String(cur.getUTCDate());
-    const isMajor = cur.getUTCDate() === 1;
+    const isMonday = cur.getUTCDay() === 1;
+
+    let label: string;
+    let isMajor: boolean;
+
+    if (step === 7) {
+      // 6m / 12m — weekly cells with week number + date
+      label = `S${isoWeek(cur)} ${cur.getUTCDate()}/${cur.getUTCMonth() + 1}`;
+      isMajor = cur.getUTCDate() === 1;
+    } else if (zoom === "3m") {
+      // 3m — daily cells: week number on Mondays, day number otherwise
+      label = isMonday ? `S${isoWeek(cur)}` : String(cur.getUTCDate());
+      isMajor = isMonday;
+    } else {
+      // 1m — daily cells: day number, first-of-month is major
+      label = String(cur.getUTCDate());
+      isMajor = cur.getUTCDate() === 1;
+    }
+
     cells.push({ label, x, width: step * ppd, isMajor });
     cur = new Date(cur.getTime() + step * 86400000);
   }

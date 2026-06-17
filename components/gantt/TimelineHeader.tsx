@@ -43,23 +43,30 @@ export function TimelineHeader({ viewStart, viewEnd, ppd, zoom, totalW }: Timeli
       {/* Row 2 — weeks or days */}
       <div className={styles.daysRow}>
         {days.map((cell, i) => {
-          // Adaptive label: never widen columns, shorten text instead
           let displayLabel = "";
-          const isWeekView = zoom === "6m" || zoom === "12m";
-          if (isWeekView) {
-            if (cell.width >= 55) {
-              displayLabel = cell.label;              // "S25 23/6"  — full
-            } else if (cell.width >= 26) {
-              displayLabel = cell.label.split(" ")[0]; // "S25"       — short
-            }
+          if (zoom === "6m" || zoom === "12m") {
+            // Weekly cells — adaptive: full "S25 23/6" or short "S25"
+            if (cell.width >= 55) displayLabel = cell.label;
+            else if (cell.width >= 26) displayLabel = cell.label.split(" ")[0];
+          } else if (zoom === "3m") {
+            // Daily cells — week number on Mondays (isMajor), nothing on other days
+            if (cell.isMajor) displayLabel = cell.label; // "S25"
           } else {
-            if (cell.width >= 14) displayLabel = cell.label; // day number
+            // 1m — day numbers (38px cells, always wide enough)
+            if (cell.width >= 14) displayLabel = cell.label;
           }
           return (
             <div
               key={i}
               className={`${styles.dayCell} ${cell.isMajor ? styles.dayCellMajor : ""}`}
-              style={{ position: "absolute", left: cell.x, width: Math.max(cell.width, 1) }}
+              style={{
+                position: "absolute",
+                left: cell.x,
+                width: Math.max(cell.width, 1),
+                // 3m Monday week labels may overflow into adjacent empty cells
+                overflow: zoom === "3m" && cell.isMajor ? "visible" : "hidden",
+                zIndex: zoom === "3m" && cell.isMajor ? 1 : undefined,
+              }}
             >
               {displayLabel}
             </div>
