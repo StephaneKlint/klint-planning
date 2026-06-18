@@ -328,6 +328,11 @@ export function GanttSide({
                     right: 0,
                     height: row.h,
                     cursor: isDragging ? "grabbing" : "pointer",
+                    ...(lot.isPostponed ? {
+                      background: "repeating-linear-gradient(135deg, rgba(217,119,6,0.09) 0px, rgba(217,119,6,0.09) 6px, transparent 6px, transparent 14px)",
+                      borderTop: "1.5px solid rgba(217,119,6,0.22)",
+                      borderBottom: "1.5px solid rgba(217,119,6,0.22)",
+                    } : {}),
                   }}
                   onClick={() => !isDragging && openEdit({ kind: "edit-lot", lotId: row.id, planningId })}
                   title="Cliquez pour modifier le projet"
