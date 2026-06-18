@@ -220,7 +220,8 @@ export function workloadFor(
  */
 export function computeMilestoneLayout(
   milestones: MilestoneInput[],
-  xOf: (date: string) => number
+  xOf: (date: string) => number,
+  forceBelowAll?: boolean
 ): MilestoneLayoutItem[] {
   if (milestones.length === 0) return [];
 
@@ -252,7 +253,7 @@ export function computeMilestoneLayout(
       secondary = primary === "above" ? "below" : "above";
       allowFlip = false;
     } else {
-      primary = alt % 2 === 0 ? "above" : "below";
+      primary = (forceBelowAll || alt % 2 !== 0) ? "below" : "above";
       secondary = primary === "above" ? "below" : "above";
       allowFlip = true;
       alt++;

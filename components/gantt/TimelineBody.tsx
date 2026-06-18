@@ -255,7 +255,7 @@ export function TimelineBody({
       })}
 
       {/* Phases + Milestones per lot */}
-      {rows.map((row) => {
+      {rows.map((row, rowIdx) => {
         if (row.kind !== "lot") return null;
         const lot = lotById[row.id];
         if (!lot) return null;
@@ -339,14 +339,15 @@ export function TimelineBody({
           );
         });
 
-        // Milestone layout
+        // Milestone layout — force flags below when a domain header sits directly above this lot
+        const isDomainFirstLot = rows[rowIdx - 1]?.kind === "domain";
         const msInputs = lotMilestones.map((m) => ({
           id: m.id,
           date: m.date,
           label: m.label,
           labelPos: m.labelPos as "auto" | "above" | "below",
         }));
-        const msLayout = computeMilestoneLayout(msInputs, xOfDate);
+        const msLayout = computeMilestoneLayout(msInputs, xOfDate, isDomainFirstLot);
 
         const flags = msLayout.map((layout, i) => {
           const ms = lotMilestones[i];
