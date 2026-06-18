@@ -14,10 +14,10 @@ import { saveAppLogo, saveAppFavicon } from "@/lib/actions/appSettings";
 import { seedHolidays, createClosurePeriod, updateClosurePeriod, deleteClosurePeriod } from "@/lib/actions/closurePeriods";
 import { changePassword } from "@/lib/actions/authActions";
 import { setTemplateFlag } from "@/lib/actions/plannings";
-import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow } from "@/lib/db/queries";
+import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact } from "@/lib/db/queries";
 import { RessourcesClient } from "@/app/(app)/ressources/RessourcesClient";
 
-type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "ressources" | "historique";
+type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "ressources" | "annuaire" | "historique";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "general",    label: "Général" },
@@ -26,6 +26,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "jalons",     label: "Types de jalons" },
   { id: "statuts",    label: "Statuts" },
   { id: "ressources", label: "Ressources" },
+  { id: "annuaire",   label: "Annuaire" },
   { id: "historique", label: "Historique" },
   { id: "apparence",  label: "Apparence" },
   { id: "calendrier", label: "Calendrier" },
@@ -76,9 +77,10 @@ interface ParametresTabsProps {
   existingUsers?: ExistingUserRow[];
   activityEntries?: ActivityEntry[];
   connLogs?: ConnectionLogRow[];
+  directoryContacts?: DirectoryContact[];
 }
 
-export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntries = [], connLogs = [] }: ParametresTabsProps) {
+export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntries = [], connLogs = [], directoryContacts = [] }: ParametresTabsProps) {
   const router = useRouter();
   const [active, setActive] = useState<Tab>("general");
   const [isPending, startTransition] = useTransition();
@@ -1135,6 +1137,13 @@ export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntri
         </div>
       )}
 
+      {/* ── Annuaire ──────────────────────────────────────────────────────── */}
+      {active === "annuaire" && (
+        <div className={styles.tabPanel}>
+          <AnnuaireTab contacts={directoryContacts} />
+        </div>
+      )}
+
       {/* ── Historique ──────────────────────────────────────────────────── */}
       {active === "historique" && (
         <HistoriquePanel activityEntries={activityEntries} connLogs={connLogs} />
@@ -1317,5 +1326,128 @@ function CadenceRow({
       ))}
       <td></td>
     </tr>
+  );
+}
+
+// ── Annuaire tab ─────────────────────────────────────────────────────────────
+
+function AnnuaireTab({ contacts }: { contacts: DirectoryContact[] }) {
+  const [search, setSearch] = useState("");
+
+  const filtered = contacts.filter((c) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (c.name ?? "").toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      c.plannings.some((p) => p.name.toLowerCase().includes(q))
+    );
+  });
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 20, marginTop: 0 }}>
+        Tous les responsables de la plateforme et les plannings auxquels ils sont rattachés.
+      </p>
+
+      {/* Search */}
+      <div style={{ position: "relative", maxWidth: 360, marginBottom: 20 }}>
+        <input
+          type="text"
+          placeholder="Rechercher par nom, email ou planning…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "8px 32px 8px 12px",
+            fontFamily: "var(--font-display, system-ui)",
+            fontSize: 13,
+            color: "var(--klint-navy)",
+            background: "#fff",
+            border: "1.5px solid var(--klint-line, #E6E8EE)",
+            borderRadius: 8,
+            outline: "none",
+            boxSizing: "border-box",
+          }}
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: "2px 4px", lineHeight: 1 }}
+          >×</button>
+        )}
+      </div>
+
+      <p style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 16 }}>
+        {filtered.length} contact{filtered.length !== 1 ? "s" : ""}
+        {search ? ` pour « ${search} »` : ""}
+      </p>
+
+      {filtered.length === 0 ? (
+        <p style={{ color: "#9CA3AF", fontSize: 13, padding: "24px 0" }}>Aucun résultat.</p>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+          {filtered.map((c) => {
+            const initials = (c.initials ?? (c.name ?? c.email).slice(0, 2)).toUpperCase();
+            const color = c.color ?? "#001D63";
+            return (
+              <div
+                key={c.userId}
+                style={{
+                  background: "#fff",
+                  border: "1.5px solid var(--klint-line, #E6E8EE)",
+                  borderRadius: 10,
+                  padding: "14px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: "50%",
+                    background: color, color: "#fff",
+                    fontWeight: 700, fontSize: 13,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0, letterSpacing: 0.5,
+                  }}>
+                    {initials}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {c.name ?? "—"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#6B7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {c.email}
+                    </div>
+                  </div>
+                </div>
+                {c.plannings.length > 0 ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {c.plannings.map((p) => (
+                      <span
+                        key={p.id}
+                        style={{
+                          fontSize: 10, fontWeight: 600,
+                          padding: "2px 7px", borderRadius: 999,
+                          background: "var(--klint-paper, #F6F7FB)",
+                          border: "1px solid var(--klint-line, #E6E8EE)",
+                          color: "var(--klint-navy)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {p.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span style={{ fontSize: 11, color: "#9CA3AF" }}>Aucun planning associé</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

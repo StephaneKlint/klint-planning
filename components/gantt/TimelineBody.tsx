@@ -225,7 +225,7 @@ export function TimelineBody({
               height: row.h,
               background: domain.bg,
               borderBottom: `1px solid ${domain.strong}33`,
-              zIndex: 6,
+              zIndex: 1,
               pointerEvents: "none",
             }}
             aria-hidden

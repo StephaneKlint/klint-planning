@@ -54,20 +54,29 @@ export function MilestoneFlag({
   // Diamond is at the center of the row
   const diamondTop = rowCenterY - halfDiamond;
 
-  // Flag is laneH * (level+1) away from diamond, in the "side" direction
-  const flagOffset = laneH * (level + 1);
-  const flagTop =
-    side === "above"
-      ? rowCenterY - halfDiamond - flagOffset - labelH
-      : rowCenterY + halfDiamond + flagOffset;
+  // Flag is positioned INSIDE the lot row (never bleeds into domain bands).
+  // "above" flags stack downward from the row top; "below" stack upward from the row bottom.
+  // laneH is kept in the props signature for backward compat but not used here.
+  const STACK = labelH + 2; // 16 px per stacked level
+  const flagTop = Math.max(
+    rowY,
+    Math.min(
+      side === "above"
+        ? rowY + 2 + STACK * level
+        : rowY + rowH - labelH - 2 - STACK * level,
+      rowY + rowH - labelH
+    )
+  );
 
-  // Leader line connects diamond edge to flag edge
+  // Leader line: from flag edge toward the diamond (both within the row)
   const leaderTop =
     side === "above" ? flagTop + labelH : rowCenterY + halfDiamond;
-  const leaderHeight =
+  const leaderHeight = Math.max(
+    0,
     side === "above"
       ? rowCenterY - halfDiamond - (flagTop + labelH)
-      : flagTop - (rowCenterY + halfDiamond);
+      : flagTop - (rowCenterY + halfDiamond)
+  );
 
   // Estimate flag width
   const estW = Math.max(36, label.length * 6.0 + 16);
