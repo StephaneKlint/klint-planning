@@ -8,7 +8,7 @@ import type { AppSettings } from "@/lib/actions/appSettings";
 import {
   addPhaseType, deletePhaseType, updatePhaseType,
   addMilestoneType, deleteMilestoneType, updateMilestoneType,
-  updateDomainCadence, updatePlanningSettings, updateMemberPermission,
+  updateDomainCadence, updatePlanningSettings,
 } from "@/lib/actions/settings";
 import { saveAppLogo, saveAppFavicon } from "@/lib/actions/appSettings";
 import { seedHolidays, createClosurePeriod, updateClosurePeriod, deleteClosurePeriod } from "@/lib/actions/closurePeriods";
@@ -17,7 +17,7 @@ import { setTemplateFlag } from "@/lib/actions/plannings";
 import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow } from "@/lib/db/queries";
 import { RessourcesClient } from "@/app/(app)/ressources/RessourcesClient";
 
-type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "membres" | "apparence" | "calendrier" | "securite" | "ressources" | "historique";
+type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "ressources" | "historique";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "general",    label: "Général" },
@@ -25,7 +25,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "phases",     label: "Types de phases" },
   { id: "jalons",     label: "Types de jalons" },
   { id: "statuts",    label: "Statuts" },
-  { id: "membres",    label: "Membres & Droits" },
   { id: "ressources", label: "Ressources" },
   { id: "historique", label: "Historique" },
   { id: "apparence",  label: "Apparence" },
@@ -70,11 +69,6 @@ const PRESET_COLORS = [
   "#DC2626","#EA580C","#0369A1","#374151","#BE185D",
 ];
 
-const PERMISSION_LABELS: Record<string, string> = {
-  owner:  "Propriétaire",
-  editor: "Éditeur",
-  viewer: "Lecteur",
-};
 
 interface ParametresTabsProps {
   data: GanttData;
@@ -88,7 +82,7 @@ export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntri
   const router = useRouter();
   const [active, setActive] = useState<Tab>("general");
   const [isPending, startTransition] = useTransition();
-  const { planning, settings, domains, phaseTypes, milestoneTypes, statuses, members } = data;
+  const { planning, settings, domains, phaseTypes, milestoneTypes, statuses } = data;
 
   // ── Calendrier state ────────────────────────────────────────────────────
   const [calPeriods, setCalPeriods] = useState<ClosurePeriodRow[]>(data.closurePeriods ?? []);
@@ -539,67 +533,6 @@ export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntri
           <p className={styles.tabDesc} style={{ marginTop: 12 }}>
             Les statuts sont synchronisés avec le système. L&apos;édition libre arrive dans une prochaine version.
           </p>
-        </div>
-      )}
-
-      {/* ── Membres & Droits ─────────────────────────────────────── */}
-      {active === "membres" && (
-        <div className={styles.tabPanel}>
-          <p className={styles.tabDesc}>
-            Gérez les rôles des membres de ce planning. Les propriétaires peuvent tout modifier ; les éditeurs gèrent le contenu ; les lecteurs consultent uniquement.
-          </p>
-          {members.length === 0 ? (
-            <p className={styles.tabDesc}>Aucun membre sur ce planning.</p>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr><th>Membre</th><th>Email</th><th>Rôle</th></tr>
-              </thead>
-              <tbody>
-                {members.map((m) => (
-                  <tr key={m.id}>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span
-                          style={{
-                            width: 28, height: 28, borderRadius: "50%",
-                            background: m.color ?? "#001D63",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            color: "white", fontSize: 10, fontWeight: 700, flexShrink: 0,
-                          }}
-                        >
-                          {(m.initials ?? m.userName.slice(0, 2)).toUpperCase()}
-                        </span>
-                        {m.userName}
-                      </div>
-                    </td>
-                    <td className={styles.tdMuted}>{m.userEmail}</td>
-                    <td>
-                      <select
-                        className={styles.addInput}
-                        defaultValue={m.permission}
-                        disabled={isPending}
-                        onChange={(e) => {
-                          startTransition(async () => {
-                            await updateMemberPermission({
-                              memberId: m.id,
-                              planningId: planning.id,
-                              permission: e.target.value as "owner" | "editor" | "viewer",
-                            });
-                            router.refresh();
-                          });
-                        }}
-                      >
-                        {Object.entries(PERMISSION_LABELS).map(([val, lbl]) => (
-                          <option key={val} value={val}>{lbl}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </div>
       )}
 

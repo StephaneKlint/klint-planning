@@ -98,6 +98,12 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   const [editLotName, setEditLotName] = useState("");
   const [editLotSubtitle, setEditLotSubtitle] = useState("");
   const [editLotDomainId, setEditLotDomainId] = useState("");
+  // Lot reporté state
+  const [editLotPostponed, setEditLotPostponed] = useState(false);
+  const [editLotPostponedNote, setEditLotPostponedNote] = useState("");
+  const [editLotPostponedColor, setEditLotPostponedColor] = useState("#D97706");
+  const [editLotPostponedFont, setEditLotPostponedFont] = useState("system-ui");
+  const [editLotPostponedSize, setEditLotPostponedSize] = useState(12);
   // Édition inline des dates depuis la modale lot
   const [editingPhaseDates, setEditingPhaseDates] = useState(false);
   const [phaseDateDrafts, setPhaseDateDrafts] = useState<Record<string, { start: string; end: string }>>({});
@@ -145,6 +151,11 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
       setEditLotName(lot?.name ?? "");
       setEditLotSubtitle(lot?.subtitle ?? "");
       setEditLotDomainId(lot?.domainId ?? "");
+      setEditLotPostponed(lot?.isPostponed ?? false);
+      setEditLotPostponedNote(lot?.postponedNote ?? "");
+      setEditLotPostponedColor(lot?.postponedLabelColor ?? "#D97706");
+      setEditLotPostponedFont(lot?.postponedLabelFont ?? "system-ui");
+      setEditLotPostponedSize(lot?.postponedLabelSize ?? 12);
     }
     // Seed domain edit form from current data
     if (editTarget?.kind === "edit-domain") {
@@ -660,6 +671,11 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             planningId: lotPlanningId,
             name: editLotName.trim(),
             subtitle: editLotSubtitle.trim() || null,
+            isPostponed: editLotPostponed,
+            postponedNote: editLotPostponed ? (editLotPostponedNote.trim() || null) : null,
+            postponedLabelColor: editLotPostponed ? (editLotPostponedColor || null) : null,
+            postponedLabelFont: editLotPostponed ? (editLotPostponedFont || null) : null,
+            postponedLabelSize: editLotPostponed ? editLotPostponedSize : null,
           });
           // Si le domaine a changé
           if (editLotDomainId && editLotDomainId !== lot.domainId) {
@@ -780,6 +796,90 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
           {createError && (
             <p style={{ color: "#DC2626", fontSize: 12, margin: 0 }}>{createError}</p>
           )}
+
+          {/* ── Lot reporté ── */}
+          <div className={styles.fieldRow} style={{ marginTop: 4 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={editLotPostponed}
+                onChange={(e) => setEditLotPostponed(e.target.checked)}
+                style={{ width: 15, height: 15, cursor: "pointer", accentColor: "#D97706" }}
+              />
+              <span className={styles.fieldLabel} style={{ marginBottom: 0, color: editLotPostponed ? "#D97706" : undefined, fontWeight: editLotPostponed ? 700 : undefined }}>
+                Lot reporté
+              </span>
+            </label>
+          </div>
+
+          {editLotPostponed && (
+            <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* Note / libellé */}
+              <div>
+                <span className={styles.fieldLabel} style={{ fontSize: 11 }}>Libellé overlay (ex. Report T1 2027)</span>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={editLotPostponedNote}
+                  onChange={(e) => setEditLotPostponedNote(e.target.value)}
+                  placeholder="ex. Report pour T1 2027"
+                  maxLength={200}
+                />
+              </div>
+              {/* Couleur + Police + Taille en ligne */}
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                {/* Couleur */}
+                <div style={{ flex: "0 0 auto" }}>
+                  <span className={styles.fieldLabel} style={{ fontSize: 11, display: "block", marginBottom: 4 }}>Couleur</span>
+                  <input
+                    type="color"
+                    value={editLotPostponedColor}
+                    onChange={(e) => setEditLotPostponedColor(e.target.value)}
+                    style={{ width: 36, height: 30, padding: 2, border: "1px solid #FDE68A", borderRadius: 6, cursor: "pointer", background: "none" }}
+                    title="Couleur du libellé"
+                  />
+                </div>
+                {/* Police */}
+                <div style={{ flex: "1 1 0" }}>
+                  <span className={styles.fieldLabel} style={{ fontSize: 11, display: "block", marginBottom: 4 }}>Police</span>
+                  <select
+                    className={styles.select}
+                    value={editLotPostponedFont}
+                    onChange={(e) => setEditLotPostponedFont(e.target.value)}
+                    style={{ fontSize: 12 }}
+                  >
+                    <option value="system-ui">Système</option>
+                    <option value="Raleway, sans-serif">Raleway</option>
+                    <option value="Georgia, serif">Serif</option>
+                    <option value="monospace">Monospace</option>
+                  </select>
+                </div>
+                {/* Taille */}
+                <div style={{ flex: "0 0 auto" }}>
+                  <span className={styles.fieldLabel} style={{ fontSize: 11, display: "block", marginBottom: 4 }}>Taille</span>
+                  <select
+                    className={styles.select}
+                    value={editLotPostponedSize}
+                    onChange={(e) => setEditLotPostponedSize(Number(e.target.value))}
+                    style={{ fontSize: 12, width: 60 }}
+                  >
+                    {[10, 11, 12, 13, 14, 16, 18].map((s) => (
+                      <option key={s} value={s}>{s}px</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {/* Aperçu */}
+              {editLotPostponedNote && (
+                <div style={{ background: "rgba(255,255,255,0.8)", border: `1.5px solid ${editLotPostponedColor}`, borderRadius: 6, padding: "4px 10px", display: "inline-block", alignSelf: "flex-start" }}>
+                  <span style={{ fontSize: editLotPostponedSize, fontFamily: editLotPostponedFont, color: editLotPostponedColor, fontWeight: 700 }}>
+                    {editLotPostponedNote}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Stats */}
           <div className={styles.statsRow} style={{ marginTop: 8 }}>
             <span className={styles.stat}><strong>{lotPhases.length}</strong> phase{lotPhases.length !== 1 ? "s" : ""}</span>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { GanttData, MemberRow, ExistingUserRow } from "@/lib/db/queries";
 import { togglePhaseAssignee } from "@/lib/actions/planning";
 import { addMember, updateMember, removeMember } from "@/lib/actions/members";
+import { updateMemberPermission } from "@/lib/actions/settings";
 import { useGanttStore } from "@/store/ganttStore";
 import styles from "./Ressources.module.css";
 
@@ -281,6 +282,23 @@ export function RessourcesClient({ data, existingUsers }: Props) {
                 <span className={styles.memberCountLabel}>phases</span>
               </div>
               <div className={styles.memberActions}>
+                {/* Droits d'accès */}
+                <select
+                  defaultValue={member.permission}
+                  onChange={async (e) => {
+                    await updateMemberPermission({
+                      memberId: member.id,
+                      planningId: planning.id,
+                      permission: e.target.value as "owner" | "editor" | "viewer",
+                    });
+                  }}
+                  title="Droit d'accès au planning"
+                  style={{ fontSize: 11, padding: "3px 6px", borderRadius: 6, border: "1px solid var(--klint-line, #E6E8EE)", background: "var(--klint-paper, #F6F7FB)", color: "var(--klint-navy, #001036)", cursor: "pointer", fontFamily: "var(--font-display, system-ui)", fontWeight: 600 }}
+                >
+                  <option value="owner">Propriétaire</option>
+                  <option value="editor">Éditeur</option>
+                  <option value="viewer">Lecteur</option>
+                </select>
                 <button
                   className={styles.attributeBtn}
                   onClick={() => setModalMemberId(member.id)}

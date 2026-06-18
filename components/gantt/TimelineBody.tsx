@@ -390,7 +390,59 @@ export function TimelineBody({
 
         return (
           <div key={`lot-${row.id}`} style={{ position: "absolute", top: 0, left: 0, width: totalW, height: totalH, pointerEvents: "none" }}>
-            {pills}
+            {/* Dim pills when postponed */}
+            <div style={{ opacity: lot.isPostponed ? 0.4 : 1 }}>
+              {pills}
+            </div>
+
+            {/* Lot reporté — hachures ambre 135° + label flottant */}
+            {lot.isPostponed && (
+              <>
+                <div style={{
+                  position: "absolute",
+                  left: 0,
+                  top: row.y,
+                  width: totalW,
+                  height: row.h,
+                  background: "repeating-linear-gradient(135deg, rgba(217,119,6,0.08) 0px, rgba(217,119,6,0.08) 6px, transparent 6px, transparent 14px)",
+                  borderTop: "1.5px solid rgba(217,119,6,0.22)",
+                  borderBottom: "1.5px solid rgba(217,119,6,0.22)",
+                  zIndex: 2,
+                  pointerEvents: "none",
+                }} />
+                {lot.postponedNote && (
+                  <div style={{
+                    position: "absolute",
+                    left: 0,
+                    top: row.y,
+                    width: totalW,
+                    height: row.h,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 3,
+                    pointerEvents: "none",
+                  }}>
+                    <span style={{
+                      background: "rgba(255,255,255,0.90)",
+                      border: `1.5px solid ${lot.postponedLabelColor ?? "#D97706"}`,
+                      borderRadius: 6,
+                      padding: "3px 10px",
+                      fontSize: `${lot.postponedLabelSize ?? 12}px`,
+                      fontFamily: lot.postponedLabelFont ?? "var(--font-display, system-ui)",
+                      color: lot.postponedLabelColor ?? "#D97706",
+                      fontWeight: 700,
+                      letterSpacing: "0.04em",
+                      whiteSpace: "nowrap",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                    }}>
+                      {lot.postponedNote}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+
             {flags}
           </div>
         );

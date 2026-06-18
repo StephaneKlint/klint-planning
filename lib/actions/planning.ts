@@ -408,16 +408,31 @@ const UpdateLotSchema = z.object({
   name: z.string().min(1).max(160).optional(),
   subtitle: z.string().max(500).nullable().optional(),
   hidden: z.boolean().optional(),
+  isPostponed: z.boolean().optional(),
+  postponedNote: z.string().max(200).nullable().optional(),
+  postponedLabelColor: z.string().max(20).nullable().optional(),
+  postponedLabelFont: z.string().max(80).nullable().optional(),
+  postponedLabelSize: z.number().int().min(8).max(32).nullable().optional(),
 });
 
 export async function updateLot(input: z.infer<typeof UpdateLotSchema>) {
   const data = UpdateLotSchema.parse(input);
   await assertCanEdit(data.planningId);
 
-  const updates: Partial<{ name: string; subtitle: string | null; hidden: boolean }> = {};
+  const updates: Partial<{
+    name: string; subtitle: string | null; hidden: boolean;
+    isPostponed: boolean; postponedNote: string | null;
+    postponedLabelColor: string | null; postponedLabelFont: string | null;
+    postponedLabelSize: number | null;
+  }> = {};
   if (data.name !== undefined) updates.name = data.name;
   if (data.subtitle !== undefined) updates.subtitle = data.subtitle;
   if (data.hidden !== undefined) updates.hidden = data.hidden;
+  if (data.isPostponed !== undefined) updates.isPostponed = data.isPostponed;
+  if (data.postponedNote !== undefined) updates.postponedNote = data.postponedNote;
+  if (data.postponedLabelColor !== undefined) updates.postponedLabelColor = data.postponedLabelColor;
+  if (data.postponedLabelFont !== undefined) updates.postponedLabelFont = data.postponedLabelFont;
+  if (data.postponedLabelSize !== undefined) updates.postponedLabelSize = data.postponedLabelSize;
 
   const [updated] = await db
     .update(lots)

@@ -184,6 +184,11 @@ export const lots = pgTable("lots", {
   icon: varchar("icon", { length: 16 }),
   sortOrder: integer("sort_order").default(0).notNull(),
   hidden: boolean("hidden").default(false).notNull(),
+  isPostponed: boolean("is_postponed").default(false).notNull(),
+  postponedNote: text("postponed_note"),
+  postponedLabelColor: varchar("postponed_label_color", { length: 20 }),
+  postponedLabelFont: varchar("postponed_label_font", { length: 80 }),
+  postponedLabelSize: smallint("postponed_label_size"),
 });
 
 // ---- Phases --------------------------------------------------------------

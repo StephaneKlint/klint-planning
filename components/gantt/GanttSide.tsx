@@ -348,6 +348,11 @@ export function GanttSide({
                   <Donut progress={progress} status={status} size={32} />
                   <div className={styles.lotText}>
                     <span className={styles.lotName}>{lot.name}</span>
+                    {lot.isPostponed && (
+                      <span style={{ display: "inline-block", fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "#FEF3C7", color: "#D97706", border: "1px solid #FDE68A", letterSpacing: "0.04em", verticalAlign: "middle", marginLeft: 4 }}>
+                        ⏸ REPORTÉ
+                      </span>
+                    )}
                     {lot.subtitle && (
                       <span className={styles.lotSubtitle}>{lot.subtitle}</span>
                     )}
