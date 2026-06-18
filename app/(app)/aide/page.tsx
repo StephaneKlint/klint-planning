@@ -11,7 +11,6 @@ const S = {
     padding: "32px 40px 60px",
     fontFamily: "var(--font-display, system-ui)",
     color: "var(--klint-navy, #001036)",
-    maxWidth: 760,
     lineHeight: "1.6",
   } as React.CSSProperties,
   h1: {
@@ -169,7 +168,7 @@ const S = {
   /* ── TOC card grid ── */
   cardGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
     gap: 10,
     marginBottom: 48,
   } as React.CSSProperties,
@@ -693,7 +692,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={1}>Sur chaque carte membre, le menu déroulant <UI>Propriétaire / Éditeur / Lecteur</UI> gère les droits d&apos;accès au planning.</Step>
         <Step n={2}><strong>Propriétaire</strong> : accès total. <strong>Éditeur</strong> : modifie le contenu (pas les paramètres). <strong>Lecteur</strong> : consultation uniquement.</Step>
       </How>
-      <Tip>Note : les membres sont propres à chaque planning. Un responsable doit être ajouté sur chaque planning où il intervient. La fonctionnalité d&apos;annuaire partagé est prévue dans une prochaine version.</Tip>
+      <Tip>Note : les membres sont propres à chaque planning. Un responsable doit être ajouté sur chaque planning où il intervient. Utilisez l&apos;<strong>Annuaire</strong> (icône personnes dans le rail) pour retrouver et réutiliser rapidement un responsable existant.</Tip>
     </section>
   ),
 
@@ -948,7 +947,7 @@ export default function AidePage() {
     const next = activeIdx < SECTIONS.length - 1 ? SECTIONS[activeIdx + 1] : null;
 
     return (
-      <div style={S.page}>
+      <div style={{ ...S.page, maxWidth: 760 }}>
         {/* Breadcrumb */}
         <button onClick={() => setActiveIdx(null)} style={S.backBtn}>
           ← Sommaire

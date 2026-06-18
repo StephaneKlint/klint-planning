@@ -381,3 +381,59 @@ export async function getPortfolioData(): Promise<PortfolioCard[]> {
     };
   });
 }
+
+// ---------------------------------------------------------------------------
+// Annuaire partagé — tous les contacts de la plateforme
+// ---------------------------------------------------------------------------
+
+export type DirectoryContact = {
+  userId: string;
+  name: string | null;
+  email: string;
+  initials: string | null;
+  color: string | null;
+  plannings: { id: string; name: string; permission: string }[];
+};
+
+export async function listAllDirectoryContacts(): Promise<DirectoryContact[]> {
+  const rows = await db
+    .select({
+      userId:       users.id,
+      name:         users.name,
+      email:        users.email,
+      initials:     planningMembers.initials,
+      color:        planningMembers.color,
+      planningId:   plannings.id,
+      planningName: plannings.name,
+      permission:   planningMembers.permission,
+    })
+    .from(users)
+    .leftJoin(planningMembers, eq(planningMembers.userId, users.id))
+    .leftJoin(plannings, eq(plannings.id, planningMembers.planningId))
+    .orderBy(asc(users.name));
+
+  const map = new Map<string, DirectoryContact>();
+  for (const row of rows) {
+    if (!map.has(row.userId)) {
+      map.set(row.userId, {
+        userId:   row.userId,
+        name:     row.name,
+        email:    row.email,
+        initials: row.initials ?? null,
+        color:    row.color ?? null,
+        plannings: [],
+      });
+    }
+    const contact = map.get(row.userId)!;
+    if (!contact.initials && row.initials) contact.initials = row.initials;
+    if (!contact.color   && row.color)    contact.color    = row.color;
+    if (row.planningId && row.planningName) {
+      contact.plannings.push({
+        id:         row.planningId,
+        name:       row.planningName,
+        permission: row.permission ?? "viewer",
+      });
+    }
+  }
+  return Array.from(map.values());
+}

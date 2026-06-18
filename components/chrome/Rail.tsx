@@ -22,6 +22,7 @@ const TOP_NAV: NavItem[] = [
   { href: "/portefeuille", icon: "grid",      label: "Portefeuille" },
   { href: "/p",            icon: "calendar",  label: "Planning"     },
   { href: "/synthese",     icon: "chartLine", label: "Synthèse"     },
+  { href: "/annuaire",     icon: "users",     label: "Annuaire"     },
   { href: "/parametres",   icon: "settings",  label: "Paramètres"   },
 ];
 
