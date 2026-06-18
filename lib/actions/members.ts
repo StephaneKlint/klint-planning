@@ -144,3 +144,80 @@ export async function restoreMember(input: z.infer<typeof RestoreMemberSchema>) 
   revalidatePath("/ressources");
   revalidatePath(`/p`);
 }
+
+// ── Désactiver un contact (répertoire) ────────────────────────────────────────
+
+export async function disableContact(userId: string) {
+  await db.update(users)
+    .set({ disabledAt: new Date() })
+    .where(eq(users.id, userId));
+  revalidatePath("/parametres");
+}
+
+// ── Réactiver un contact désactivé ────────────────────────────────────────────
+
+export async function enableContact(userId: string) {
+  await db.update(users)
+    .set({ disabledAt: null })
+    .where(eq(users.id, userId));
+  revalidatePath("/parametres");
+}
+
+// ── Assigner un contact existant à un planning ────────────────────────────────
+
+export async function assignExistingContactToPlanning(userId: string, planningId: string) {
+  const existing = await db.select({ id: planningMembers.id })
+    .from(planningMembers)
+    .where(and(eq(planningMembers.planningId, planningId), eq(planningMembers.userId, userId)))
+    .limit(1);
+
+  if (existing.length > 0) return;
+
+  const otherMember = await db.select({ initials: planningMembers.initials, color: planningMembers.color })
+    .from(planningMembers)
+    .where(eq(planningMembers.userId, userId))
+    .limit(1);
+
+  await db.insert(planningMembers).values({
+    planningId,
+    userId,
+    initials: otherMember[0]?.initials ?? undefined,
+    color:    otherMember[0]?.color ?? "#001D63",
+    permission: "editor",
+  });
+
+  revalidatePath("/parametres");
+  revalidatePath("/ressources");
+}
+
+// ── Mettre à jour un contact (répertoire global) ──────────────────────────────
+
+const UpdateContactSchema = z.object({
+  userId:   z.string().uuid(),
+  name:     z.string().min(1).max(160),
+  initials: z.string().min(1).max(3),
+  color:    z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+});
+
+export async function updateContact(input: z.infer<typeof UpdateContactSchema>) {
+  const data = UpdateContactSchema.parse(input);
+
+  await db.update(users)
+    .set({ name: data.name })
+    .where(eq(users.id, data.userId));
+
+  await db.update(planningMembers)
+    .set({ initials: data.initials.slice(0, 3).toUpperCase(), color: data.color })
+    .where(eq(planningMembers.userId, data.userId));
+
+  revalidatePath("/parametres");
+  revalidatePath("/ressources");
+}
+
+// ── Supprimer définitivement un contact ───────────────────────────────────────
+
+export async function deleteContact(userId: string) {
+  await db.delete(users).where(eq(users.id, userId));
+  revalidatePath("/parametres");
+  revalidatePath("/ressources");
+}

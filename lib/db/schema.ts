@@ -41,6 +41,7 @@ export const users = pgTable("users", {
   image: text("image"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   passwordHash: text("password_hash"),
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
 });
 
 export const accounts = pgTable(

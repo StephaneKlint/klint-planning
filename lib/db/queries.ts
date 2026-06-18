@@ -392,7 +392,8 @@ export type DirectoryContact = {
   email: string;
   initials: string | null;
   color: string | null;
-  plannings: { id: string; name: string; permission: string }[];
+  disabledAt: Date | null;
+  plannings: { id: string; memberId: string; name: string; permission: string }[];
 };
 
 export async function listAllDirectoryContacts(): Promise<DirectoryContact[]> {
@@ -403,6 +404,8 @@ export async function listAllDirectoryContacts(): Promise<DirectoryContact[]> {
       email:        users.email,
       initials:     planningMembers.initials,
       color:        planningMembers.color,
+      disabledAt:   users.disabledAt,
+      memberId:     planningMembers.id,
       planningId:   plannings.id,
       planningName: plannings.name,
       permission:   planningMembers.permission,
@@ -416,20 +419,22 @@ export async function listAllDirectoryContacts(): Promise<DirectoryContact[]> {
   for (const row of rows) {
     if (!map.has(row.userId)) {
       map.set(row.userId, {
-        userId:   row.userId,
-        name:     row.name,
-        email:    row.email,
-        initials: row.initials ?? null,
-        color:    row.color ?? null,
-        plannings: [],
+        userId:     row.userId,
+        name:       row.name,
+        email:      row.email,
+        initials:   row.initials ?? null,
+        color:      row.color ?? null,
+        disabledAt: row.disabledAt ?? null,
+        plannings:  [],
       });
     }
     const contact = map.get(row.userId)!;
     if (!contact.initials && row.initials) contact.initials = row.initials;
     if (!contact.color   && row.color)    contact.color    = row.color;
-    if (row.planningId && row.planningName) {
+    if (row.planningId && row.planningName && row.memberId) {
       contact.plannings.push({
         id:         row.planningId,
+        memberId:   row.memberId,
         name:       row.planningName,
         permission: row.permission ?? "viewer",
       });

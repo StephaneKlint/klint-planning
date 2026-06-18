@@ -15,9 +15,9 @@ import { seedHolidays, createClosurePeriod, updateClosurePeriod, deleteClosurePe
 import { changePassword } from "@/lib/actions/authActions";
 import { setTemplateFlag } from "@/lib/actions/plannings";
 import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact } from "@/lib/db/queries";
-import { RessourcesClient } from "@/app/(app)/ressources/RessourcesClient";
+import { addMember, removeMember, disableContact, enableContact, assignExistingContactToPlanning, updateContact, deleteContact } from "@/lib/actions/members";
 
-type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "ressources" | "annuaire" | "historique";
+type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "répertoire" | "historique";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "general",    label: "Général" },
@@ -25,8 +25,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "phases",     label: "Types de phases" },
   { id: "jalons",     label: "Types de jalons" },
   { id: "statuts",    label: "Statuts" },
-  { id: "ressources", label: "Ressources" },
-  { id: "annuaire",   label: "Annuaire" },
+  { id: "répertoire", label: "Répertoire" },
   { id: "historique", label: "Historique" },
   { id: "apparence",  label: "Apparence" },
   { id: "calendrier", label: "Calendrier" },
@@ -1130,17 +1129,10 @@ export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntri
         </div>
       )}
 
-      {/* ── Ressources ──────────────────────────────────────────────────── */}
-      {active === "ressources" && (
-        <div className={styles.tabPanel} style={{ padding: 0 }}>
-          <RessourcesClient data={data} existingUsers={existingUsers} />
-        </div>
-      )}
-
-      {/* ── Annuaire ──────────────────────────────────────────────────────── */}
-      {active === "annuaire" && (
+      {/* ── Répertoire ──────────────────────────────────────────────────── */}
+      {active === "répertoire" && (
         <div className={styles.tabPanel}>
-          <AnnuaireTab contacts={directoryContacts} />
+          <RépertoireTab contacts={directoryContacts} planningId={planning.id} />
         </div>
       )}
 
@@ -1329,10 +1321,26 @@ function CadenceRow({
   );
 }
 
-// ── Annuaire tab ─────────────────────────────────────────────────────────────
+// ── Répertoire tab — CRUD contacts ───────────────────────────────────────────
 
-function AnnuaireTab({ contacts }: { contacts: DirectoryContact[] }) {
+function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]; planningId: string }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
+
+  const [editingId, setEditingId]     = useState<string | null>(null);
+  const [editName, setEditName]       = useState("");
+  const [editInitials, setEditInitials] = useState("");
+  const [editColor, setEditColor]     = useState(PRESET_COLORS[0]);
+
+  const [showNew, setShowNew]         = useState(false);
+  const [newName, setNewName]         = useState("");
+  const [newEmail, setNewEmail]       = useState("");
+  const [newInitials, setNewInitials] = useState("");
+  const [newColor, setNewColor]       = useState(PRESET_COLORS[0]);
+  const [newError, setNewError]       = useState<string | null>(null);
+
+  const refresh = () => router.refresh();
 
   const filtered = contacts.filter((c) => {
     const q = search.trim().toLowerCase();
@@ -1346,102 +1354,288 @@ function AnnuaireTab({ contacts }: { contacts: DirectoryContact[] }) {
 
   return (
     <div>
-      <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 20, marginTop: 0 }}>
-        Tous les responsables de la plateforme et les plannings auxquels ils sont rattachés.
+      <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16, marginTop: 0 }}>
+        Tous les contacts de la plateforme. Modifiez, désactivez ou attribuez-les à ce planning.
       </p>
 
-      {/* Search */}
-      <div style={{ position: "relative", maxWidth: 360, marginBottom: 20 }}>
-        <input
-          type="text"
-          placeholder="Rechercher par nom, email ou planning…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "8px 32px 8px 12px",
-            fontFamily: "var(--font-display, system-ui)",
-            fontSize: 13,
-            color: "var(--klint-navy)",
-            background: "#fff",
-            border: "1.5px solid var(--klint-line, #E6E8EE)",
-            borderRadius: 8,
-            outline: "none",
-            boxSizing: "border-box",
-          }}
-        />
-        {search && (
-          <button
-            onClick={() => setSearch("")}
-            style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: "2px 4px", lineHeight: 1 }}
-          >×</button>
-        )}
+      {/* ── Barre de recherche + nouveau ── */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14 }}>
+        <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
+          <input
+            type="text"
+            placeholder="Rechercher par nom, email ou planning…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: "100%", padding: "8px 32px 8px 12px",
+              fontFamily: "var(--font-display, system-ui)", fontSize: 13,
+              color: "var(--klint-navy)", background: "#fff",
+              border: "1.5px solid var(--klint-line, #E6E8EE)",
+              borderRadius: 8, outline: "none", boxSizing: "border-box",
+            }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: "2px 4px", lineHeight: 1 }}
+            >×</button>
+          )}
+        </div>
+        <button
+          className={styles.addBtn}
+          onClick={() => { setShowNew(!showNew); setNewName(""); setNewEmail(""); setNewInitials(""); setNewColor(PRESET_COLORS[0]); setNewError(null); }}
+        >
+          + Nouveau contact
+        </button>
       </div>
 
+      {/* ── Formulaire nouveau contact ── */}
+      {showNew && (
+        <div style={{ background: "#F8FBFF", border: "1.5px solid #3B82F6", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+          <p style={{ fontWeight: 700, fontSize: 13, color: "var(--klint-navy)", marginBottom: 12, marginTop: 0 }}>Nouveau contact</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
+            <div style={{ flex: "1 1 150px" }}>
+              <label style={{ fontSize: 11, color: "#6B7280", display: "block", marginBottom: 3 }}>Nom</label>
+              <input className={styles.addInput} placeholder="Prénom Nom" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={160} style={{ width: "100%", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ flex: "1 1 150px" }}>
+              <label style={{ fontSize: 11, color: "#6B7280", display: "block", marginBottom: 3 }}>Email</label>
+              <input className={styles.addInput} type="email" placeholder="email@exemple.fr" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} maxLength={255} style={{ width: "100%", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ flex: "0 0 72px" }}>
+              <label style={{ fontSize: 11, color: "#6B7280", display: "block", marginBottom: 3 }}>Initiales</label>
+              <input className={styles.addInput} placeholder="AB" value={newInitials} onChange={(e) => setNewInitials(e.target.value.toUpperCase())} maxLength={3} style={{ width: "100%", textTransform: "uppercase", boxSizing: "border-box" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "#6B7280", display: "block", marginBottom: 5 }}>Couleur</label>
+              <div style={{ display: "flex", gap: 3 }}>
+                {PRESET_COLORS.map((pc) => (
+                  <button key={pc} type="button"
+                    style={{ width: 18, height: 18, borderRadius: "50%", background: pc, border: newColor === pc ? "2px solid #374151" : "1px solid #d1d5db", cursor: "pointer", padding: 0, flexShrink: 0 }}
+                    onClick={() => setNewColor(pc)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          {newError && <p style={{ fontSize: 12, color: "#DC2626", marginTop: 8, marginBottom: 0 }}>{newError}</p>}
+          <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+            <button
+              className={styles.saveBtn}
+              disabled={isPending || !newName.trim() || !newEmail.trim() || !newInitials.trim()}
+              onClick={() => {
+                setNewError(null);
+                startTransition(async () => {
+                  try {
+                    await addMember({ planningId, name: newName.trim(), email: newEmail.trim(), initials: newInitials.trim(), color: newColor });
+                    setShowNew(false);
+                    refresh();
+                  } catch (e: unknown) {
+                    setNewError(e instanceof Error ? e.message : "Erreur lors de la création.");
+                  }
+                });
+              }}
+            >
+              {isPending ? "Création…" : "Créer et ajouter au planning"}
+            </button>
+            <button className={styles.deleteRowBtn} onClick={() => setShowNew(false)}>Annuler</button>
+          </div>
+        </div>
+      )}
+
       <p style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 16 }}>
-        {filtered.length} contact{filtered.length !== 1 ? "s" : ""}
-        {search ? ` pour « ${search} »` : ""}
+        {filtered.length} contact{filtered.length !== 1 ? "s" : ""}{search ? ` pour « ${search} »` : ""}
       </p>
 
+      {/* ── Grille de contacts ── */}
       {filtered.length === 0 ? (
         <p style={{ color: "#9CA3AF", fontSize: 13, padding: "24px 0" }}>Aucun résultat.</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
           {filtered.map((c) => {
-            const initials = (c.initials ?? (c.name ?? c.email).slice(0, 2)).toUpperCase();
-            const color = c.color ?? "#001D63";
+            const memberEntry = c.plannings.find((p) => p.id === planningId);
+            const memberId    = memberEntry?.memberId ?? null;
+            const inCurrent   = memberId !== null;
+            const disabled    = c.disabledAt !== null;
+            const initials    = (c.initials ?? (c.name ?? c.email).slice(0, 2)).toUpperCase();
+            const color       = c.color ?? "#001D63";
+            const isEditing   = editingId === c.userId;
+
             return (
-              <div
-                key={c.userId}
-                style={{
-                  background: "#fff",
-                  border: "1.5px solid var(--klint-line, #E6E8EE)",
-                  borderRadius: 10,
-                  padding: "14px 16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: "50%",
-                    background: color, color: "#fff",
-                    fontWeight: 700, fontSize: 13,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0, letterSpacing: 0.5,
-                  }}>
-                    {initials}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {c.name ?? "—"}
+              <div key={c.userId} style={{
+                background: disabled ? "#F9FAFB" : "#fff",
+                border: `1.5px solid ${isEditing ? "#3B82F6" : "var(--klint-line, #E6E8EE)"}`,
+                borderRadius: 10, padding: "14px 16px",
+                display: "flex", flexDirection: "column", gap: 8,
+                opacity: disabled ? 0.8 : 1,
+              }}>
+                {isEditing ? (
+                  /* ── Formulaire d'édition inline ── */
+                  <>
+                    <p style={{ fontWeight: 600, fontSize: 12, margin: 0, color: "var(--klint-navy)" }}>
+                      Modifier {c.name ?? c.email}
+                    </p>
+                    <div>
+                      <label style={{ fontSize: 11, color: "#6B7280" }}>Nom</label>
+                      <input className={styles.addInput} value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%", boxSizing: "border-box", marginTop: 3 }} maxLength={160} />
                     </div>
-                    <div style={{ fontSize: 11, color: "#6B7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {c.email}
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <div style={{ flex: "0 0 80px" }}>
+                        <label style={{ fontSize: 11, color: "#6B7280" }}>Initiales</label>
+                        <input className={styles.addInput} value={editInitials} onChange={(e) => setEditInitials(e.target.value.toUpperCase())} style={{ width: "100%", textTransform: "uppercase", boxSizing: "border-box", marginTop: 3 }} maxLength={3} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: 11, color: "#6B7280" }}>Couleur</label>
+                        <div style={{ display: "flex", gap: 3, marginTop: 7, flexWrap: "wrap" }}>
+                          {PRESET_COLORS.map((pc) => (
+                            <button key={pc} type="button"
+                              style={{ width: 18, height: 18, borderRadius: "50%", background: pc, border: editColor === pc ? "2px solid #374151" : "1px solid #d1d5db", cursor: "pointer", padding: 0, flexShrink: 0 }}
+                              onClick={() => setEditColor(pc)}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                {c.plannings.length > 0 ? (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                    {c.plannings.map((p) => (
-                      <span
-                        key={p.id}
-                        style={{
-                          fontSize: 10, fontWeight: 600,
-                          padding: "2px 7px", borderRadius: 999,
-                          background: "var(--klint-paper, #F6F7FB)",
-                          border: "1px solid var(--klint-line, #E6E8EE)",
-                          color: "var(--klint-navy)",
-                          whiteSpace: "nowrap",
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        className={styles.saveBtn}
+                        disabled={isPending || !editName.trim() || !editInitials.trim()}
+                        onClick={() => {
+                          startTransition(async () => {
+                            await updateContact({ userId: c.userId, name: editName.trim(), initials: editInitials.trim(), color: editColor });
+                            setEditingId(null);
+                            refresh();
+                          });
                         }}
                       >
-                        {p.name}
-                      </span>
-                    ))}
-                  </div>
+                        {isPending ? "…" : "Enregistrer"}
+                      </button>
+                      <button className={styles.deleteRowBtn} onClick={() => setEditingId(null)}>Annuler</button>
+                    </div>
+                  </>
                 ) : (
-                  <span style={{ fontSize: 11, color: "#9CA3AF" }}>Aucun planning associé</span>
+                  /* ── Carte affichage ── */
+                  <>
+                    {/* En-tête avatar + nom */}
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: "50%",
+                        background: color, color: "#fff",
+                        fontWeight: 700, fontSize: 13,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0, letterSpacing: 0.5,
+                        filter: disabled ? "grayscale(0.4)" : "none",
+                      }}>
+                        {initials}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {c.name ?? "—"}
+                          </span>
+                          {disabled && (
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 999, background: "#F3F4F6", color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>
+                              Désactivé
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#6B7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {c.email}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Badges plannings */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {c.plannings.length === 0 ? (
+                        <span style={{ fontSize: 11, color: "#9CA3AF" }}>Aucun planning</span>
+                      ) : c.plannings.map((p) => (
+                        <span key={p.id} style={{
+                          fontSize: 10, fontWeight: 600,
+                          padding: "2px 7px", borderRadius: 999,
+                          background: p.id === planningId ? "#DCFCE7" : "var(--klint-paper, #F6F7FB)",
+                          border: `1px solid ${p.id === planningId ? "#86EFAC" : "var(--klint-line, #E6E8EE)"}`,
+                          color: p.id === planningId ? "#16A34A" : "var(--klint-navy)",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {p.id === planningId ? "✓ " : ""}{p.name}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Barre d'actions */}
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", borderTop: "1px solid var(--klint-line, #E6E8EE)", paddingTop: 8 }}>
+                      <button
+                        className={styles.editRowBtn}
+                        disabled={isPending}
+                        onClick={() => { setEditingId(c.userId); setEditName(c.name ?? ""); setEditInitials(c.initials ?? ""); setEditColor(c.color ?? PRESET_COLORS[0]); }}
+                        style={{ padding: "4px 10px", fontSize: 11 }}
+                      >
+                        Modifier
+                      </button>
+
+                      {inCurrent ? (
+                        <button
+                          className={styles.deleteRowBtn}
+                          disabled={isPending}
+                          onClick={() => {
+                            if (!confirm(`Retirer ${c.name ?? c.email} de ce planning ?`)) return;
+                            startTransition(async () => { await removeMember(memberId!, planningId); refresh(); });
+                          }}
+                          style={{ padding: "4px 10px", fontSize: 11 }}
+                        >
+                          Retirer
+                        </button>
+                      ) : (
+                        <button
+                          className={styles.addBtn}
+                          disabled={isPending}
+                          onClick={() => {
+                            startTransition(async () => { await assignExistingContactToPlanning(c.userId, planningId); refresh(); });
+                          }}
+                          style={{ padding: "4px 10px", fontSize: 11 }}
+                        >
+                          + Ajouter
+                        </button>
+                      )}
+
+                      {disabled ? (
+                        <button
+                          className={styles.editRowBtn}
+                          disabled={isPending}
+                          onClick={() => { startTransition(async () => { await enableContact(c.userId); refresh(); }); }}
+                          style={{ padding: "4px 10px", fontSize: 11, marginLeft: "auto" }}
+                        >
+                          Réactiver
+                        </button>
+                      ) : (
+                        <button
+                          className={styles.deleteRowBtn}
+                          disabled={isPending}
+                          onClick={() => {
+                            if (!confirm(`Désactiver ${c.name ?? c.email} ? Le contact ne pourra plus se connecter.`)) return;
+                            startTransition(async () => { await disableContact(c.userId); refresh(); });
+                          }}
+                          style={{ padding: "4px 10px", fontSize: 11, marginLeft: "auto" }}
+                        >
+                          Désactiver
+                        </button>
+                      )}
+
+                      <button
+                        title="Supprimer définitivement"
+                        className={styles.deleteRowBtn}
+                        disabled={isPending}
+                        onClick={() => {
+                          if (!confirm(`Supprimer définitivement ${c.name ?? c.email} ?\nCette action est irréversible et retire le contact de tous les plannings.`)) return;
+                          startTransition(async () => { await deleteContact(c.userId); refresh(); });
+                        }}
+                        style={{ padding: "4px 8px", fontSize: 11 }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             );

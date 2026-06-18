@@ -194,7 +194,7 @@ function PlanningCard({
         <span className={styles.cardYear}>{p.year}</span>
         {p.domainCount === 0 && tab !== "trashed" && (
           <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999, background: "#FEF3C7", color: "#92400E", letterSpacing: "0.04em" }}>
-            VIDE
+            Sans domaine
           </span>
         )}
       </div>
