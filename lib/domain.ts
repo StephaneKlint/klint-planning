@@ -255,7 +255,7 @@ export function computeMilestoneLayout(
     } else {
       primary = (forceBelowAll || alt % 2 !== 0) ? "below" : "above";
       secondary = primary === "above" ? "below" : "above";
-      allowFlip = true;
+      allowFlip = !forceBelowAll;
       alt++;
     }
 

@@ -66,6 +66,19 @@ export function RessourcesClient({ data, existingUsers }: Props) {
   // Effective members list (filters out optimistically deleted)
   const effectiveMembers = data.members.filter((m) => !deletedMemberIds.has(m.id));
 
+  // Collapse/expand phases per member card (all expanded by default)
+  const [expandedMemberIds, setExpandedMemberIds] = useState<Set<string>>(
+    () => new Set(data.members.map((m) => m.id))
+  );
+  const toggleMemberExpanded = (memberId: string) => {
+    setExpandedMemberIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  };
+
   // ── Attribution toggles ────────────────────────────────────────────────────
   const handleTogglePhase = (phaseId: string, memberId: string) => {
     const isAssigned = localAssignees.some((a) => a.phaseId === phaseId && a.memberId === memberId);
@@ -277,10 +290,17 @@ export function RessourcesClient({ data, existingUsers }: Props) {
                 <span className={styles.memberName}>{member.userName}</span>
                 <span className={styles.memberEmail}>{member.userEmail}</span>
               </div>
-              <div className={styles.memberStats}>
+              <button
+                className={styles.memberExpandBtn}
+                onClick={() => toggleMemberExpanded(member.id)}
+                title={expandedMemberIds.has(member.id) ? "Réduire les phases" : "Afficher les phases"}
+              >
                 <span className={styles.memberCount}>{total}</span>
                 <span className={styles.memberCountLabel}>phases</span>
-              </div>
+                <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.6 }}>
+                  {expandedMemberIds.has(member.id) ? "▲" : "▼"}
+                </span>
+              </button>
               <div className={styles.memberActions}>
                 {/* Droits d'accès */}
                 <select
@@ -324,15 +344,15 @@ export function RessourcesClient({ data, existingUsers }: Props) {
             </div>
 
             {/* Phases by domain */}
-            {byDomain.length > 0 ? (
+            {expandedMemberIds.has(member.id) && byDomain.length > 0 ? (
               <div className={styles.domainGroups}>
                 {byDomain.map(({ domain, phases: dPhases }) => (
                   <div key={domain.id} className={styles.domainGroup}>
                     <div
                       className={styles.domainGroupHeader}
                       style={{
-                        background: `var(--d-${domain.code}-bg)`,
-                        color: `var(--d-${domain.code}-strong)`,
+                        background: domain.bg,
+                        color: domain.strong,
                       }}
                     >
                       {domain.code.toUpperCase()} — {domain.name}
@@ -368,9 +388,9 @@ export function RessourcesClient({ data, existingUsers }: Props) {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : expandedMemberIds.has(member.id) ? (
               <p className={styles.noAssign}>Aucune phase assignée.</p>
-            )}
+            ) : null}
           </div>
         ))}
 
@@ -398,8 +418,8 @@ export function RessourcesClient({ data, existingUsers }: Props) {
                     <span
                       className={styles.itemDomainChip}
                       style={{
-                        background: `var(--d-${domain.code}-bg)`,
-                        color: `var(--d-${domain.code}-strong)`,
+                        background: domain.bg,
+                        color: domain.strong,
                       }}
                     >
                       {domain.code.toUpperCase()}
@@ -440,8 +460,8 @@ export function RessourcesClient({ data, existingUsers }: Props) {
                     <div
                       className={styles.modalDomainHeader}
                       style={{
-                        background: `var(--d-${domain.code}-bg)`,
-                        color: `var(--d-${domain.code}-strong)`,
+                        background: domain.bg,
+                        color: domain.strong,
                       }}
                     >
                       {domain.code.toUpperCase()} — {domain.name}

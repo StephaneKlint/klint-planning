@@ -169,7 +169,7 @@ const S = {
   /* ── TOC card grid ── */
   cardGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
+    gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
     gap: 10,
     marginBottom: 48,
   } as React.CSSProperties,
