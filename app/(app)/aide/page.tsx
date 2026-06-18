@@ -341,6 +341,27 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
         Page d&apos;accueil de l&apos;application. Liste tous vos plannings actifs sous forme de cartes.
       </p>
+      <Mock label="Carte planning">
+        <div style={{ background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column" as const, gap: 8, maxWidth: 360 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "#001036" }}>CCI Dynamics 2026</div>
+              <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>2026 · Multi-projets · Jan → Déc</div>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 700, background: "#EFF6FF", color: "#1D4ED8", borderRadius: 5, padding: "2px 8px", border: "1px solid #BFDBFE" }}>Actif</span>
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
+            {["🟦 Dynamics CRM", "🟩 Marketing Cloud", "🟧 Data"].map(d => (
+              <span key={d} style={{ fontSize: 10, background: "#F1F5F9", borderRadius: 5, padding: "2px 7px", color: "#475569", fontWeight: 600 }}>{d}</span>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, borderTop: "1px solid #F1F5F9", paddingTop: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 6, padding: "3px 10px", color: "#334155", cursor: "default" }}>Dupliquer</span>
+            <span style={{ fontSize: 11, fontWeight: 600, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 6, padding: "3px 10px", color: "#334155", cursor: "default" }}>Archive</span>
+            <span style={{ fontSize: 11, fontWeight: 600, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 6, padding: "3px 10px", color: "#DC2626", cursor: "default", marginLeft: "auto" }}>🗑</span>
+          </div>
+        </div>
+      </Mock>
       <How title="Créer un planning vide">
         <Step n={1}>Cliquez sur <UI>+ Nouveau planning</UI>, puis choisissez <UI>Planning vide</UI>.</Step>
         <Step n={2}>Renseignez le <strong>nom</strong>, le <strong>type</strong> (Multi-projets ou Mono-projet), l&apos;<strong>année</strong> et les dates de début/fin.</Step>
@@ -472,6 +493,33 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
         Modifiez les dates et l&apos;affectation des phases et jalons directement sur le Gantt, sans ouvrir de panneau. Toutes les actions sont annulables avec <Kbd>Ctrl+Z</Kbd>.
       </p>
+      <Mock label="Interactions disponibles sur les éléments">
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
+          {/* Phase bar with handles */}
+          <div style={{ position: "relative" as const, height: 32 }}>
+            <div style={{ position: "absolute" as const, left: 30, width: 220, height: 26, top: 3, background: "linear-gradient(90deg,#3B82F6,#60A5FA)", borderRadius: 5, display: "flex", alignItems: "center" as const, justifyContent: "center" as const }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>Développement — glisser pour déplacer</span>
+            </div>
+            {/* Left resize handle */}
+            <div style={{ position: "absolute" as const, left: 29, top: 3, width: 7, height: 26, background: "#1D4ED8", borderRadius: "5px 0 0 5px", cursor: "ew-resize", display: "flex", alignItems: "center" as const, justifyContent: "center" as const }}>
+              <span style={{ color: "#fff", fontSize: 8, lineHeight: 1 }}>◂</span>
+            </div>
+            {/* Right resize handle */}
+            <div style={{ position: "absolute" as const, left: 243, top: 3, width: 7, height: 26, background: "#1D4ED8", borderRadius: "0 5px 5px 0", cursor: "ew-resize", display: "flex", alignItems: "center" as const, justifyContent: "center" as const }}>
+              <span style={{ color: "#fff", fontSize: 8, lineHeight: 1 }}>▸</span>
+            </div>
+          </div>
+          {/* Drop target indicator for inter-lot */}
+          <div style={{ border: "2px dashed #3B82F6", borderRadius: 5, padding: "6px 14px", fontSize: 11, fontWeight: 600, color: "#3B82F6", background: "rgba(59,130,246,0.05)" }}>
+            ↓ Dépôt inter-lot — bande bleue indiquant le projet cible
+          </div>
+          {/* Milestone ghost */}
+          <div style={{ display: "flex", alignItems: "center" as const, gap: 10 }}>
+            <div style={{ width: 16, height: 16, background: "#F59E0B", transform: "rotate(45deg)", opacity: 0.35, border: "2px dashed #D97706" }} />
+            <span style={{ fontSize: 11, color: "#6B7280" }}>Jalon — losange fantôme lors du glissement</span>
+          </div>
+        </div>
+      </Mock>
       <How title="Déplacer une phase (décaler les dates)">
         <Step n={1}>Pointez le <strong>corps</strong> de la phase (pas les bords) — le curseur devient une main.</Step>
         <Step n={2}>Cliquez-glissez horizontalement. Les nouvelles dates s&apos;affichent en temps réel sous la phase. La durée est conservée.</Step>
@@ -600,6 +648,33 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
         Snapshot du planning à un instant T. Les phases dont les dates ont bougé affichent une <strong>barre bleue fine</strong> en dessous, dans le Gantt.
       </p>
+      <Mock label="Comparaison visuelle dans le Gantt">
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 12, fontSize: 12 }}>
+          {/* Phase unchanged */}
+          <div>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Phase inchangée — pas de barre baseline</div>
+            <div style={{ width: 180, height: 22, background: "#86EFAC", borderRadius: 5 }} />
+          </div>
+          {/* Phase delayed — baseline to the left */}
+          <div>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Phase décalée vers la droite — baseline (bleu) reste à sa position d&apos;origine</div>
+            <div style={{ position: "relative" as const, height: 36 }}>
+              <div style={{ position: "absolute" as const, left: 30, top: 0, width: 180, height: 22, background: "#FCD34D", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#92400E" }}>Position actuelle</span>
+              </div>
+              <div style={{ position: "absolute" as const, left: 0, top: 26, width: 160, height: 4, background: "#3B82F6", borderRadius: 2, opacity: 0.8 }} />
+            </div>
+          </div>
+          {/* Phase shortened */}
+          <div>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Phase raccourcie — baseline (bleu) plus longue</div>
+            <div style={{ position: "relative" as const, height: 36 }}>
+              <div style={{ position: "absolute" as const, left: 0, top: 0, width: 100, height: 22, background: "#A5B4FC", borderRadius: 5 }} />
+              <div style={{ position: "absolute" as const, left: 0, top: 26, width: 180, height: 4, background: "#3B82F6", borderRadius: 2, opacity: 0.8 }} />
+            </div>
+          </div>
+        </div>
+      </Mock>
       <How title="Créer la baseline">
         <Step n={1}>Dans la barre d&apos;outils, cliquez sur <TB icon="⚙️">Affichage ▾</TB>.</Step>
         <Step n={2}>Sélectionnez <UI>Baseline → Créer une baseline</UI>. L&apos;état actuel de toutes les phases est sauvegardé. Un seul snapshot par planning.</Step>
@@ -622,6 +697,27 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
         Donnez accès au planning en <strong>lecture seule sans connexion requise</strong>. Idéal pour les équipes externes ou interlocuteurs sans compte Klint Planning.
       </p>
+      <Mock label="Modale de partage">
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 12, maxWidth: 380 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: "#001036" }}>Partager ce planning</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ flex: 1, background: "#F1F5F9", border: "1.5px solid #CBD5E1", borderRadius: 7, padding: "7px 10px", fontSize: 11, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis" as const, whiteSpace: "nowrap" as const }}>
+              https://klint-planning.vercel.app/share/tok_…
+            </div>
+            <span style={{ background: "#001D63", color: "#fff", borderRadius: 7, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "default", whiteSpace: "nowrap" as const }}>Copier</span>
+          </div>
+          <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 10, display: "flex", alignItems: "center" as const, justifyContent: "space-between" }}>
+            <span style={{ fontSize: 11, color: "#6B7280" }}>Lien actif depuis le 14/06/2026</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#DC2626", cursor: "default", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 6, padding: "4px 10px" }}>Révoquer le lien</span>
+          </div>
+        </div>
+      </Mock>
+      <Mock label="Bannière lecture seule (vue du destinataire)">
+        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 7, padding: "8px 14px", display: "flex", alignItems: "center" as const, gap: 10 }}>
+          <span style={{ fontSize: 16 }}>🔗</span>
+          <span style={{ fontSize: 12, color: "#1D4ED8", fontWeight: 600 }}>Consultation uniquement — vous visualisez ce planning en lecture seule</span>
+        </div>
+      </Mock>
       <How title="Générer le lien">
         <Step n={1}>Dans la barre d&apos;outils, cliquez sur <TB icon="🔗">Partager</TB>.</Step>
         <Step n={2}>La modale génère un lien unique. Cliquez sur <UI>Copier</UI> pour le copier dans le presse-papier et le partager par email ou Slack.</Step>
@@ -669,6 +765,36 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
         Gérez les membres du planning (chefs de projet, consultants, développeurs) et leur attribution aux phases. Les droits d&apos;accès se gèrent directement sur chaque carte.
       </p>
+      <Mock label="Carte membre">
+        <div style={{ background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column" as const, gap: 10, maxWidth: 340 }}>
+          <div style={{ display: "flex", alignItems: "center" as const, gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1D4ED8", display: "flex", alignItems: "center" as const, justifyContent: "center" as const, color: "#fff", fontWeight: 800, fontSize: 14, flexShrink: 0 }}>SD</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "#001036" }}>Stéphane Durand</div>
+              <div style={{ fontSize: 11, color: "#9CA3AF" }}>sdurand@klint-consulting.com</div>
+            </div>
+            <select style={{ fontSize: 11, fontWeight: 600, color: "#001036", background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }} defaultValue="Éditeur">
+              <option>Propriétaire</option>
+              <option>Éditeur</option>
+              <option>Lecteur</option>
+            </select>
+          </div>
+          <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 8, display: "flex", alignItems: "center" as const, justifyContent: "space-between" }}>
+            <span style={{ fontSize: 11, color: "#6B7280" }}>
+              <span style={{ fontWeight: 700, color: "#374151" }}>8 phases ▼</span> assignées sur ce planning
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#3B82F6", cursor: "default" }}>Attribuer…</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column" as const, gap: 4 }}>
+            {["Dynamics CRM · Cadrage", "Dynamics CRM · Développement", "Marketing Cloud · Recette"].map(p => (
+              <div key={p} style={{ fontSize: 11, color: "#64748B", background: "#F8FAFC", borderRadius: 5, padding: "3px 8px", display: "flex", alignItems: "center" as const, gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: "#3B82F6", flexShrink: 0, display: "inline-block" }} />
+                {p}
+              </div>
+            ))}
+          </div>
+        </div>
+      </Mock>
       <How title="Ajouter un responsable">
         <Step n={1}>Cliquez sur <TB icon="➕">Nouveau responsable</TB> en haut de la page.</Step>
         <Step n={2}>Choisissez un utilisateur existant dans la liste ou <UI>Créer un nouveau contact</UI>.</Step>

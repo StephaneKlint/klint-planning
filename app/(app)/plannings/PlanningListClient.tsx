@@ -192,11 +192,6 @@ function PlanningCard({
       <div className={styles.cardHead}>
         <span className={styles.cardType}>{TYPE_LABELS[p.type] ?? p.type}</span>
         <span className={styles.cardYear}>{p.year}</span>
-        {p.domainCount === 0 && tab !== "trashed" && (
-          <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999, background: "#FEF3C7", color: "#92400E", letterSpacing: "0.04em" }}>
-            Sans domaine
-          </span>
-        )}
       </div>
 
       <div className={styles.cardTitleRow}>
