@@ -75,27 +75,24 @@ export async function POST(req: NextRequest) {
       isAlert,
     });
 
-    // Send alert email via Resend SMTP if non-France and key configured
-    if (isAlert && process.env.RESEND_API_KEY) {
-      const { createTransport } = await import("nodemailer");
-      const transport = createTransport({
-        host: "smtp.resend.com",
-        port: 465,
-        secure: true,
-        auth: { user: "resend", pass: process.env.RESEND_API_KEY },
-      });
-      const adminEmail = process.env.EMAIL_FROM ?? "planning@klint-consulting.com";
-      // Extract plain email from "Name <email>" format
-      const to = adminEmail.includes("<")
-        ? adminEmail.match(/<(.+)>/)?.[1] ?? adminEmail
-        : adminEmail;
+    // Send alert email via Brevo if non-France and key configured
+    if (isAlert && process.env.BREVO_API_KEY) {
+      const fromRaw = process.env.EMAIL_FROM ?? "Klint Planning <sdurand@klint-consulting.com>";
+      const fromMatch = fromRaw.match(/^(.+?)\s*<(.+?)>$/);
+      const senderName  = fromMatch ? fromMatch[1].trim() : "Klint Planning";
+      const senderEmail = fromMatch ? fromMatch[2].trim() : fromRaw;
 
-      await transport
-        .sendMail({
-          from: adminEmail,
-          to,
-          subject: `⚠️ Connexion hors-France — ${session.user.email}`,
-          html: `
+      fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sender:      { name: senderName, email: senderEmail },
+          to:          [{ email: senderEmail }],
+          subject:     `⚠️ Connexion hors-France — ${session.user.email}`,
+          htmlContent: `
             <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:32px">
               <h2 style="color:#DC2626;margin:0 0 16px">⚠️ Connexion détectée hors de France</h2>
               <table style="border-collapse:collapse;width:100%">
@@ -109,9 +106,8 @@ export async function POST(req: NextRequest) {
               <p style="color:#6B7280;font-size:12px">Si cette connexion est légitime, ignorez ce message. Sinon, révoquez l'accès depuis Paramètres → Membres.</p>
             </div>
           `,
-          text: `Connexion hors-France détectée : ${session.user.email} depuis ${country} (${ip})`,
-        })
-        .catch(console.error);
+        }),
+      }).catch(console.error);
     }
 
     return NextResponse.json({ ok: true, isAlert });
