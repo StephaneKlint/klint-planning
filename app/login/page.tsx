@@ -10,7 +10,7 @@ export const metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ verify?: string; error?: string; callbackUrl?: string }>;
+  searchParams: Promise<{ verify?: string; error?: string; callbackUrl?: string; invited?: string }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/p");
@@ -26,9 +26,16 @@ export default async function LoginPage({
         </div>
 
         <h1 className={styles.heading}>Connexion</h1>
-        <p className={styles.subheading}>
-          Connectez-vous avec votre email et votre mot de passe.
-        </p>
+
+        {params.invited === "1" ? (
+          <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#166534", marginBottom: 20 }}>
+            ✓ Mot de passe défini. Vous pouvez maintenant vous connecter.
+          </div>
+        ) : (
+          <p className={styles.subheading}>
+            Connectez-vous avec votre email et votre mot de passe.
+          </p>
+        )}
 
         <LoginForm
           error={params.error === "1"}

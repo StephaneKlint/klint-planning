@@ -16,6 +16,7 @@ import { changePassword } from "@/lib/actions/authActions";
 import { setTemplateFlag } from "@/lib/actions/plannings";
 import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact } from "@/lib/db/queries";
 import { addMember, removeMember, disableContact, enableContact, assignExistingContactToPlanning, updateContact, deleteContact } from "@/lib/actions/members";
+import { generateInvitationLink } from "@/lib/actions/invitations";
 
 type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "répertoire" | "historique";
 
@@ -1340,6 +1341,9 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
   const [newColor, setNewColor]       = useState(PRESET_COLORS[0]);
   const [newError, setNewError]       = useState<string | null>(null);
 
+  const [inviteLink, setInviteLink]   = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
+
   const refresh = () => router.refresh();
 
   const filtered = contacts.filter((c) => {
@@ -1635,6 +1639,23 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                         </button>
                       )}
 
+                      {(c.role === "user" || c.role === "admin") && (
+                        <button
+                          className={styles.dirTextBtn}
+                          disabled={isPending}
+                          title="Générer un lien d'invitation pour définir le mot de passe"
+                          onClick={() => {
+                            startTransition(async () => {
+                              const link = await generateInvitationLink(c.userId);
+                              setInviteLink(link);
+                              setInviteCopied(false);
+                            });
+                          }}
+                        >
+                          🔗 Inviter
+                        </button>
+                      )}
+
                       <button
                         title="Supprimer définitivement"
                         className={styles.deleteRowBtn}
@@ -1647,6 +1668,29 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                         ×
                       </button>
                     </div>
+
+                    {/* Panneau lien d'invitation */}
+                    {inviteLink && editingId === null && (
+                      <div style={{ marginTop: 8, background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 8, padding: "10px 12px", display: "flex", flexDirection: "column" as const, gap: 6 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#0369A1" }}>Lien d&apos;invitation (7 jours)</div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <input
+                            readOnly
+                            value={inviteLink}
+                            style={{ flex: 1, fontSize: 10, padding: "4px 8px", border: "1px solid #BAE6FD", borderRadius: 6, background: "#fff", color: "#0C4A6E", fontFamily: "monospace", minWidth: 0 }}
+                          />
+                          <button
+                            className={styles.dirTextBtn}
+                            onClick={() => { navigator.clipboard.writeText(inviteLink); setInviteCopied(true); setTimeout(() => setInviteCopied(false), 2500); }}
+                          >
+                            {inviteCopied ? "✓ Copié" : "Copier"}
+                          </button>
+                        </div>
+                        <button style={{ background: "none", border: "none", fontSize: 10, color: "#64748B", cursor: "pointer", alignSelf: "flex-end" as const, padding: 0 }} onClick={() => setInviteLink(null)}>
+                          Fermer
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
