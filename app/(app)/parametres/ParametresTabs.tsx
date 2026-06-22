@@ -1783,7 +1783,6 @@ const GRP_TD: React.CSSProperties = {
   background: "var(--klint-paper, #F6F7FB)",
 };
 const CHECK: React.CSSProperties = { color: "#16A34A", fontWeight: 700, fontSize: 15 };
-const DASH: React.CSSProperties = { color: "#D1D5DB", fontSize: 15 };
 
 type Toggler = (on: boolean) => void;
 

@@ -330,6 +330,7 @@ const SECTIONS: SectionDef[] = [
   { id: "calendrier",   num: "17", emoji: "📅", title: "Fermetures & Jours fériés",           keywords: "fermetures jours fériés calendrier congés été hiver gel gel-code période custom bande colorée affichage toggle" },
   { id: "historique",   num: "18", emoji: "📜", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log" },
   { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt" },
+  { id: "droits",       num: "20", emoji: "🛡️", title: "Rôles & droits d'accès",               keywords: "rôles droits admin utilisateur contact propriétaire éditeur lecteur permissions crud accès matrice onglets plateforme planning membres inviter lien invitation" },
 ];
 
 /* ── Section bodies (module scope — purely static JSX) ──────────────────── */
@@ -847,11 +848,11 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
     <section style={S.section}>
       <h2 style={S.h2}><span style={S.pill}>13</span> Param&#232;tres</h2>
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
-        Configurés par planning. Si plusieurs plannings existent, des onglets de sélection apparaissent en haut de page pour basculer entre eux.
+        Configurés par planning. Si plusieurs plannings existent, des onglets de sélection apparaissent en haut de page pour basculer entre eux. Les onglets visibles dépendent de votre rôle (voir section 20).
       </p>
-      <Mock label="Onglets disponibles">
+      <Mock label="Onglets disponibles (admin)">
         <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6 }}>
-          {["Général", "Cadence", "Types de phases", "Types de jalons", "Statuts", "Ressources", "Apparence", "Calendrier", "Sécurité"].map((t) => (
+          {["Général", "Cadence", "Types de phases", "Types de jalons", "Statuts", "Répertoire", "Historique", "Apparence", "Calendrier", "Sécurité", "Rôles & droits", "Logs erreurs"].map((t) => (
             <span key={t} style={{ background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 600, color: "#334155" }}>{t}</span>
           ))}
         </div>
@@ -868,6 +869,12 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <How title="Onglets Types de phases / Jalons">
         <Step n={1}>Créez, renommez ou supprimez les types de phases (Cadrage, Développement, Recette…) et de jalons (Livraison, PMEP, CAB, MEP…) propres à ce planning.</Step>
       </How>
+      <How title="Onglet Répertoire (contacts & membres)">
+        <Step n={1}>Liste tous les contacts de la plateforme avec leur rôle, statut et appartenance aux plannings.</Step>
+        <Step n={2}>Utilisez les icônes sur chaque carte : <strong>crayon</strong> (modifier), <strong>+/×</strong> (ajouter/retirer du planning), <strong>œil</strong> (activer/désactiver), <strong>lien</strong> (invitation), <strong>corbeille</strong> (supprimer définitivement).</Step>
+        <Step n={3}>Pour inviter un utilisateur ou admin : cliquez sur l&apos;icône de lien — un lien valable 7 jours est généré, à transmettre par email.</Step>
+      </How>
+      <Tip>L&apos;onglet Répertoire est réservé aux admins par défaut. Un admin peut l&apos;activer pour les utilisateurs dans <UI>Rôles &amp; droits</UI>.</Tip>
     </section>
   ),
 
@@ -984,6 +991,45 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
     </section>
   ),
 
+  droits: (
+    <section style={S.section}>
+      <h2 style={S.h2}><span style={S.pill}>20</span> R&#244;les &amp; droits d&apos;acc&#232;s</h2>
+      <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
+        Klint Planning distingue deux niveaux de permissions : le <strong>rôle plateforme</strong> (qui peut se connecter et faire quoi globalement) et le <strong>rôle planning</strong> (ce que l&apos;on peut faire au sein d&apos;un planning précis).
+      </p>
+
+      <h3 style={S.h3}>Rôles plateforme</h3>
+      <dl style={S.dl}>
+        <div><dt style={S.dt}>Admin</dt><dd style={S.dd}>Accès complet à tout : tous les plannings, tous les onglets Paramètres, gestion des droits, suppression. Non limitable.</dd></div>
+        <div><dt style={S.dt}>Utilisateur</dt><dd style={S.dd}>Accès aux plannings dont il est membre. Les onglets et actions disponibles dépendent de la matrice de droits configurée par l&apos;admin.</dd></div>
+        <div><dt style={S.dt}>Contact</dt><dd style={S.dd}>Référencé dans le Répertoire mais sans accès à l&apos;application. Peut être ajouté comme responsable de phases/jalons.</dd></div>
+      </dl>
+
+      <h3 style={S.h3}>Rôles dans un planning</h3>
+      <dl style={S.dl}>
+        <div><dt style={S.dt}>Propriétaire</dt><dd style={S.dd}>Droits complets sur le planning : modifier les paramètres, archiver, gérer les membres, exporter, partager.</dd></div>
+        <div><dt style={S.dt}>Éditeur</dt><dd style={S.dd}>Peut créer et modifier phases et jalons, dupliquer, exporter. Ne peut pas supprimer le planning ni gérer les membres.</dd></div>
+        <div><dt style={S.dt}>Lecteur</dt><dd style={S.dd}>Consultation uniquement. Peut exporter si l&apos;admin le permet.</dd></div>
+      </dl>
+
+      <How title="Configurer la matrice de droits (admin uniquement)">
+        <Step n={1}>Allez dans <UI>Paramètres → onglet Rôles &amp; droits</UI>.</Step>
+        <Step n={2}><strong>Tableau 1 — Accès plateforme</strong> : activez ou désactivez chaque fonctionnalité et chaque onglet Paramètres pour le rôle Utilisateur.</Step>
+        <Step n={3}><strong>Tableaux 2-4 — Rôles planning</strong> : pour chaque action (modifier, archiver, supprimer, créer phases…), activez-la pour Propriétaire, Éditeur et/ou Lecteur.</Step>
+        <Step n={4}>Cliquez sur <UI>Enregistrer</UI> — la matrice est appliquée immédiatement pour tous les utilisateurs connectés.</Step>
+      </How>
+
+      <How title="Inviter un utilisateur ou admin">
+        <Step n={1}>Dans <UI>Paramètres → Répertoire</UI>, trouvez le contact (rôle Utilisateur ou Admin).</Step>
+        <Step n={2}>Cliquez sur l&apos;icône de lien sur sa carte — un lien d&apos;invitation valable 7 jours est généré.</Step>
+        <Step n={3}>Copiez le lien et transmettez-le par email. L&apos;invité clique sur le lien, choisit son mot de passe et se connecte.</Step>
+      </How>
+
+      <Tip>Les droits de la matrice sont appliqués en plus des rôles planning. Un Éditeur ne peut accéder à un onglet Paramètres désactivé pour les Utilisateurs que si l&apos;admin l&apos;active explicitement.</Tip>
+      <Warn>Seul un Admin peut modifier la matrice de droits. Si vous ne voyez pas l&apos;onglet <UI>Rôles &amp; droits</UI>, demandez à votre administrateur.</Warn>
+    </section>
+  ),
+
   securite: (
     <section style={S.section}>
       <h2 style={S.h2}><span style={S.pill}>19</span> S&#233;curit&#233; &amp; Mot de passe</h2>
@@ -1026,6 +1072,7 @@ const SECTION_ILLUS: Record<string, { bg: string; el: React.ReactNode }> = {
   calendrier: { bg: "linear-gradient(135deg,#0284C7,#075985)", el: <svg viewBox="0 0 80 50" width="80" height="50" aria-hidden><rect x="8" y="5" width="58" height="40" rx="4" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/><rect x="8" y="5" width="58" height="13" rx="4" fill="rgba(255,255,255,0.25)"/><rect x="8" y="14" width="58" height="4" rx="0" fill="rgba(255,255,255,0.1)"/>{[0,1,2,3,4,5,6].map((col)=>[0,1,2,3].map((row)=>{const isH=col===2&&row===1;const isC=(col===5||col===6)&&row<3;return <rect key={`${col}-${row}`} x={11+col*8} y={20+row*7} width={6} height={5} rx={1} fill={isH?"rgba(255,220,50,0.9)":isC?"rgba(255,100,100,0.3)":"rgba(255,255,255,0.25)"}/>;}))}</svg> },
   historique: { bg: "linear-gradient(135deg,#B45309,#78350F)", el: <svg viewBox="0 0 80 50" width="80" height="50" aria-hidden><line x1="18" y1="4" x2="18" y2="46" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5"/>{[8,16,24,32,40].map((y,i)=><g key={y}><circle cx="18" cy={y} r="4" fill={i===0?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.55)"}/><rect x="26" y={y-3} width={[30,22,28,20,26][i]} height="6" rx="2" fill="rgba(255,255,255,0.18)"/><rect x="26" y={y-2} width={[18,12,20,10,16][i]} height="2.5" rx="1" fill="rgba(255,255,255,0.6)"/></g>)}<rect x="55" y="10" width="18" height="8" rx="3" fill="rgba(255,220,50,0.4)"/><rect x="57" y="13" width="14" height="2.5" rx="1" fill="rgba(255,255,255,0.6)"/></svg> },
   securite: { bg: "linear-gradient(135deg,#DC2626,#991B1B)", el: <svg viewBox="0 0 80 50" width="80" height="50" aria-hidden><rect x="26" y="22" width="28" height="24" rx="5" fill="rgba(255,255,255,0.8)"/><path d="M32 22L32 16Q32 8 40 8Q48 8 48 16L48 22" stroke="rgba(255,255,255,0.8)" strokeWidth="4" fill="none" strokeLinecap="round"/><circle cx="40" cy="32" r="5" fill="rgba(220,38,38,0.7)"/><rect x="38" y="34" width="4" height="8" rx="2" fill="rgba(220,38,38,0.7)"/><rect x="4" y="8" width="14" height="3" rx="1" fill="rgba(255,255,255,0.3)"/><rect x="4" y="16" width="14" height="5" rx="1.5" fill="rgba(255,255,255,0.2)"/><rect x="4" y="26" width="14" height="3" rx="1" fill="rgba(255,255,255,0.3)"/><rect x="4" y="34" width="14" height="5" rx="1.5" fill="rgba(255,255,255,0.2)"/><rect x="62" y="8" width="14" height="3" rx="1" fill="rgba(255,255,255,0.3)"/><rect x="62" y="16" width="14" height="5" rx="1.5" fill="rgba(255,255,255,0.2)"/></svg> },
+  droits: { bg: "linear-gradient(135deg,#0F766E,#065F46)", el: <svg viewBox="0 0 80 50" width="80" height="50" aria-hidden><rect x="4" y="4" width="72" height="8" rx="2" fill="rgba(255,255,255,0.2)"/><rect x="6" y="6" width="24" height="4" rx="1" fill="rgba(255,255,255,0.5)"/><rect x="38" y="6" width="10" height="4" rx="1" fill="rgba(255,255,255,0.7)"/><rect x="52" y="6" width="10" height="4" rx="1" fill="rgba(255,255,255,0.4)"/><rect x="64" y="6" width="10" height="4" rx="1" fill="rgba(255,255,255,0.3)"/><rect x="4" y="15" width="72" height="6" rx="1" fill="rgba(255,255,255,0.1)"/><rect x="6" y="16.5" width="18" height="3" rx="0.75" fill="rgba(255,255,255,0.5)"/><rect x="38" y="16.5" width="6" height="3" rx="1.5" fill="rgba(16,185,129,0.9)"/><rect x="52" y="16.5" width="6" height="3" rx="1.5" fill="rgba(16,185,129,0.9)"/><rect x="64" y="16.5" width="6" height="3" rx="1.5" fill="rgba(255,255,255,0.2)"/><rect x="4" y="23" width="72" height="6" rx="1" fill="rgba(255,255,255,0.07)"/><rect x="6" y="24.5" width="20" height="3" rx="0.75" fill="rgba(255,255,255,0.4)"/><rect x="38" y="24.5" width="6" height="3" rx="1.5" fill="rgba(16,185,129,0.9)"/><rect x="52" y="24.5" width="6" height="3" rx="1.5" fill="rgba(255,255,255,0.2)"/><rect x="64" y="24.5" width="6" height="3" rx="1.5" fill="rgba(255,255,255,0.2)"/><rect x="4" y="31" width="72" height="6" rx="1" fill="rgba(255,255,255,0.1)"/><rect x="6" y="32.5" width="14" height="3" rx="0.75" fill="rgba(255,255,255,0.4)"/><rect x="38" y="32.5" width="6" height="3" rx="1.5" fill="rgba(16,185,129,0.9)"/><rect x="52" y="32.5" width="6" height="3" rx="1.5" fill="rgba(16,185,129,0.9)"/><rect x="64" y="32.5" width="6" height="3" rx="1.5" fill="rgba(16,185,129,0.9)"/><rect x="4" y="39" width="28" height="8" rx="3.5" fill="rgba(255,255,255,0.5)"/><rect x="6" y="41.5" width="16" height="3" rx="1.5" fill="rgba(7,89,68,0.8)"/></svg> },
 };
 
 /* ── Section card with hover state ─────────────────────────────────────── */

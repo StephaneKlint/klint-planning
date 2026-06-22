@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { type PermissionMatrix, DEFAULT_PERMISSIONS } from "@/lib/permissions";
+import { type PermissionMatrix, type RolePermRow, DEFAULT_PERMISSIONS } from "@/lib/permissions";
 
 const GLOBAL_KEY = "global";
 
@@ -26,9 +26,36 @@ export async function getPermissions(): Promise<PermissionMatrix> {
     .limit(1);
 
   if (!rows.length || !rows[0].permissionsJson) return DEFAULT_PERMISSIONS;
-  const stored = rows[0].permissionsJson as { user?: Partial<PermissionMatrix["user"]> };
+
+  const s = rows[0].permissionsJson as Partial<PermissionMatrix>;
+  const mr = (def: RolePermRow, src?: Partial<RolePermRow>): RolePermRow => ({ ...def, ...(src ?? {}) });
+
   return {
-    user: { ...DEFAULT_PERMISSIONS.user, ...(stored.user ?? {}) },
+    platform: { ...DEFAULT_PERMISSIONS.platform, ...(s.platform ?? {}) },
+    tabs:     { ...DEFAULT_PERMISSIONS.tabs,     ...(s.tabs     ?? {}) },
+    planning_actions: {
+      edit_settings: mr(DEFAULT_PERMISSIONS.planning_actions.edit_settings, s.planning_actions?.edit_settings),
+      archive:       mr(DEFAULT_PERMISSIONS.planning_actions.archive,       s.planning_actions?.archive),
+      delete:        mr(DEFAULT_PERMISSIONS.planning_actions.delete,        s.planning_actions?.delete),
+      duplicate:     mr(DEFAULT_PERMISSIONS.planning_actions.duplicate,     s.planning_actions?.duplicate),
+      template:      mr(DEFAULT_PERMISSIONS.planning_actions.template,      s.planning_actions?.template),
+      export:        mr(DEFAULT_PERMISSIONS.planning_actions.export,        s.planning_actions?.export),
+      share:         mr(DEFAULT_PERMISSIONS.planning_actions.share,         s.planning_actions?.share),
+    },
+    gantt_actions: {
+      phase_create: mr(DEFAULT_PERMISSIONS.gantt_actions.phase_create, s.gantt_actions?.phase_create),
+      phase_edit:   mr(DEFAULT_PERMISSIONS.gantt_actions.phase_edit,   s.gantt_actions?.phase_edit),
+      phase_move:   mr(DEFAULT_PERMISSIONS.gantt_actions.phase_move,   s.gantt_actions?.phase_move),
+      phase_delete: mr(DEFAULT_PERMISSIONS.gantt_actions.phase_delete, s.gantt_actions?.phase_delete),
+      ms_create:    mr(DEFAULT_PERMISSIONS.gantt_actions.ms_create,    s.gantt_actions?.ms_create),
+      ms_edit:      mr(DEFAULT_PERMISSIONS.gantt_actions.ms_edit,      s.gantt_actions?.ms_edit),
+      ms_delete:    mr(DEFAULT_PERMISSIONS.gantt_actions.ms_delete,    s.gantt_actions?.ms_delete),
+    },
+    member_actions: {
+      add:    mr(DEFAULT_PERMISSIONS.member_actions.add,    s.member_actions?.add),
+      remove: mr(DEFAULT_PERMISSIONS.member_actions.remove, s.member_actions?.remove),
+      manage: mr(DEFAULT_PERMISSIONS.member_actions.manage, s.member_actions?.manage),
+    },
   };
 }
 
