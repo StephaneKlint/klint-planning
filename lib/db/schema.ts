@@ -416,3 +416,21 @@ export const connectionLogs = pgTable(
   },
   (t) => [index("cl_by_user").on(t.userId), index("cl_created").on(t.createdAt)]
 );
+
+// ---- Logs d'erreurs applicatifs ------------------------------------------
+
+export const appErrors = pgTable(
+  "app_errors",
+  {
+    id:         uuid("id").primaryKey().defaultRandom(),
+    createdAt:  timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    source:     varchar("source", { length: 100 }).notNull(),
+    level:      varchar("level", { length: 10 }).notNull().default("error"),
+    message:    text("message").notNull(),
+    details:    jsonb("details"),
+    userId:     uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    statusCode: integer("status_code"),
+    resolved:   boolean("resolved").notNull().default(false),
+  },
+  (t) => [index("ae_created").on(t.createdAt), index("ae_resolved").on(t.resolved)]
+);

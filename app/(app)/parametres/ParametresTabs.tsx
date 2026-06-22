@@ -6,7 +6,9 @@ import styles from "./Parametres.module.css";
 import type { GanttData, UserRole } from "@/lib/db/queries";
 import type { AppSettings } from "@/lib/actions/appSettings";
 import { savePermissions } from "@/lib/actions/appSettings";
-import type { PermissionMatrix } from "@/lib/permissions";
+import type { PermissionMatrix, RolePermRow } from "@/lib/permissions";
+import { DEFAULT_PERMISSIONS } from "@/lib/permissions";
+import { Icon } from "@/components/ui/Icon";
 import {
   addPhaseType, deletePhaseType, updatePhaseType,
   addMilestoneType, deleteMilestoneType, updateMilestoneType,
@@ -19,8 +21,10 @@ import { setTemplateFlag } from "@/lib/actions/plannings";
 import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact } from "@/lib/db/queries";
 import { addMember, removeMember, disableContact, enableContact, assignExistingContactToPlanning, updateContact, deleteContact } from "@/lib/actions/members";
 import { generateInvitationLink } from "@/lib/actions/invitations";
+import { useEffect } from "react";
+import { getErrors, resolveError, type AppErrorRow } from "@/lib/actions/errors";
 
-type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "répertoire" | "historique" | "droits";
+type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "répertoire" | "historique" | "droits" | "logs";
 
 const ALL_TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "general",    label: "Général" },
@@ -34,14 +38,15 @@ const ALL_TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "calendrier", label: "Calendrier" },
   { id: "securite",   label: "Sécurité" },
   { id: "droits",     label: "Rôles & droits", adminOnly: true },
+  { id: "logs",       label: "Logs erreurs",   adminOnly: true },
 ];
 
 function buildVisibleTabs(userRole: UserRole, permissions: PermissionMatrix) {
   if (userRole === "admin") return ALL_TABS;
   return ALL_TABS.filter((t) => {
     if (t.adminOnly) return false;
-    const key = `tab_${t.id}` as keyof PermissionMatrix["user"];
-    return permissions.user[key] ?? false;
+    const key = (t.id === "répertoire" ? "repertoire" : t.id) as keyof PermissionMatrix["tabs"];
+    return permissions.tabs[key] ?? false;
   });
 }
 
@@ -94,7 +99,7 @@ interface ParametresTabsProps {
   directoryContacts?: DirectoryContact[];
 }
 
-export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = { user: { tab_general: true, tab_cadence: true, tab_phases: true, tab_jalons: true, tab_statuts: true, "tab_répertoire": true, tab_historique: true, tab_apparence: true, tab_calendrier: true, tab_securite: true, create_planning: true, export: true, share: true } }, existingUsers = [], activityEntries = [], connLogs = [], directoryContacts = [] }: ParametresTabsProps) {
+export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = DEFAULT_PERMISSIONS, existingUsers = [], activityEntries = [], connLogs = [], directoryContacts = [] }: ParametresTabsProps) {
   const router = useRouter();
   const visibleTabs = buildVisibleTabs(userRole, permissions);
   const [active, setActive] = useState<Tab>(() => visibleTabs[0]?.id ?? "general");
@@ -1162,6 +1167,8 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
           <DroitsTab permissions={permissions} />
         </div>
       )}
+
+      {active === "logs" && userRole === "admin" && <LogsPanel />}
     </div>
   );
 }
@@ -1641,10 +1648,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                         title="Modifier"
                         onClick={() => { setEditingId(c.userId); setEditName(c.name ?? ""); setEditInitials(c.initials ?? ""); setEditColor(c.color ?? PRESET_COLORS[0]); setEditRole(c.role); }}
                       >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                          <path d="m18.5 2.5 3 3L12 15l-4 1 1-4z"/>
-                        </svg>
+                        <Icon name="edit" size={13} aria-hidden />
                       </button>
 
                       {/* Retirer / Ajouter au planning */}
@@ -1658,9 +1662,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                             startTransition(async () => { await removeMember(memberId!, planningId); refresh(); });
                           }}
                         >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M16 3h5v5"/><path d="M21 3 9 15"/><path d="M9 3H4v5"/><path d="m3 9 12 12"/><path d="M3 21h5v-5"/>
-                          </svg>
+                          <Icon name="close" size={13} aria-hidden />
                         </button>
                       ) : (
                         <button
@@ -1669,9 +1671,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                           title="Ajouter à ce planning"
                           onClick={() => { startTransition(async () => { await assignExistingContactToPlanning(c.userId, planningId); refresh(); }); }}
                         >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 5v14"/><path d="M5 12h14"/>
-                          </svg>
+                          <Icon name="plus" size={13} aria-hidden />
                         </button>
                       )}
 
@@ -1683,9 +1683,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                           title="Réactiver le compte"
                           onClick={() => { startTransition(async () => { await enableContact(c.userId); refresh(); }); }}
                         >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="m20 6-11 11-5-5"/>
-                          </svg>
+                          <Icon name="eye" size={13} aria-hidden />
                         </button>
                       ) : (
                         <button
@@ -1697,9 +1695,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                             startTransition(async () => { await disableContact(c.userId); refresh(); });
                           }}
                         >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>
-                          </svg>
+                          <Icon name="eyeOff" size={13} aria-hidden />
                         </button>
                       )}
 
@@ -1718,17 +1714,14 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                             });
                           }}
                         >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                          </svg>
+                          <Icon name="link" size={13} aria-hidden />
                         </button>
                       )}
 
                       {/* Supprimer définitivement */}
                       <button
                         title="Supprimer définitivement"
-                        className={styles.deleteRowBtn}
+                        className={styles.dirIconDangerBtn}
                         disabled={isPending}
                         style={{ marginLeft: "auto" }}
                         onClick={() => {
@@ -1736,7 +1729,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                           startTransition(async () => { await deleteContact(c.userId); refresh(); });
                         }}
                       >
-                        ×
+                        <Icon name="trash" size={13} aria-hidden />
                       </button>
                     </div>
 
@@ -1775,103 +1768,235 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
 
 // ── Droits & Rôles tab ────────────────────────────────────────────────────────
 
-const PERMISSION_FEATURES: { key: keyof PermissionMatrix["user"]; label: string; group: string }[] = [
-  { key: "tab_general",      label: "Onglet Général",           group: "Paramètres" },
-  { key: "tab_cadence",      label: "Onglet Cadence",           group: "Paramètres" },
-  { key: "tab_phases",       label: "Onglet Types de phases",   group: "Paramètres" },
-  { key: "tab_jalons",       label: "Onglet Types de jalons",   group: "Paramètres" },
-  { key: "tab_statuts",      label: "Onglet Statuts",           group: "Paramètres" },
-  { key: "tab_calendrier",   label: "Onglet Calendrier",        group: "Paramètres" },
-  { key: "tab_apparence",    label: "Onglet Apparence",         group: "Paramètres" },
-  { key: "tab_répertoire",   label: "Onglet Répertoire",        group: "Paramètres" },
-  { key: "tab_historique",   label: "Onglet Historique",        group: "Paramètres" },
-  { key: "tab_securite",     label: "Onglet Sécurité",          group: "Paramètres" },
-  { key: "create_planning",  label: "Créer un planning",        group: "Actions" },
-  { key: "export",           label: "Exporter (Excel, PDF, PNG)", group: "Actions" },
-  { key: "share",            label: "Partager un planning",     group: "Actions" },
-];
+const TH_STYLE: React.CSSProperties = {
+  textAlign: "center", width: 88, padding: "8px 6px",
+  fontSize: 11, fontWeight: 700, color: "#9CA3AF",
+  textTransform: "uppercase", letterSpacing: "0.05em",
+  borderBottom: "1px solid var(--klint-line, #E6E8EE)",
+};
+const TH_LEFT: React.CSSProperties = {
+  ...TH_STYLE, textAlign: "left", width: "auto", padding: "8px 12px",
+};
+const GRP_TD: React.CSSProperties = {
+  padding: "10px 12px 4px", fontSize: 11, fontWeight: 700, color: "#6B7280",
+  textTransform: "uppercase", letterSpacing: "0.06em",
+  background: "var(--klint-paper, #F6F7FB)",
+};
+const CHECK: React.CSSProperties = { color: "#16A34A", fontWeight: 700, fontSize: 15 };
+const DASH: React.CSSProperties = { color: "#D1D5DB", fontSize: 15 };
+
+type Toggler = (on: boolean) => void;
+
+function Toggle({ on, onToggle }: { on: boolean; onToggle: Toggler }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(!on)}
+      style={{
+        width: 36, height: 20, borderRadius: 999,
+        background: on ? "#001036" : "#E5E7EB",
+        border: "none", cursor: "pointer", position: "relative",
+        transition: "background 150ms", display: "inline-flex", alignItems: "center",
+      }}
+      aria-checked={on} role="switch"
+      title={on ? "Désactiver" : "Activer"}
+    >
+      <span style={{
+        position: "absolute", width: 14, height: 14, borderRadius: "50%",
+        background: "#fff", top: 3, left: on ? 19 : 3,
+        transition: "left 150ms", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+      }} />
+    </button>
+  );
+}
 
 function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
   const [local, setLocal] = useState<PermissionMatrix>(permissions);
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
 
-  const toggle = (key: keyof PermissionMatrix["user"]) => {
-    setLocal((prev) => ({ ...prev, user: { ...prev.user, [key]: !prev.user[key] } }));
-    setSaved(false);
-  };
+  const togglePlatform = (key: keyof PermissionMatrix["platform"], val: boolean) =>
+    setLocal((p) => { setSaved(false); return { ...p, platform: { ...p.platform, [key]: val } }; });
 
-  const groups = [...new Set(PERMISSION_FEATURES.map((f) => f.group))];
+  const toggleTab = (key: keyof PermissionMatrix["tabs"], val: boolean) =>
+    setLocal((p) => { setSaved(false); return { ...p, tabs: { ...p.tabs, [key]: val } }; });
+
+  const toggleAction = (
+    section: "planning_actions" | "gantt_actions" | "member_actions",
+    action: string,
+    role: keyof RolePermRow,
+    val: boolean,
+  ) =>
+    setLocal((p) => {
+      setSaved(false);
+      const sec = p[section] as Record<string, RolePermRow>;
+      return { ...p, [section]: { ...sec, [action]: { ...sec[action], [role]: val } } };
+    });
+
+  function ActionTable({
+    section, rows,
+  }: {
+    section: "planning_actions" | "gantt_actions" | "member_actions";
+    rows: { action: string; label: string }[];
+  }) {
+    const sec = local[section] as Record<string, RolePermRow>;
+    return (
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <thead>
+          <tr>
+            <th style={TH_LEFT}>Fonctionnalité</th>
+            <th style={TH_STYLE}>Admin</th>
+            <th style={TH_STYLE}>Propriétaire</th>
+            <th style={TH_STYLE}>Éditeur</th>
+            <th style={TH_STYLE}>Lecteur</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const row = sec[r.action] ?? { owner: false, editor: false, viewer: false };
+            return (
+              <tr key={r.action} style={{ borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
+                <td style={{ padding: "9px 12px", color: "var(--klint-navy)" }}>{r.label}</td>
+                <td style={{ textAlign: "center", padding: "9px 6px" }}><span style={CHECK}>✓</span></td>
+                <td style={{ textAlign: "center", padding: "9px 6px" }}>
+                  <Toggle on={row.owner}  onToggle={(v) => toggleAction(section, r.action, "owner",  v)} />
+                </td>
+                <td style={{ textAlign: "center", padding: "9px 6px" }}>
+                  <Toggle on={row.editor} onToggle={(v) => toggleAction(section, r.action, "editor", v)} />
+                </td>
+                <td style={{ textAlign: "center", padding: "9px 6px" }}>
+                  <Toggle on={row.viewer} onToggle={(v) => toggleAction(section, r.action, "viewer", v)} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  }
 
   return (
-    <div>
-      <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 20, marginTop: 0, lineHeight: 1.6 }}>
-        Configurez quelles fonctionnalités sont accessibles par rôle.
-        Les <strong>Admins</strong> ont toujours accès à tout. Les <strong>Contacts</strong> n&apos;ont pas accès à l&apos;application.
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.6 }}>
+        Les <strong>Admins</strong> ont toujours accès à tout.
+        Les <strong>Contacts</strong> n&apos;ont pas accès à l&apos;application.
+        Les rôles de planning (Propriétaire / Éditeur / Lecteur) sont attribués par planning dans l&apos;onglet Répertoire.
       </p>
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
-                Fonctionnalité
-              </th>
-              <th style={{ textAlign: "center", width: 90, padding: "8px 12px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
-                Admin
-              </th>
-              <th style={{ textAlign: "center", width: 110, padding: "8px 12px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
-                Utilisateur
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map((group) => (
-              <>
-                <tr key={`grp-${group}`}>
-                  <td colSpan={3} style={{ padding: "12px 12px 4px", fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.06em", background: "var(--klint-paper, #F6F7FB)" }}>
-                    {group}
+      {/* ─ Table 1 : Accès plateforme (Utilisateur) ─ */}
+      <div>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--klint-navy)", margin: "0 0 10px" }}>
+          Accès plateforme — Utilisateurs
+        </h3>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th style={TH_LEFT}>Fonctionnalité</th>
+                <th style={TH_STYLE}>Admin</th>
+                <th style={TH_STYLE}>Utilisateur</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colSpan={3} style={GRP_TD}>Actions globales</td></tr>
+              {(
+                [
+                  ["create_planning", "Créer un planning"],
+                  ["export",          "Exporter (Excel, PDF, PNG)"],
+                  ["share",           "Partager un lien de planning"],
+                ] as [keyof PermissionMatrix["platform"], string][]
+              ).map(([key, label]) => (
+                <tr key={key} style={{ borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
+                  <td style={{ padding: "9px 12px", color: "var(--klint-navy)" }}>{label}</td>
+                  <td style={{ textAlign: "center", padding: "9px 6px" }}><span style={CHECK}>✓</span></td>
+                  <td style={{ textAlign: "center", padding: "9px 6px" }}>
+                    <Toggle on={local.platform[key]} onToggle={(v) => togglePlatform(key, v)} />
                   </td>
                 </tr>
-                {PERMISSION_FEATURES.filter((f) => f.group === group).map((f) => (
-                  <tr key={f.key} style={{ borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
-                    <td style={{ padding: "10px 12px", color: "var(--klint-navy)" }}>{f.label}</td>
-                    <td style={{ textAlign: "center", padding: "10px 12px" }}>
-                      <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 15 }}>✓</span>
-                    </td>
-                    <td style={{ textAlign: "center", padding: "10px 12px" }}>
-                      <button
-                        type="button"
-                        onClick={() => toggle(f.key)}
-                        style={{
-                          width: 36, height: 20, borderRadius: 999,
-                          background: local.user[f.key] ? "#001036" : "#E5E7EB",
-                          border: "none", cursor: "pointer", position: "relative",
-                          transition: "background 150ms", flexShrink: 0,
-                          display: "inline-flex", alignItems: "center",
-                        }}
-                        aria-checked={local.user[f.key]}
-                        role="switch"
-                        title={local.user[f.key] ? "Désactiver" : "Activer"}
-                      >
-                        <span style={{
-                          position: "absolute", width: 14, height: 14, borderRadius: "50%",
-                          background: "#fff", top: 3,
-                          left: local.user[f.key] ? 19 : 3,
-                          transition: "left 150ms",
-                          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                        }} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </>
-            ))}
-          </tbody>
-        </table>
+              ))}
+
+              <tr><td colSpan={3} style={GRP_TD}>Onglets Paramètres visibles</td></tr>
+              {(
+                [
+                  ["general",    "Onglet Général"],
+                  ["cadence",    "Onglet Cadence"],
+                  ["phases",     "Onglet Types de phases"],
+                  ["jalons",     "Onglet Types de jalons"],
+                  ["statuts",    "Onglet Statuts"],
+                  ["calendrier", "Onglet Calendrier"],
+                  ["apparence",  "Onglet Apparence"],
+                  ["repertoire", "Onglet Répertoire"],
+                  ["historique", "Onglet Historique"],
+                  ["securite",   "Onglet Sécurité"],
+                ] as [keyof PermissionMatrix["tabs"], string][]
+              ).map(([key, label]) => (
+                <tr key={key} style={{ borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
+                  <td style={{ padding: "9px 12px", color: "var(--klint-navy)" }}>{label}</td>
+                  <td style={{ textAlign: "center", padding: "9px 6px" }}><span style={CHECK}>✓</span></td>
+                  <td style={{ textAlign: "center", padding: "9px 6px" }}>
+                    <Toggle on={local.tabs[key]} onToggle={(v) => toggleTab(key, v)} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20 }}>
+      {/* ─ Table 2 : Actions planning ─ */}
+      <div>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--klint-navy)", margin: "0 0 6px" }}>
+          Actions sur les plannings
+        </h3>
+        <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 10px" }}>
+          S&apos;applique selon le rôle attribué au membre dans chaque planning.
+        </p>
+        <div style={{ overflowX: "auto" }}>
+          <ActionTable section="planning_actions" rows={[
+            { action: "edit_settings", label: "Modifier les paramètres du planning" },
+            { action: "archive",       label: "Archiver / Désarchiver" },
+            { action: "delete",        label: "Supprimer définitivement" },
+            { action: "duplicate",     label: "Dupliquer" },
+            { action: "template",      label: "Définir comme modèle" },
+            { action: "export",        label: "Exporter (Excel, PDF, PNG)" },
+            { action: "share",         label: "Partager" },
+          ]} />
+        </div>
+      </div>
+
+      {/* ─ Table 3 : Gantt ─ */}
+      <div>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--klint-navy)", margin: "0 0 6px" }}>
+          Gantt — Phases &amp; Jalons
+        </h3>
+        <div style={{ overflowX: "auto" }}>
+          <ActionTable section="gantt_actions" rows={[
+            { action: "phase_create", label: "Créer des phases" },
+            { action: "phase_edit",   label: "Modifier (statut, avancement, dates)" },
+            { action: "phase_move",   label: "Déplacer (glisser-déposer)" },
+            { action: "phase_delete", label: "Supprimer des phases" },
+            { action: "ms_create",    label: "Créer des jalons" },
+            { action: "ms_edit",      label: "Modifier des jalons" },
+            { action: "ms_delete",    label: "Supprimer des jalons" },
+          ]} />
+        </div>
+      </div>
+
+      {/* ─ Table 4 : Membres ─ */}
+      <div>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--klint-navy)", margin: "0 0 6px" }}>
+          Gestion des membres
+        </h3>
+        <div style={{ overflowX: "auto" }}>
+          <ActionTable section="member_actions" rows={[
+            { action: "add",    label: "Ajouter des membres" },
+            { action: "remove", label: "Retirer des membres" },
+            { action: "manage", label: "Modifier les droits des membres" },
+          ]} />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 4 }}>
         <button
           className={styles.saveBtn}
           disabled={isPending}
@@ -1887,6 +2012,120 @@ function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
         </button>
         {saved && <span style={{ fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Droits mis à jour</span>}
       </div>
+
+      {/* Note légende */}
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "#6B7280", paddingTop: 4 }}>
+        <span><span style={{ ...CHECK, fontSize: 13 }}>✓</span> Admin — toujours autorisé</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "inline-block", width: 28, height: 16, borderRadius: 999, background: "#001036", position: "relative", verticalAlign: "middle" }}>
+            <span style={{ position: "absolute", width: 10, height: 10, borderRadius: "50%", background: "#fff", top: 3, right: 3 }} />
+          </span> Activé
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "inline-block", width: 28, height: 16, borderRadius: 999, background: "#E5E7EB", position: "relative", verticalAlign: "middle" }}>
+            <span style={{ position: "absolute", width: 10, height: 10, borderRadius: "50%", background: "#fff", top: 3, left: 3 }} />
+          </span> Désactivé
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function LogsPanel() {
+  const [errors, setErrors] = useState<AppErrorRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    getErrors().then((rows) => {
+      setErrors(rows);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  function handleResolve(id: string, resolved: boolean) {
+    startTransition(async () => {
+      await resolveError(id, resolved);
+      setErrors((prev) => prev.map((e) => e.id === id ? { ...e, resolved } : e));
+    });
+  }
+
+  if (loading) {
+    return <div className={styles.tabPanel} style={{ color: "#6B7280", fontSize: 13 }}>Chargement…</div>;
+  }
+
+  return (
+    <div className={styles.tabPanel}>
+      <p className={styles.tabDesc} style={{ marginBottom: 16 }}>
+        {errors.length === 0 ? "Aucune erreur enregistrée." : `${errors.length} entrée(s) — dernières 100`}
+      </p>
+      {errors.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 560, overflowY: "auto" }}>
+          {errors.map((err) => (
+            <div
+              key={err.id}
+              style={{
+                borderRadius: 8,
+                border: `1px solid ${err.level === "warn" ? "#FEF3C7" : "#FEE2E2"}`,
+                background: err.resolved ? "#F9FAFB" : err.level === "warn" ? "#FFFBEB" : "#FFF5F5",
+                padding: "10px 14px",
+                opacity: err.resolved ? 0.6 : 1,
+              }}
+            >
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "2px 6px",
+                  background: err.level === "warn" ? "#FEF3C7" : "#FEE2E2",
+                  color: err.level === "warn" ? "#92400E" : "#991B1B",
+                  textTransform: "uppercase" as const,
+                }}>{err.level}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--klint-navy)", flex: 1 }}>{err.source}</span>
+                {err.statusCode && (
+                  <span style={{ fontSize: 11, color: "#6B7280" }}>HTTP {err.statusCode}</span>
+                )}
+                <span style={{ fontSize: 11, color: "#9CA3AF" }}>{fmtDatetime(err.createdAt)}</span>
+              </div>
+              <p style={{ fontSize: 12, color: "#374151", margin: "0 0 6px" }}>{err.message}</p>
+              {err.userName && (
+                <p style={{ fontSize: 11, color: "#6B7280", margin: "0 0 4px" }}>
+                  Utilisateur : {err.userName} ({err.userEmail})
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {!!err.details && (
+                  <button
+                    onClick={() => setExpandedId(expandedId === err.id ? null : err.id)}
+                    style={{ fontSize: 11, color: "var(--klint-navy)", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                  >
+                    {expandedId === err.id ? "Masquer détails" : "Voir détails"}
+                  </button>
+                )}
+                <button
+                  onClick={() => handleResolve(err.id, !err.resolved)}
+                  disabled={isPending}
+                  style={{
+                    fontSize: 11, fontWeight: 600, borderRadius: 4, border: "none", cursor: "pointer",
+                    padding: "3px 8px",
+                    background: err.resolved ? "#E5E7EB" : "#DCFCE7",
+                    color: err.resolved ? "#6B7280" : "#166534",
+                  }}
+                >
+                  {err.resolved ? "Rouvrir" : "✓ Résolu"}
+                </button>
+              </div>
+              {expandedId === err.id && !!err.details && (
+                <pre style={{
+                  marginTop: 8, fontSize: 11, background: "#1E293B", color: "#E2E8F0",
+                  borderRadius: 6, padding: 10, overflowX: "auto", whiteSpace: "pre-wrap",
+                }}>
+                  {JSON.stringify(err.details, null, 2)}
+                </pre>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
