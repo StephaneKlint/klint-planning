@@ -344,7 +344,7 @@ interface SectionDef {
 const SECTIONS: SectionDef[] = [
   { id: "plannings",    num: "1",  emoji: "📋", title: "Mes plannings",                       keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono modele vide renommer supprimer corbeille restaurer soft delete template bibliothèque" },
   { id: "structure",    num: "2",  emoji: "🏗️", title: "Structure d'un planning",             keywords: "domaine lot sous-projet phase jalon hiérarchie structure organisation créer ajouter type cadrage dev développement recette formation personnalisé ordre réordonner" },
-  { id: "gantt",        num: "3",  emoji: "📊", title: "Vue Gantt — navigation et affichage", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter filtres vide empty état domaine créer supprimer tooltip survol dates stacking pile track hauteur week-end fermeture bandes baseline" },
+  { id: "gantt",        num: "3",  emoji: "📊", title: "Vue Gantt — navigation et affichage", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter membre toolbar barre outils filtres vide empty état domaine créer supprimer tooltip survol dates stacking pile track hauteur week-end fermeture bandes baseline" },
   { id: "drag",         num: "4",  emoji: "🖱️", title: "Glisser-déposer (drag & drop)",       keywords: "drag drop glisser déposer déplacer phase jalon inter-lot horizontale verticale date resize redimensionner bord gauche droit annuler undo ctrl z fantôme ghost" },
   { id: "edit",         num: "5",  emoji: "✏️", title: "Édition phases et jalons",            keywords: "éditer phase jalon dates statut avancement couleur note assigné responsable sélection multiple recherche palette commandes ctrl k fermer overlay dupliquer duplication copier" },
   { id: "bulkbar",      num: "6",  emoji: "☑️", title: "Sélection multiple et actions groupées", keywords: "sélection multiple phases jalons bulkbar barre actions groupées ctrl clic multi select statut dupliquer vers lot confirmer désélectionner" },
@@ -354,14 +354,14 @@ const SECTIONS: SectionDef[] = [
   { id: "synthese",     num: "10", emoji: "📈", title: "Vue Synthèse",                        keywords: "synthèse kpi indicateurs jalons retard risque alertes avancement domaine collapsible ouvrir fermer sous-projets lots chips statuts J+30 J+60 J+90" },
   { id: "ressources",   num: "11", emoji: "👥", title: "Vue Ressources",                      keywords: "ressources membres responsables ajouter modifier supprimer attribution phases planning email initiales couleur picker existant" },
   { id: "portefeuille", num: "12", emoji: "🗂️", title: "Vue Portefeuille",                    keywords: "portefeuille dashboard multi-plannings vue globale consolidée jalons à venir dépassés retard risque filtre statut progression cards timeline cross-planning" },
-  { id: "parametres",   num: "13", emoji: "⚙️", title: "Paramètres",                          keywords: "paramètres général cadence types phases jalons statuts membres droits apparence logo calendrier fermetures jours fériés modèle template" },
+  { id: "parametres",   num: "13", emoji: "⚙️", title: "Paramètres",                          keywords: "paramètres général cadence types phases jalons statuts membres droits apparence logo calendrier fermetures jours fériés modèle template répertoire contacts ajouter rôle propriétaire éditeur lecteur inviter lien icônes" },
   { id: "logo",         num: "14", emoji: "🎨", title: "Logo & Apparence",                    keywords: "logo apparence navbar png svg favicon changer enregistrer réinitialiser" },
   { id: "exports",      num: "15", emoji: "📥", title: "Exports (PDF, PNG, Excel, JSON)",     keywords: "pdf export a3 imprimer impression format paysage capture download télécharger png powerpoint excel xlsx json données visuels dropdown exporter" },
   { id: "presentation", num: "16", emoji: "🖥️", title: "Mode Présentation",                   keywords: "présentation plein écran fullscreen tout afficher fit-view zoom hauteur lignes capture export" },
   { id: "calendrier",   num: "17", emoji: "📅", title: "Fermetures & Jours fériés",           keywords: "fermetures jours fériés calendrier congés été hiver gel gel-code période custom bande colorée affichage toggle" },
   { id: "historique",   num: "18", emoji: "📜", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log" },
   { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt" },
-  { id: "droits",       num: "20", emoji: "🛡️", title: "Rôles & droits d'accès",               keywords: "rôles droits admin utilisateur contact propriétaire éditeur lecteur permissions crud accès matrice onglets plateforme planning membres inviter lien invitation" },
+  { id: "droits",       num: "20", emoji: "🛡️", title: "Rôles & droits d'accès",               keywords: "rôles droits admin utilisateur contact propriétaire éditeur lecteur permissions crud accès matrice onglets plateforme planning membres inviter lien invitation ajouter gantt toolbar" },
 ];
 
 /* ── Section bodies (module scope — purely static JSX) ──────────────────── */
@@ -492,12 +492,17 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={4}><strong>Avancer/reculer d&apos;une période</strong> : boutons <UI>‹</UI> et <UI>›</UI>, ou raccourcis <Kbd>←</Kbd> <Kbd>→</Kbd>.</Step>
         <Step n={5}><strong>Filtrer par période</strong> : renseignez les champs <UI>Du … au …</UI> dans la barre d&apos;outils. Cliquez <UI>×</UI> pour réinitialiser.</Step>
       </How>
-      <Mock label="Barre d'outils — affichage">
+      <Mock label="Barre d'outils — affichage & membres">
         <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, alignItems: "center" }}>
           <TB icon="⚙️">Affichage ▾</TB>
           <TB icon="🎨">Coloration ▾</TB>
-          <TB icon="📂">Projets ▾</TB>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, padding: "3px 8px" }}>
+            <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#001D63", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0 }}>AB</span>
+            <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#0F766E", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0, marginLeft: -8, border: "2px solid #fff" }}>CD</span>
+            <span style={{ marginLeft: 4, fontSize: 13, fontWeight: 700, color: "#3B82F6" }}>+</span>
+          </span>
           <TB icon="↩">Annuler</TB>
+          <TB icon="📂">Projets ▾</TB>
           <TB icon="📥">Exporter ▾</TB>
           <TB icon="🔗">Partager</TB>
         </div>
@@ -514,6 +519,12 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <How title="Options du menu Affichage">
         <Step n={1}>Cliquez sur <TB icon="⚙️">Affichage ▾</TB> pour accéder à :</Step>
         <Step n={2}><strong>Bandes domaines</strong> — fonds colorés. <strong>Week-ends</strong> — bandes grises. <strong>Jours fériés / Fermetures</strong> — bandes calendaires. <strong>Responsables</strong> — initiales sur les phases. <strong>Baseline</strong> — barres bleues comparatives.</Step>
+      </How>
+      <How title="Ajouter un membre depuis le Gantt">
+        <Step n={1}>Dans la barre d&apos;outils, cliquez sur le bouton <UI>+</UI> situé à droite des avatars de présence.</Step>
+        <Step n={2}>Dans la modale, recherchez un contact par <strong>nom</strong> ou <strong>email</strong> parmi les contacts du Répertoire non encore membres de ce planning.</Step>
+        <Step n={3}>Sélectionnez le contact dans la liste, choisissez un rôle (<strong>Propriétaire</strong>, <strong>Éditeur</strong> ou <strong>Lecteur</strong>), puis cliquez sur <UI>Ajouter</UI>.</Step>
+        <Step n={4}>Le nouveau membre apparaît dans les avatars et dans l&apos;onglet <UI>Répertoire</UI> des Paramètres.</Step>
       </How>
       <Tip>Sur un grand planning : combinez <UI>Projets</UI> (masquer les lots terminés) + zoom 12m pour une vue synthèse propre avant un COPIL ou un export PDF.</Tip>
     </section>
@@ -856,7 +867,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         Tableau de bord consolidé de tous vos plannings actifs. Pour les responsables multi-projets qui ont besoin d&apos;une vision transversale avant un COPIL.
       </p>
       <How title="Accéder au Portefeuille">
-        <Step n={1}>Cliquez sur l&apos;icône <strong>grille</strong> dans le rail de navigation gauche (entre Plannings et le Gantt actif).</Step>
+        <Step n={1}>Cliquez sur l&apos;icône <strong>grille</strong> dans le rail de navigation gauche (entre <UI>Plannings</UI> et <UI>Gantt</UI>).</Step>
       </How>
       <Mock label="Statut automatique des cards">
         <div style={{ display: "flex", flexDirection: "column" as const, gap: 8, fontSize: 13 }}>
@@ -901,10 +912,13 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={1}>Créez, renommez ou supprimez les types de phases (Cadrage, Développement, Recette…) et de jalons (Livraison, PMEP, CAB, MEP…) propres à ce planning.</Step>
       </How>
       <How title="Onglet Répertoire (contacts & membres)">
-        <Step n={1}>Liste tous les contacts de la plateforme avec leur rôle, statut et appartenance aux plannings.</Step>
-        <Step n={2}>Utilisez les icônes sur chaque carte : <strong>crayon</strong> (modifier), <strong>+/×</strong> (ajouter/retirer du planning), <strong>œil</strong> (activer/désactiver), <strong>lien</strong> (invitation), <strong>corbeille</strong> (supprimer définitivement).</Step>
-        <Step n={3}>Pour inviter un utilisateur ou admin : cliquez sur l&apos;icône de lien — un lien valable 7 jours est généré, à transmettre par email.</Step>
+        <Step n={1}>Liste tous les contacts de la plateforme avec leur rôle (Admin / Utilisateur / Contact), leur statut actif/inactif et leurs appartenance aux plannings.</Step>
+        <Step n={2}>Chaque carte affiche une ligne d&apos;icônes harmonisées : <strong>crayon</strong> (modifier nom/initiales/couleur), <strong>+</strong> (ajouter au planning avec choix du rôle), <strong>×</strong> (retirer du planning actif), <strong>œil/barré</strong> (activer ou désactiver l&apos;accès), <strong>lien</strong> (générer un lien d&apos;invitation), <strong>corbeille</strong> (supprimer définitivement).</Step>
+        <Step n={3}>Pour <strong>ajouter un contact au planning actif</strong> : cliquez sur <UI>+</UI> — un panneau s&apos;affiche directement sur la carte pour choisir le rôle (<strong>Propriétaire / Éditeur / Lecteur</strong>), puis cliquer sur <UI>Ajouter</UI>.</Step>
+        <Step n={4}>Pour <strong>changer le rôle d&apos;un membre existant</strong> : le menu déroulant Propriétaire/Éditeur/Lecteur est affiché directement sur la carte, la modification est immédiate.</Step>
+        <Step n={5}>Pour <strong>inviter un utilisateur ou admin</strong> : cliquez sur l&apos;icône de lien — un lien d&apos;accès valable 7 jours est généré. Copiez-le et transmettez-le par email.</Step>
       </How>
+      <Tip>Vous pouvez aussi ajouter un membre directement depuis la vue <UI>Gantt</UI> via le bouton <UI>+</UI> dans la barre d&apos;outils (à côté des avatars), sans passer par les Paramètres.</Tip>
       <Tip>L&apos;onglet Répertoire est réservé aux admins par défaut. Un admin peut l&apos;activer pour les utilisateurs dans <UI>Rôles &amp; droits</UI>.</Tip>
     </section>
   ),
@@ -1048,6 +1062,12 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={2}><strong>Tableau 1 — Accès plateforme</strong> : activez ou désactivez chaque fonctionnalité et chaque onglet Paramètres pour le rôle Utilisateur.</Step>
         <Step n={3}><strong>Tableaux 2-4 — Rôles planning</strong> : pour chaque action (modifier, archiver, supprimer, créer phases…), activez-la pour Propriétaire, Éditeur et/ou Lecteur.</Step>
         <Step n={4}>Cliquez sur <UI>Enregistrer</UI> — la matrice est appliquée immédiatement pour tous les utilisateurs connectés.</Step>
+      </How>
+
+      <How title="Ajouter un membre depuis le Gantt">
+        <Step n={1}>Depuis la vue <strong>Gantt</strong>, cliquez sur le bouton <UI>+</UI> dans la barre d&apos;outils (à droite des avatars de présence).</Step>
+        <Step n={2}>La modale liste tous les contacts du Répertoire non encore membres de ce planning. Recherchez par nom ou email.</Step>
+        <Step n={3}>Sélectionnez un contact, choisissez son rôle et cliquez <UI>Ajouter</UI>. Le membre est immédiatement actif sur le planning.</Step>
       </How>
 
       <How title="Inviter un utilisateur ou admin">
