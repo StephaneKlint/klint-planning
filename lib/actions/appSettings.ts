@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { type PermissionMatrix, DEFAULT_PERMISSIONS } from "@/lib/permissions";
 
 const GLOBAL_KEY = "global";
 
@@ -15,44 +16,6 @@ export type AppSettings = {
   logoDataUrl:    string | null;
   logoAlt:        string;
   faviconDataUrl: string | null;
-};
-
-// ── Matrice de permissions par rôle ───────────────────────────────────────────
-
-export type PermissionMatrix = {
-  user: {
-    tab_general:      boolean;
-    tab_cadence:      boolean;
-    tab_phases:       boolean;
-    tab_jalons:       boolean;
-    tab_statuts:      boolean;
-    "tab_répertoire": boolean;
-    tab_historique:   boolean;
-    tab_apparence:    boolean;
-    tab_calendrier:   boolean;
-    tab_securite:     boolean;
-    create_planning:  boolean;
-    export:           boolean;
-    share:            boolean;
-  };
-};
-
-export const DEFAULT_PERMISSIONS: PermissionMatrix = {
-  user: {
-    tab_general:      true,
-    tab_cadence:      true,
-    tab_phases:       true,
-    tab_jalons:       true,
-    tab_statuts:      true,
-    "tab_répertoire": false,
-    tab_historique:   false,
-    tab_apparence:    false,
-    tab_calendrier:   true,
-    tab_securite:     false,
-    create_planning:  true,
-    export:           true,
-    share:            true,
-  },
 };
 
 export async function getPermissions(): Promise<PermissionMatrix> {

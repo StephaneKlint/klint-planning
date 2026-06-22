@@ -4,8 +4,9 @@ import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./Parametres.module.css";
 import type { GanttData, UserRole } from "@/lib/db/queries";
-import type { AppSettings, PermissionMatrix } from "@/lib/actions/appSettings";
+import type { AppSettings } from "@/lib/actions/appSettings";
 import { savePermissions } from "@/lib/actions/appSettings";
+import type { PermissionMatrix } from "@/lib/permissions";
 import {
   addPhaseType, deletePhaseType, updatePhaseType,
   addMilestoneType, deleteMilestoneType, updateMilestoneType,
