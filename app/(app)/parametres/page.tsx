@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
 import { auth } from "@/auth";
 import { listPlannings, getGanttData, listUsersNotInPlanning, getActivityLog, listConnectionLogs, listAllDirectoryContacts } from "@/lib/db/queries";
 import { getAppSettings, getPermissions } from "@/lib/actions/appSettings";
 import type { ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact, UserRole } from "@/lib/db/queries";
 import { ParametresTabs } from "./ParametresTabs";
+import { PlanningSelector } from "./PlanningSelector";
 import styles from "./Parametres.module.css";
 
 interface Props {
@@ -44,17 +44,7 @@ export default async function ParametresPage({ searchParams }: Props) {
         <h1 className={styles.title}>Paramètres</h1>
 
         {/* Sélecteur de planning */}
-        <div className={styles.planningSelector}>
-          {planningList.map((p) => (
-            <Link
-              key={p.id}
-              href={`/parametres?planningId=${p.id}`}
-              className={`${styles.planningTab} ${p.id === activePlanningId ? styles.planningTabActive : ""}`}
-            >
-              {p.name}
-            </Link>
-          ))}
-        </div>
+        <PlanningSelector plannings={planningList} activePlanningId={activePlanningId} />
       </header>
 
       <ParametresTabs

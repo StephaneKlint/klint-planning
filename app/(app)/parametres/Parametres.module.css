@@ -481,36 +481,36 @@
   font-size: var(--text-13);
 }
 
-/* ─── Planning selector (multi-planning) ────────────────────────────────── */
-.planningSelector {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+/* ─── Planning selector (scalable dropdown) ─────────────────────────────── */
+.planningSelect {
+  appearance: none;
   margin-left: auto;
+  padding: 5px 30px 5px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--klint-line);
+  background-color: var(--klint-paper, #F6F7FB);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23001036' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  font-size: var(--text-12, 12px);
+  font-weight: var(--weight-semibold, 600);
+  font-family: var(--font-display, system-ui);
+  color: var(--klint-navy, #001036);
+  cursor: pointer;
+  min-width: 180px;
+  max-width: 300px;
+  outline: none;
+  transition: border-color 120ms;
 }
 
-.planningTab {
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: var(--text-12);
-  font-weight: var(--weight-semibold);
-  font-family: var(--font-display);
-  border: 1px solid var(--klint-line);
-  background: transparent;
-  color: var(--klint-navy);
-  text-decoration: none;
-  transition: background 120ms, color 120ms, border-color 120ms;
+.planningSelect:hover {
+  border-color: var(--klint-navy, #001036);
 }
 
-.planningTab:hover {
-  background: var(--klint-paper);
-  border-color: var(--klint-navy);
-}
-
-.planningTabActive {
-  background: var(--klint-navy);
-  color: white;
-  border-color: var(--klint-navy);
+.planningSelect:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 /* ─── Apparence / Logo ───────────────────────────────────────────────────── */
