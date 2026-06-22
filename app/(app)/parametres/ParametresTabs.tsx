@@ -1566,23 +1566,21 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                     {/* Barre d'actions */}
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap", borderTop: "1px solid var(--klint-line, #E6E8EE)", paddingTop: 8 }}>
                       <button
-                        className={styles.editRowBtn}
+                        className={styles.dirTextBtn}
                         disabled={isPending}
                         onClick={() => { setEditingId(c.userId); setEditName(c.name ?? ""); setEditInitials(c.initials ?? ""); setEditColor(c.color ?? PRESET_COLORS[0]); }}
-                        style={{ padding: "4px 10px", fontSize: 11 }}
                       >
                         Modifier
                       </button>
 
                       {inCurrent ? (
                         <button
-                          className={styles.deleteRowBtn}
+                          className={styles.dirDangerBtn}
                           disabled={isPending}
                           onClick={() => {
                             if (!confirm(`Retirer ${c.name ?? c.email} de ce planning ?`)) return;
                             startTransition(async () => { await removeMember(memberId!, planningId); refresh(); });
                           }}
-                          style={{ padding: "4px 10px", fontSize: 11 }}
                         >
                           Retirer
                         </button>
@@ -1601,22 +1599,22 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
 
                       {disabled ? (
                         <button
-                          className={styles.editRowBtn}
+                          className={styles.dirSuccessBtn}
                           disabled={isPending}
                           onClick={() => { startTransition(async () => { await enableContact(c.userId); refresh(); }); }}
-                          style={{ padding: "4px 10px", fontSize: 11, marginLeft: "auto" }}
+                          style={{ marginLeft: "auto" }}
                         >
                           Réactiver
                         </button>
                       ) : (
                         <button
-                          className={styles.deleteRowBtn}
+                          className={styles.dirDangerBtn}
                           disabled={isPending}
                           onClick={() => {
-                            if (!confirm(`Désactiver ${c.name ?? c.email} ? Le contact ne pourra plus se connecter.`)) return;
+                            if (!confirm(`Désactiver ${c.name ?? c.email} ?`)) return;
                             startTransition(async () => { await disableContact(c.userId); refresh(); });
                           }}
-                          style={{ padding: "4px 10px", fontSize: 11, marginLeft: "auto" }}
+                          style={{ marginLeft: "auto" }}
                         >
                           Désactiver
                         </button>
@@ -1630,7 +1628,6 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                           if (!confirm(`Supprimer définitivement ${c.name ?? c.email} ?\nCette action est irréversible et retire le contact de tous les plannings.`)) return;
                           startTransition(async () => { await deleteContact(c.userId); refresh(); });
                         }}
-                        style={{ padding: "4px 8px", fontSize: 11 }}
                       >
                         ×
                       </button>
