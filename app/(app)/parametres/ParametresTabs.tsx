@@ -20,6 +20,7 @@ import { changePassword } from "@/lib/actions/authActions";
 import { setTemplateFlag } from "@/lib/actions/plannings";
 import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact } from "@/lib/db/queries";
 import { addMember, removeMember, disableContact, enableContact, assignExistingContactToPlanning, updateContact, deleteContact } from "@/lib/actions/members";
+import { updateMemberPermission } from "@/lib/actions/settings";
 import { generateInvitationLink } from "@/lib/actions/invitations";
 import { useEffect } from "react";
 import { getErrors, resolveError, type AppErrorRow } from "@/lib/actions/errors";
@@ -1375,6 +1376,10 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied]   = useState(false);
 
+  // Ajout avec sélection de rôle planning
+  const [addingUserId, setAddingUserId]   = useState<string | null>(null);
+  const [addingRole, setAddingRole]       = useState<"owner" | "editor" | "viewer">("editor");
+
   const refresh = () => router.refresh();
 
   const filtered = contacts.filter((c) => {
@@ -1664,12 +1669,12 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                         >
                           <Icon name="close" size={13} aria-hidden />
                         </button>
-                      ) : (
+                      ) : addingUserId === c.userId ? null : (
                         <button
                           className={styles.dirIconBtn}
                           disabled={isPending}
                           title="Ajouter à ce planning"
-                          onClick={() => { startTransition(async () => { await assignExistingContactToPlanning(c.userId, planningId); refresh(); }); }}
+                          onClick={() => { setAddingUserId(c.userId); setAddingRole("editor"); }}
                         >
                           <Icon name="plus" size={13} aria-hidden />
                         </button>
@@ -1732,6 +1737,71 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                         <Icon name="trash" size={13} aria-hidden />
                       </button>
                     </div>
+
+                    {/* Panneau "Ajouter avec rôle" */}
+                    {addingUserId === c.userId && !inCurrent && editingId === null && (
+                      <div style={{ marginTop: 8, background: "#F0F9FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "10px 12px", display: "flex", flexDirection: "column" as const, gap: 8 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#1D4ED8" }}>Ajouter à ce planning</div>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <label style={{ fontSize: 12, color: "#374151", whiteSpace: "nowrap" as const }}>Rôle planning :</label>
+                          <select
+                            value={addingRole}
+                            onChange={(e) => setAddingRole(e.target.value as "owner" | "editor" | "viewer")}
+                            style={{ flex: 1, fontSize: 12, padding: "3px 6px", border: "1px solid #BFDBFE", borderRadius: 6, background: "#fff", color: "#1D4ED8" }}
+                          >
+                            <option value="owner">Propriétaire</option>
+                            <option value="editor">Éditeur</option>
+                            <option value="viewer">Lecteur</option>
+                          </select>
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            className={styles.saveBtn}
+                            disabled={isPending}
+                            style={{ fontSize: 12, padding: "4px 12px" }}
+                            onClick={() => {
+                              startTransition(async () => {
+                                await assignExistingContactToPlanning(c.userId, planningId, addingRole);
+                                setAddingUserId(null);
+                                refresh();
+                              });
+                            }}
+                          >
+                            {isPending ? "…" : "Confirmer"}
+                          </button>
+                          <button
+                            className={styles.deleteRowBtn}
+                            onClick={() => setAddingUserId(null)}
+                            style={{ fontSize: 12, padding: "4px 10px" }}
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rôle planning (pour les membres déjà dans ce planning) */}
+                    {inCurrent && editingId === null && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, borderTop: "1px solid var(--klint-line, #E6E8EE)", paddingTop: 6 }}>
+                        <span style={{ fontSize: 11, color: "#6B7280", whiteSpace: "nowrap" as const }}>Rôle planning :</span>
+                        <select
+                          value={memberEntry?.permission ?? "editor"}
+                          disabled={isPending}
+                          onChange={(e) => {
+                            if (!memberId) return;
+                            startTransition(async () => {
+                              await updateMemberPermission({ memberId, planningId, permission: e.target.value as "owner" | "editor" | "viewer" });
+                              refresh();
+                            });
+                          }}
+                          style={{ fontSize: 11, padding: "2px 4px", border: "1px solid var(--klint-line, #E6E8EE)", borderRadius: 5, background: "var(--klint-paper, #F6F7FB)", color: "var(--klint-navy)", flex: 1 }}
+                        >
+                          <option value="owner">Propriétaire</option>
+                          <option value="editor">Éditeur</option>
+                          <option value="viewer">Lecteur</option>
+                        </select>
+                      </div>
+                    )}
 
                     {/* Panneau lien d'invitation (scopé à ce contact) */}
                     {inviteLink && invitingUserId === c.userId && editingId === null && (

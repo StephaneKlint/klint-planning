@@ -167,7 +167,11 @@ export async function enableContact(userId: string) {
 
 // ── Assigner un contact existant à un planning ────────────────────────────────
 
-export async function assignExistingContactToPlanning(userId: string, planningId: string) {
+export async function assignExistingContactToPlanning(
+  userId: string,
+  planningId: string,
+  permission: "owner" | "editor" | "viewer" = "editor",
+) {
   const existing = await db.select({ id: planningMembers.id })
     .from(planningMembers)
     .where(and(eq(planningMembers.planningId, planningId), eq(planningMembers.userId, userId)))
@@ -185,7 +189,7 @@ export async function assignExistingContactToPlanning(userId: string, planningId
     userId,
     initials: otherMember[0]?.initials ?? undefined,
     color:    otherMember[0]?.color ?? "#001D63",
-    permission: "editor",
+    permission,
   });
 
   revalidatePath("/parametres");

@@ -9,7 +9,8 @@
 
 .main {
   height: 100%;          /* ← CRITICAL: explicite pour que la chaîne height fonctionne */
-  overflow: hidden;
+  overflow-y: auto;      /* scroll pour pages longues (aide, paramètres…) — le Gantt remplit 100% donc ne scroll pas via .main */
+  overflow-x: hidden;
   position: relative;
   min-height: 0;         /* ← CRITICAL: évite que le grid item enfle en flex child */
 }
