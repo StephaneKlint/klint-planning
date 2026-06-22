@@ -17,9 +17,10 @@ const AddMemberSchema = z.object({
   email:      z.string().email().max(255),
   initials:   z.string().min(1).max(3),
   color:      z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+  role:       z.enum(["admin", "user", "contact"]).default("contact"),
 });
 
-export async function addMember(input: z.infer<typeof AddMemberSchema>) {
+export async function addMember(input: z.input<typeof AddMemberSchema>) {
   const data = AddMemberSchema.parse(input);
 
   // Upsert user by email
@@ -35,6 +36,7 @@ export async function addMember(input: z.infer<typeof AddMemberSchema>) {
     const [newUser] = await db.insert(users).values({
       name:  data.name,
       email: data.email,
+      role:  data.role,
     }).returning({ id: users.id });
     userId = newUser.id;
   }
@@ -197,13 +199,14 @@ const UpdateContactSchema = z.object({
   name:     z.string().min(1).max(160),
   initials: z.string().min(1).max(3),
   color:    z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+  role:     z.enum(["admin", "user", "contact"]).optional(),
 });
 
 export async function updateContact(input: z.infer<typeof UpdateContactSchema>) {
   const data = UpdateContactSchema.parse(input);
 
   await db.update(users)
-    .set({ name: data.name })
+    .set({ name: data.name, ...(data.role ? { role: data.role } : {}) })
     .where(eq(users.id, data.userId));
 
   await db.update(planningMembers)

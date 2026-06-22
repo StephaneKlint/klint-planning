@@ -102,11 +102,12 @@ export const verificationTokens = pgTable(
 // Singleton (une seule ligne, key = 'global')
 
 export const appSettings = pgTable("app_settings", {
-  key:            varchar("key", { length: 20 }).primaryKey(),   // toujours "global"
-  logoDataUrl:    text("logo_data_url"),                         // base64 ou null → logo Klint
-  logoAlt:        varchar("logo_alt", { length: 100 }).default("Klint"),
-  faviconDataUrl: text("favicon_data_url"),                      // base64 ou null → favicon.svg
-  updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  key:             varchar("key", { length: 20 }).primaryKey(),   // toujours "global"
+  logoDataUrl:     text("logo_data_url"),                         // base64 ou null → logo Klint
+  logoAlt:         varchar("logo_alt", { length: 100 }).default("Klint"),
+  faviconDataUrl:  text("favicon_data_url"),                      // base64 ou null → favicon.svg
+  permissionsJson: jsonb("permissions_json"),                     // matrice droits par rôle
+  updatedAt:       timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // ---- Plannings -----------------------------------------------------------

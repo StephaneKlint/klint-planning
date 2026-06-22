@@ -41,7 +41,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
         if (!valid) return null;
 
-        return { id: user.id, email: user.email, name: user.name ?? "" };
+        return { id: user.id, email: user.email, name: user.name ?? "", role: user.role ?? "contact" };
       },
     }),
   ],
@@ -52,10 +52,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     ...authConfig.callbacks,
     jwt({ token, user }) {
       if (user?.id) token.sub = user.id;
+      if ((user as { role?: string })?.role) token.role = (user as { role?: string }).role;
       return token;
     },
     session({ session, token }) {
       if (token.sub) session.user.id = token.sub;
+      session.user.role = (token.role ?? "contact") as "admin" | "user" | "contact";
       return session;
     },
   },

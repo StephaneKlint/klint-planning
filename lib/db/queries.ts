@@ -115,6 +115,42 @@ export async function getGanttData(planningId: string): Promise<GanttData | null
   };
 }
 
+/** Plannings accessibles à un utilisateur non-admin (uniquement ceux où il est membre) */
+export async function listPlanningsForUser(userId: string) {
+  const notDeleted = isNull(plannings.deletedAt);
+  const rows = await db
+    .select({
+      id: plannings.id,
+      name: plannings.name,
+      year: plannings.year,
+      type: plannings.type,
+      archived: plannings.archived,
+      disabled: plannings.disabled,
+      isTemplate: plannings.isTemplate,
+      deletedAt: plannings.deletedAt,
+      viewStart: plannings.viewStart,
+      viewEnd: plannings.viewEnd,
+      createdAt: plannings.createdAt,
+      domainCount: sql<number>`(SELECT COUNT(*) FROM domains WHERE domains.planning_id = ${plannings.id})::int`,
+    })
+    .from(plannings)
+    .innerJoin(planningMembers, eq(planningMembers.planningId, plannings.id))
+    .where(
+      and(
+        notDeleted,
+        eq(plannings.archived, false),
+        eq(plannings.disabled, false),
+        eq(plannings.isTemplate, false),
+        eq(planningMembers.userId, userId)
+      )
+    )
+    .orderBy(desc(plannings.createdAt));
+
+  // Déduplique (un user peut être membre plusieurs fois via des rôles différents)
+  const seen = new Set<string>();
+  return rows.filter((r) => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
+}
+
 export async function listPlannings(filter: "active" | "archived" | "disabled" | "all" | "templates" | "trashed" = "active") {
   const notDeleted = isNull(plannings.deletedAt);
   const rows = await db

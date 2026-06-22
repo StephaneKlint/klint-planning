@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { auth } from "@/auth";
 import { listPlannings, getGanttData, listUsersNotInPlanning, getActivityLog, listConnectionLogs, listAllDirectoryContacts } from "@/lib/db/queries";
-import { getAppSettings } from "@/lib/actions/appSettings";
-import type { ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact } from "@/lib/db/queries";
+import { getAppSettings, getPermissions } from "@/lib/actions/appSettings";
+import type { ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact, UserRole } from "@/lib/db/queries";
 import { ParametresTabs } from "./ParametresTabs";
 import styles from "./Parametres.module.css";
 
@@ -14,10 +15,14 @@ interface Props {
 export default async function ParametresPage({ searchParams }: Props) {
   const { planningId: qPlanningId } = await searchParams;
 
-  const [planningList, appCfg] = await Promise.all([
+  const [session, planningList, appCfg, permissions] = await Promise.all([
+    auth(),
     listPlannings(),
     getAppSettings(),
+    getPermissions(),
   ]);
+
+  const userRole: UserRole = (session?.user?.role ?? "contact") as UserRole;
 
   if (!planningList.length) {
     return <div className={styles.empty}>Aucun planning disponible.</div>;
@@ -55,6 +60,8 @@ export default async function ParametresPage({ searchParams }: Props) {
       <ParametresTabs
         data={data}
         appCfg={appCfg}
+        userRole={userRole}
+        permissions={permissions}
         existingUsers={existingUsers as ExistingUserRow[]}
         activityEntries={activityEntries as ActivityEntry[]}
         connLogs={connLogs as ConnectionLogRow[]}

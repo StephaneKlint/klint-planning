@@ -3,8 +3,9 @@
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./Parametres.module.css";
-import type { GanttData } from "@/lib/db/queries";
-import type { AppSettings } from "@/lib/actions/appSettings";
+import type { GanttData, UserRole } from "@/lib/db/queries";
+import type { AppSettings, PermissionMatrix } from "@/lib/actions/appSettings";
+import { savePermissions } from "@/lib/actions/appSettings";
 import {
   addPhaseType, deletePhaseType, updatePhaseType,
   addMilestoneType, deleteMilestoneType, updateMilestoneType,
@@ -18,9 +19,9 @@ import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow
 import { addMember, removeMember, disableContact, enableContact, assignExistingContactToPlanning, updateContact, deleteContact } from "@/lib/actions/members";
 import { generateInvitationLink } from "@/lib/actions/invitations";
 
-type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "répertoire" | "historique";
+type Tab = "general" | "cadence" | "phases" | "jalons" | "statuts" | "apparence" | "calendrier" | "securite" | "répertoire" | "historique" | "droits";
 
-const TABS: { id: Tab; label: string }[] = [
+const ALL_TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "general",    label: "Général" },
   { id: "cadence",    label: "Cadence" },
   { id: "phases",     label: "Types de phases" },
@@ -31,7 +32,17 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "apparence",  label: "Apparence" },
   { id: "calendrier", label: "Calendrier" },
   { id: "securite",   label: "Sécurité" },
+  { id: "droits",     label: "Rôles & droits", adminOnly: true },
 ];
+
+function buildVisibleTabs(userRole: UserRole, permissions: PermissionMatrix) {
+  if (userRole === "admin") return ALL_TABS;
+  return ALL_TABS.filter((t) => {
+    if (t.adminOnly) return false;
+    const key = `tab_${t.id}` as keyof PermissionMatrix["user"];
+    return permissions.user[key] ?? false;
+  });
+}
 
 const VERB_LABELS: Record<string, string> = {
   status_changed:      "Statut modifié",
@@ -74,15 +85,18 @@ const PRESET_COLORS = [
 interface ParametresTabsProps {
   data: GanttData;
   appCfg: AppSettings;
+  userRole?: UserRole;
+  permissions?: PermissionMatrix;
   existingUsers?: ExistingUserRow[];
   activityEntries?: ActivityEntry[];
   connLogs?: ConnectionLogRow[];
   directoryContacts?: DirectoryContact[];
 }
 
-export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntries = [], connLogs = [], directoryContacts = [] }: ParametresTabsProps) {
+export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = { user: { tab_general: true, tab_cadence: true, tab_phases: true, tab_jalons: true, tab_statuts: true, "tab_répertoire": true, tab_historique: true, tab_apparence: true, tab_calendrier: true, tab_securite: true, create_planning: true, export: true, share: true } }, existingUsers = [], activityEntries = [], connLogs = [], directoryContacts = [] }: ParametresTabsProps) {
   const router = useRouter();
-  const [active, setActive] = useState<Tab>("general");
+  const visibleTabs = buildVisibleTabs(userRole, permissions);
+  const [active, setActive] = useState<Tab>(() => visibleTabs[0]?.id ?? "general");
   const [isPending, startTransition] = useTransition();
   const { planning, settings, domains, phaseTypes, milestoneTypes, statuses } = data;
 
@@ -145,7 +159,7 @@ export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntri
   return (
     <div className={styles.tabs}>
       <div className={styles.tabBar} role="tablist">
-        {TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <button
             key={t.id}
             role="tab"
@@ -1141,6 +1155,12 @@ export function ParametresTabs({ data, appCfg, existingUsers = [], activityEntri
       {active === "historique" && (
         <HistoriquePanel activityEntries={activityEntries} connLogs={connLogs} />
       )}
+
+      {active === "droits" && userRole === "admin" && (
+        <div className={styles.tabPanel}>
+          <DroitsTab permissions={permissions} />
+        </div>
+      )}
     </div>
   );
 }
@@ -1329,20 +1349,23 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
 
-  const [editingId, setEditingId]     = useState<string | null>(null);
-  const [editName, setEditName]       = useState("");
+  const [editingId, setEditingId]       = useState<string | null>(null);
+  const [editName, setEditName]         = useState("");
   const [editInitials, setEditInitials] = useState("");
-  const [editColor, setEditColor]     = useState(PRESET_COLORS[0]);
+  const [editColor, setEditColor]       = useState(PRESET_COLORS[0]);
+  const [editRole, setEditRole]         = useState<"admin" | "user" | "contact">("contact");
 
   const [showNew, setShowNew]         = useState(false);
   const [newName, setNewName]         = useState("");
   const [newEmail, setNewEmail]       = useState("");
   const [newInitials, setNewInitials] = useState("");
   const [newColor, setNewColor]       = useState(PRESET_COLORS[0]);
+  const [newRole, setNewRole]         = useState<"admin" | "user" | "contact">("contact");
   const [newError, setNewError]       = useState<string | null>(null);
 
-  const [inviteLink, setInviteLink]   = useState<string | null>(null);
-  const [inviteCopied, setInviteCopied] = useState(false);
+  const [inviteLink, setInviteLink]       = useState<string | null>(null);
+  const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied]   = useState(false);
 
   const refresh = () => router.refresh();
 
@@ -1387,7 +1410,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
         </div>
         <button
           className={styles.addBtn}
-          onClick={() => { setShowNew(!showNew); setNewName(""); setNewEmail(""); setNewInitials(""); setNewColor(PRESET_COLORS[0]); setNewError(null); }}
+          onClick={() => { setShowNew(!showNew); setNewName(""); setNewEmail(""); setNewInitials(""); setNewColor(PRESET_COLORS[0]); setNewRole("contact"); setNewError(null); }}
         >
           + Nouveau contact
         </button>
@@ -1421,6 +1444,19 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                 ))}
               </div>
             </div>
+            <div style={{ flex: "0 0 120px" }}>
+              <label style={{ fontSize: 11, color: "#6B7280", display: "block", marginBottom: 3 }}>Rôle</label>
+              <select
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value as "admin" | "user" | "contact")}
+                className={styles.addInput}
+                style={{ width: "100%", boxSizing: "border-box" }}
+              >
+                <option value="contact">Contact</option>
+                <option value="user">Utilisateur</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
           </div>
           {newError && <p style={{ fontSize: 12, color: "#DC2626", marginTop: 8, marginBottom: 0 }}>{newError}</p>}
           <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
@@ -1431,7 +1467,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                 setNewError(null);
                 startTransition(async () => {
                   try {
-                    await addMember({ planningId, name: newName.trim(), email: newEmail.trim(), initials: newInitials.trim(), color: newColor });
+                    await addMember({ planningId, name: newName.trim(), email: newEmail.trim(), initials: newInitials.trim(), color: newColor, role: newRole });
                     setShowNew(false);
                     refresh();
                   } catch (e: unknown) {
@@ -1500,13 +1536,26 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                         </div>
                       </div>
                     </div>
+                    <div>
+                      <label style={{ fontSize: 11, color: "#6B7280" }}>Rôle</label>
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value as "admin" | "user" | "contact")}
+                        className={styles.addInput}
+                        style={{ width: "100%", boxSizing: "border-box", marginTop: 3 }}
+                      >
+                        <option value="contact">Contact</option>
+                        <option value="user">Utilisateur</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button
                         className={styles.saveBtn}
                         disabled={isPending || !editName.trim() || !editInitials.trim()}
                         onClick={() => {
                           startTransition(async () => {
-                            await updateContact({ userId: c.userId, name: editName.trim(), initials: editInitials.trim(), color: editColor });
+                            await updateContact({ userId: c.userId, name: editName.trim(), initials: editInitials.trim(), color: editColor, role: editRole });
                             setEditingId(null);
                             refresh();
                           });
@@ -1582,84 +1631,105 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                       ))}
                     </div>
 
-                    {/* Barre d'actions */}
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", borderTop: "1px solid var(--klint-line, #E6E8EE)", paddingTop: 8 }}>
+                    {/* Barre d'actions — icônes uniquement */}
+                    <div style={{ display: "flex", gap: 4, alignItems: "center", borderTop: "1px solid var(--klint-line, #E6E8EE)", paddingTop: 8 }}>
+                      {/* Modifier */}
                       <button
-                        className={styles.dirTextBtn}
+                        className={styles.dirIconBtn}
                         disabled={isPending}
-                        onClick={() => { setEditingId(c.userId); setEditName(c.name ?? ""); setEditInitials(c.initials ?? ""); setEditColor(c.color ?? PRESET_COLORS[0]); }}
+                        title="Modifier"
+                        onClick={() => { setEditingId(c.userId); setEditName(c.name ?? ""); setEditInitials(c.initials ?? ""); setEditColor(c.color ?? PRESET_COLORS[0]); setEditRole(c.role); }}
                       >
-                        Modifier
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="m18.5 2.5 3 3L12 15l-4 1 1-4z"/>
+                        </svg>
                       </button>
 
+                      {/* Retirer / Ajouter au planning */}
                       {inCurrent ? (
                         <button
-                          className={styles.dirDangerBtn}
+                          className={styles.dirIconDangerBtn}
                           disabled={isPending}
+                          title="Retirer de ce planning"
                           onClick={() => {
                             if (!confirm(`Retirer ${c.name ?? c.email} de ce planning ?`)) return;
                             startTransition(async () => { await removeMember(memberId!, planningId); refresh(); });
                           }}
                         >
-                          Retirer
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M16 3h5v5"/><path d="M21 3 9 15"/><path d="M9 3H4v5"/><path d="m3 9 12 12"/><path d="M3 21h5v-5"/>
+                          </svg>
                         </button>
                       ) : (
                         <button
-                          className={styles.addBtn}
+                          className={styles.dirIconBtn}
                           disabled={isPending}
-                          onClick={() => {
-                            startTransition(async () => { await assignExistingContactToPlanning(c.userId, planningId); refresh(); });
-                          }}
-                          style={{ padding: "4px 10px", fontSize: 11 }}
+                          title="Ajouter à ce planning"
+                          onClick={() => { startTransition(async () => { await assignExistingContactToPlanning(c.userId, planningId); refresh(); }); }}
                         >
-                          + Ajouter
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 5v14"/><path d="M5 12h14"/>
+                          </svg>
                         </button>
                       )}
 
+                      {/* Désactiver / Réactiver */}
                       {disabled ? (
                         <button
-                          className={styles.dirSuccessBtn}
+                          className={styles.dirIconSuccessBtn}
                           disabled={isPending}
+                          title="Réactiver le compte"
                           onClick={() => { startTransition(async () => { await enableContact(c.userId); refresh(); }); }}
-                          style={{ marginLeft: "auto" }}
                         >
-                          Réactiver
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m20 6-11 11-5-5"/>
+                          </svg>
                         </button>
                       ) : (
                         <button
-                          className={styles.dirDangerBtn}
+                          className={styles.dirIconDangerBtn}
                           disabled={isPending}
+                          title="Désactiver le compte"
                           onClick={() => {
                             if (!confirm(`Désactiver ${c.name ?? c.email} ?`)) return;
                             startTransition(async () => { await disableContact(c.userId); refresh(); });
                           }}
-                          style={{ marginLeft: "auto" }}
                         >
-                          Désactiver
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>
+                          </svg>
                         </button>
                       )}
 
+                      {/* Inviter (user/admin seulement) */}
                       {(c.role === "user" || c.role === "admin") && (
                         <button
-                          className={styles.dirTextBtn}
+                          className={styles.dirIconBtn}
                           disabled={isPending}
-                          title="Générer un lien d'invitation pour définir le mot de passe"
+                          title="Générer un lien d'invitation"
                           onClick={() => {
                             startTransition(async () => {
                               const link = await generateInvitationLink(c.userId);
                               setInviteLink(link);
+                              setInvitingUserId(c.userId);
                               setInviteCopied(false);
                             });
                           }}
                         >
-                          🔗 Inviter
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                          </svg>
                         </button>
                       )}
 
+                      {/* Supprimer définitivement */}
                       <button
                         title="Supprimer définitivement"
                         className={styles.deleteRowBtn}
                         disabled={isPending}
+                        style={{ marginLeft: "auto" }}
                         onClick={() => {
                           if (!confirm(`Supprimer définitivement ${c.name ?? c.email} ?\nCette action est irréversible et retire le contact de tous les plannings.`)) return;
                           startTransition(async () => { await deleteContact(c.userId); refresh(); });
@@ -1669,8 +1739,8 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                       </button>
                     </div>
 
-                    {/* Panneau lien d'invitation */}
-                    {inviteLink && editingId === null && (
+                    {/* Panneau lien d'invitation (scopé à ce contact) */}
+                    {inviteLink && invitingUserId === c.userId && editingId === null && (
                       <div style={{ marginTop: 8, background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 8, padding: "10px 12px", display: "flex", flexDirection: "column" as const, gap: 6 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, color: "#0369A1" }}>Lien d&apos;invitation (7 jours)</div>
                         <div style={{ display: "flex", gap: 6 }}>
@@ -1698,6 +1768,124 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Droits & Rôles tab ────────────────────────────────────────────────────────
+
+const PERMISSION_FEATURES: { key: keyof PermissionMatrix["user"]; label: string; group: string }[] = [
+  { key: "tab_general",      label: "Onglet Général",           group: "Paramètres" },
+  { key: "tab_cadence",      label: "Onglet Cadence",           group: "Paramètres" },
+  { key: "tab_phases",       label: "Onglet Types de phases",   group: "Paramètres" },
+  { key: "tab_jalons",       label: "Onglet Types de jalons",   group: "Paramètres" },
+  { key: "tab_statuts",      label: "Onglet Statuts",           group: "Paramètres" },
+  { key: "tab_calendrier",   label: "Onglet Calendrier",        group: "Paramètres" },
+  { key: "tab_apparence",    label: "Onglet Apparence",         group: "Paramètres" },
+  { key: "tab_répertoire",   label: "Onglet Répertoire",        group: "Paramètres" },
+  { key: "tab_historique",   label: "Onglet Historique",        group: "Paramètres" },
+  { key: "tab_securite",     label: "Onglet Sécurité",          group: "Paramètres" },
+  { key: "create_planning",  label: "Créer un planning",        group: "Actions" },
+  { key: "export",           label: "Exporter (Excel, PDF, PNG)", group: "Actions" },
+  { key: "share",            label: "Partager un planning",     group: "Actions" },
+];
+
+function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
+  const [local, setLocal] = useState<PermissionMatrix>(permissions);
+  const [isPending, startTransition] = useTransition();
+  const [saved, setSaved] = useState(false);
+
+  const toggle = (key: keyof PermissionMatrix["user"]) => {
+    setLocal((prev) => ({ ...prev, user: { ...prev.user, [key]: !prev.user[key] } }));
+    setSaved(false);
+  };
+
+  const groups = [...new Set(PERMISSION_FEATURES.map((f) => f.group))];
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 20, marginTop: 0, lineHeight: 1.6 }}>
+        Configurez quelles fonctionnalités sont accessibles par rôle.
+        Les <strong>Admins</strong> ont toujours accès à tout. Les <strong>Contacts</strong> n&apos;ont pas accès à l&apos;application.
+      </p>
+
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left", padding: "8px 12px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
+                Fonctionnalité
+              </th>
+              <th style={{ textAlign: "center", width: 90, padding: "8px 12px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
+                Admin
+              </th>
+              <th style={{ textAlign: "center", width: 110, padding: "8px 12px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
+                Utilisateur
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group) => (
+              <>
+                <tr key={`grp-${group}`}>
+                  <td colSpan={3} style={{ padding: "12px 12px 4px", fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.06em", background: "var(--klint-paper, #F6F7FB)" }}>
+                    {group}
+                  </td>
+                </tr>
+                {PERMISSION_FEATURES.filter((f) => f.group === group).map((f) => (
+                  <tr key={f.key} style={{ borderBottom: "1px solid var(--klint-line, #E6E8EE)" }}>
+                    <td style={{ padding: "10px 12px", color: "var(--klint-navy)" }}>{f.label}</td>
+                    <td style={{ textAlign: "center", padding: "10px 12px" }}>
+                      <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 15 }}>✓</span>
+                    </td>
+                    <td style={{ textAlign: "center", padding: "10px 12px" }}>
+                      <button
+                        type="button"
+                        onClick={() => toggle(f.key)}
+                        style={{
+                          width: 36, height: 20, borderRadius: 999,
+                          background: local.user[f.key] ? "#001036" : "#E5E7EB",
+                          border: "none", cursor: "pointer", position: "relative",
+                          transition: "background 150ms", flexShrink: 0,
+                          display: "inline-flex", alignItems: "center",
+                        }}
+                        aria-checked={local.user[f.key]}
+                        role="switch"
+                        title={local.user[f.key] ? "Désactiver" : "Activer"}
+                      >
+                        <span style={{
+                          position: "absolute", width: 14, height: 14, borderRadius: "50%",
+                          background: "#fff", top: 3,
+                          left: local.user[f.key] ? 19 : 3,
+                          transition: "left 150ms",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                        }} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20 }}>
+        <button
+          className={styles.saveBtn}
+          disabled={isPending}
+          onClick={() => {
+            startTransition(async () => {
+              await savePermissions(local);
+              setSaved(true);
+              setTimeout(() => setSaved(false), 3000);
+            });
+          }}
+        >
+          {isPending ? "Enregistrement…" : "Enregistrer"}
+        </button>
+        {saved && <span style={{ fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Droits mis à jour</span>}
+      </div>
     </div>
   );
 }
