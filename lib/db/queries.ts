@@ -386,6 +386,8 @@ export async function getPortfolioData(): Promise<PortfolioCard[]> {
 // Annuaire partagé — tous les contacts de la plateforme
 // ---------------------------------------------------------------------------
 
+export type UserRole = "admin" | "user" | "contact";
+
 export type DirectoryContact = {
   userId: string;
   name: string | null;
@@ -393,6 +395,7 @@ export type DirectoryContact = {
   initials: string | null;
   color: string | null;
   disabledAt: Date | null;
+  role: UserRole;
   plannings: { id: string; memberId: string; name: string; permission: string }[];
 };
 
@@ -405,6 +408,7 @@ export async function listAllDirectoryContacts(): Promise<DirectoryContact[]> {
       initials:     planningMembers.initials,
       color:        planningMembers.color,
       disabledAt:   users.disabledAt,
+      role:         users.role,
       memberId:     planningMembers.id,
       planningId:   plannings.id,
       planningName: plannings.name,
@@ -425,6 +429,7 @@ export async function listAllDirectoryContacts(): Promise<DirectoryContact[]> {
         initials:   row.initials ?? null,
         color:      row.color ?? null,
         disabledAt: row.disabledAt ?? null,
+        role:       (row.role as UserRole) ?? "contact",
         plannings:  [],
       });
     }

@@ -1529,12 +1529,27 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                         {initials}
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flexWrap: "wrap" }}>
                           <span style={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                             {c.name ?? "—"}
                           </span>
+                          {c.role === "admin" && (
+                            <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 999, background: "#001036", color: "#fff", whiteSpace: "nowrap", flexShrink: 0, letterSpacing: "0.05em", textTransform: "uppercase" as const }}>
+                              Admin
+                            </span>
+                          )}
+                          {c.role === "user" && (
+                            <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 999, background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", whiteSpace: "nowrap", flexShrink: 0, letterSpacing: "0.05em", textTransform: "uppercase" as const }}>
+                              Utilisateur
+                            </span>
+                          )}
+                          {c.role === "contact" && (
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999, background: "#F3F4F6", color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>
+                              Contact
+                            </span>
+                          )}
                           {disabled && (
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 999, background: "#F3F4F6", color: "#6B7280", whiteSpace: "nowrap", flexShrink: 0 }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999, background: "#FEF3C7", color: "#92400E", whiteSpace: "nowrap", flexShrink: 0 }}>
                               Désactivé
                             </span>
                           )}
