@@ -50,9 +50,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   callbacks: {
     ...authConfig.callbacks,
-    jwt({ token, user }) {
-      if (user?.id) token.sub = user.id;
-      if ((user as { role?: string })?.role) token.role = (user as { role?: string }).role;
+    async jwt({ token, user }) {
+      if (user?.id) {
+        token.sub  = user.id;
+        token.role = (user as { role?: string }).role ?? "contact";
+      } else if (token.sub && !token.role) {
+        // Session existante sans role (créée avant la migration) — lecture DB unique
+        const [dbUser] = await db
+          .select({ role: users.role })
+          .from(users)
+          .where(eq(users.id, token.sub))
+          .limit(1);
+        token.role = dbUser?.role ?? "contact";
+      }
       return token;
     },
     session({ session, token }) {
