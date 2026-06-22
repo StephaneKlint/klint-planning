@@ -249,6 +249,37 @@ const S = {
     fontSize: 12,
     color: "#9CA3AF",
   } as React.CSSProperties,
+  topNavRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 28,
+    paddingBottom: 16,
+    borderBottom: "1px solid var(--klint-line, #E6E8EE)",
+    gap: 8,
+  } as React.CSSProperties,
+  topNavCenter: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#64748B",
+    textAlign: "center" as const,
+    flex: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  } as React.CSSProperties,
+  topArrowBtn: {
+    background: "var(--klint-paper, #F6F7FB)",
+    border: "1.5px solid var(--klint-line, #E6E8EE)",
+    borderRadius: 7,
+    padding: "5px 11px",
+    fontSize: 14,
+    fontWeight: 600,
+    color: "var(--klint-navy, #001036)",
+    cursor: "pointer",
+    fontFamily: "var(--font-display, system-ui)",
+    lineHeight: 1,
+  } as React.CSSProperties,
 };
 
 function Kbd({ children }: { children: React.ReactNode }) {
@@ -1154,10 +1185,33 @@ export default function AidePage() {
 
     return (
       <div style={{ ...S.page, maxWidth: 760 }}>
-        {/* Breadcrumb */}
-        <button onClick={() => setActiveIdx(null)} style={S.backBtn}>
-          ← Sommaire
-        </button>
+        {/* Top navigation */}
+        <div style={S.topNavRow}>
+          <button onClick={() => setActiveIdx(null)} style={{ ...S.backBtn, padding: 0 }}>
+            ← Sommaire
+          </button>
+          <span style={S.topNavCenter}>
+            {sec.emoji}&nbsp;{activeIdx + 1}&nbsp;/&nbsp;{SECTIONS.length}&ensp;—&ensp;{sec.title}
+          </span>
+          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+            <button
+              onClick={() => prev && setActiveIdx(activeIdx - 1)}
+              disabled={!prev}
+              style={{ ...S.topArrowBtn, opacity: prev ? 1 : 0.3, cursor: prev ? "pointer" : "default" }}
+              title={prev ? `${prev.num}. ${prev.title}` : undefined}
+            >
+              ←
+            </button>
+            <button
+              onClick={() => next && setActiveIdx(activeIdx + 1)}
+              disabled={!next}
+              style={{ ...S.topArrowBtn, opacity: next ? 1 : 0.3, cursor: next ? "pointer" : "default" }}
+              title={next ? `${next.num}. ${next.title}` : undefined}
+            >
+              →
+            </button>
+          </div>
+        </div>
 
         {/* Section content */}
         {SECTION_BODIES[sec.id]}

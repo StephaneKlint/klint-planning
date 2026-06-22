@@ -11,6 +11,7 @@ import { EditPanel } from "@/components/panels/EditPanel";
 import { BulkBar } from "@/components/panels/BulkBar";
 import { CommandPalette } from "@/components/panels/CommandPalette";
 import { PresenceStack } from "@/components/chrome/PresenceStack";
+import { Icon } from "@/components/ui/Icon";
 import { useGanttStore } from "@/store/ganttStore";
 import { usePlanning } from "@/lib/queries/usePlanning";
 import { usePresence } from "@/lib/queries/usePresence";
@@ -23,7 +24,7 @@ import {
   restorePhase, restoreMilestone, restoreLot,
   markLotDone, reorderLots, reorderDomains,
 } from "@/lib/actions/planning";
-import { restoreMember } from "@/lib/actions/members";
+import { restoreMember, getContactsForPlanning, assignExistingContactToPlanning } from "@/lib/actions/members";
 import { getOrCreateShareToken, revokeShareToken } from "@/lib/actions/share";
 import { importLegacyPlanningJSON, updatePlanningFromJSON } from "@/lib/actions/plannings";
 import { createBaseline, deleteBaseline } from "@/lib/actions/baseline";
@@ -52,6 +53,13 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
   const [shareLoading, setShareLoading] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [shareRevoking, setShareRevoking] = useState(false);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [addMemberContacts, setAddMemberContacts] = useState<{ userId: string; name: string | null; email: string; role: string }[]>([]);
+  const [addMemberLoading, setAddMemberLoading] = useState(false);
+  const [addMemberSearch, setAddMemberSearch] = useState("");
+  const [addMemberRole, setAddMemberRole] = useState<"owner" | "editor" | "viewer">("editor");
+  const [addMemberPending, setAddMemberPending] = useState(false);
+  const [addMemberSelected, setAddMemberSelected] = useState<string | null>(null);
 
   const {
     zoom, setZoom,
@@ -565,6 +573,32 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
     }
   };
 
+  const handleOpenAddMember = useCallback(async () => {
+    setAddMemberOpen(true);
+    setAddMemberLoading(true);
+    setAddMemberSelected(null);
+    setAddMemberSearch("");
+    setAddMemberRole("editor");
+    try {
+      const contacts = await getContactsForPlanning(props.planningId);
+      setAddMemberContacts(contacts);
+    } finally {
+      setAddMemberLoading(false);
+    }
+  }, [props.planningId]);
+
+  const handleConfirmAddMember = useCallback(async () => {
+    if (!addMemberSelected) return;
+    setAddMemberPending(true);
+    try {
+      await assignExistingContactToPlanning(addMemberSelected, props.planningId, addMemberRole);
+      setAddMemberOpen(false);
+      qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    } finally {
+      setAddMemberPending(false);
+    }
+  }, [addMemberSelected, props.planningId, addMemberRole, qc]);
+
   return (
     <div className={styles.view}>
       <Toolbar
@@ -585,7 +619,19 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
         onShare={handleOpenShare}
         onProjectFilter={() => setProjectFilterOpen(!projectFilterOpen)}
         projectFilterActive={projectFilterOpen || hiddenLotIds.size > 0}
-        presenceStack={<PresenceStack members={activeMembers} />}
+        presenceStack={
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <PresenceStack members={activeMembers} />
+            <button
+              className={styles.btn}
+              onClick={handleOpenAddMember}
+              title="Ajouter un membre au planning"
+              aria-label="Ajouter un membre"
+            >
+              <Icon name="plus" size={14} />
+            </button>
+          </div>
+        }
         panelVisible={panelMode !== "hidden"}
         filterStart={filterDateStart}
         filterEnd={filterDateEnd}
@@ -668,6 +714,71 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
       <EditPanel planningId={props.planningId} data={liveData} />
       <BulkBar planningId={props.planningId} lots={liveData.lots} />
       <CommandPalette data={liveData} planningId={props.planningId} />
+
+      {addMemberOpen && (
+        <div className={styles.shareOverlay} onClick={() => setAddMemberOpen(false)}>
+          <div className={styles.shareModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.shareModalHeader}>
+              <span className={styles.shareModalTitle}>Ajouter un membre</span>
+              <button className={styles.shareClose} onClick={() => setAddMemberOpen(false)}>✕</button>
+            </div>
+            {addMemberLoading ? (
+              <p className={styles.shareStatus}>Chargement&hellip;</p>
+            ) : addMemberContacts.length === 0 ? (
+              <p className={styles.shareHint}>Tous les contacts du répertoire sont déjà membres de ce planning.</p>
+            ) : (
+              <>
+                <input
+                  className={styles.addMemberSearch}
+                  placeholder="Rechercher un contact…"
+                  value={addMemberSearch}
+                  onChange={(e) => setAddMemberSearch(e.target.value)}
+                  autoFocus
+                />
+                <ul className={styles.addMemberList}>
+                  {addMemberContacts
+                    .filter((c) => {
+                      const q = addMemberSearch.toLowerCase();
+                      return !q || (c.name ?? "").toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+                    })
+                    .map((c) => (
+                      <li
+                        key={c.userId}
+                        className={`${styles.addMemberItem}${addMemberSelected === c.userId ? ` ${styles.addMemberItemSelected}` : ""}`}
+                        onClick={() => setAddMemberSelected(c.userId)}
+                      >
+                        <span className={styles.addMemberAvatar}>
+                          {(c.name ?? c.email).charAt(0).toUpperCase()}
+                        </span>
+                        <span className={styles.addMemberName}>{c.name ?? c.email}</span>
+                        <span className={styles.addMemberEmail}>{c.email}</span>
+                      </li>
+                    ))}
+                </ul>
+                <div className={styles.addMemberFooter}>
+                  <select
+                    className={styles.addMemberRole}
+                    value={addMemberRole}
+                    onChange={(e) => setAddMemberRole(e.target.value as "owner" | "editor" | "viewer")}
+                  >
+                    <option value="owner">Propriétaire</option>
+                    <option value="editor">Éditeur</option>
+                    <option value="viewer">Lecteur</option>
+                  </select>
+                  <button
+                    className={styles.shareGenerateBtn}
+                    style={{ width: "auto", padding: "0 20px" }}
+                    onClick={handleConfirmAddMember}
+                    disabled={!addMemberSelected || addMemberPending}
+                  >
+                    {addMemberPending ? "Ajout…" : "Ajouter"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {shareOpen && (
         <div className={styles.shareOverlay} onClick={() => setShareOpen(false)}>

@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { users, planningMembers, phaseAssignees } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, asc } from "drizzle-orm";
 
 // ── Ajouter un responsable ────────────────────────────────────────────────────
 
@@ -219,6 +219,33 @@ export async function updateContact(input: z.infer<typeof UpdateContactSchema>) 
 
   revalidatePath("/parametres");
   revalidatePath("/ressources");
+}
+
+// ── Lister les contacts assignables à un planning ─────────────────────────────
+
+export async function getContactsForPlanning(planningId: string): Promise<{
+  userId: string;
+  name: string | null;
+  email: string;
+  role: string;
+}[]> {
+  const existing = await db.select({ userId: planningMembers.userId })
+    .from(planningMembers)
+    .where(eq(planningMembers.planningId, planningId));
+
+  const existingIds = new Set(existing.map(r => r.userId));
+
+  const all = await db.select({
+    userId: users.id,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+  })
+  .from(users)
+  .where(isNull(users.disabledAt))
+  .orderBy(asc(users.name));
+
+  return all.filter(u => !existingIds.has(u.userId));
 }
 
 // ── Supprimer définitivement un contact ───────────────────────────────────────

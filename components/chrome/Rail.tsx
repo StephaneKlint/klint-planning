@@ -20,7 +20,7 @@ const PLANNING_AWARE = new Set(["/synthese", "/ressources", "/parametres"]);
 const TOP_NAV: NavItem[] = [
   { href: "/plannings",    icon: "layers",    label: "Plannings"    },
   { href: "/portefeuille", icon: "grid",      label: "Portefeuille" },
-  { href: "/p",            icon: "calendar",  label: "Planning"     },
+  { href: "/p",            icon: "calendar",  label: "Gantt"        },
   { href: "/synthese",     icon: "chartLine", label: "Synthèse"     },
   { href: "/parametres",   icon: "settings",  label: "Paramètres"   },
 ];
