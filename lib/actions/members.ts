@@ -8,6 +8,30 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { users, planningMembers, phaseAssignees } from "@/lib/db/schema";
 import { eq, and, isNull, asc } from "drizzle-orm";
+import { auth } from "@/auth";
+
+/** Vérifie que l'utilisateur est connecté et retourne son id + role. */
+async function requireAuth() {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Non authentifié.");
+  return { userId: session.user.id, role: session.user.role as string };
+}
+
+/** Vérifie que l'utilisateur est admin ou propriétaire/éditeur du planning. */
+async function assertCanManageMembers(planningId: string) {
+  const { userId, role } = await requireAuth();
+  if (role === "admin") return;
+
+  const [member] = await db
+    .select({ permission: planningMembers.permission })
+    .from(planningMembers)
+    .where(and(eq(planningMembers.planningId, planningId), eq(planningMembers.userId, userId)))
+    .limit(1);
+
+  if (!member || member.permission === "viewer") {
+    throw new Error("Droits insuffisants pour gérer les membres de ce planning.");
+  }
+}
 
 // ── Ajouter un responsable ────────────────────────────────────────────────────
 
@@ -22,6 +46,7 @@ const AddMemberSchema = z.object({
 
 export async function addMember(input: z.input<typeof AddMemberSchema>) {
   const data = AddMemberSchema.parse(input);
+  await assertCanManageMembers(data.planningId);
 
   // Upsert user by email
   const existingUsers = await db.select({ id: users.id })
@@ -75,6 +100,7 @@ const UpdateMemberSchema = z.object({
 
 export async function updateMember(input: z.infer<typeof UpdateMemberSchema>) {
   const data = UpdateMemberSchema.parse(input);
+  await assertCanManageMembers(data.planningId);
 
   // Update member display data
   await db.update(planningMembers)
@@ -98,6 +124,8 @@ export async function updateMember(input: z.infer<typeof UpdateMemberSchema>) {
 // ── Supprimer un responsable ──────────────────────────────────────────────────
 
 export async function removeMember(memberId: string, planningId: string) {
+  await assertCanManageMembers(planningId);
+
   await db.delete(planningMembers)
     .where(and(eq(planningMembers.id, memberId), eq(planningMembers.planningId, planningId)));
 
@@ -150,6 +178,9 @@ export async function restoreMember(input: z.infer<typeof RestoreMemberSchema>) 
 // ── Désactiver un contact (répertoire) ────────────────────────────────────────
 
 export async function disableContact(userId: string) {
+  await requireAuth().then(({ role }) => {
+    if (role !== "admin") throw new Error("Réservé aux administrateurs.");
+  });
   await db.update(users)
     .set({ disabledAt: new Date() })
     .where(eq(users.id, userId));
@@ -159,6 +190,9 @@ export async function disableContact(userId: string) {
 // ── Réactiver un contact désactivé ────────────────────────────────────────────
 
 export async function enableContact(userId: string) {
+  await requireAuth().then(({ role }) => {
+    if (role !== "admin") throw new Error("Réservé aux administrateurs.");
+  });
   await db.update(users)
     .set({ disabledAt: null })
     .where(eq(users.id, userId));
@@ -172,6 +206,7 @@ export async function assignExistingContactToPlanning(
   planningId: string,
   permission: "owner" | "editor" | "viewer" = "editor",
 ) {
+  await assertCanManageMembers(planningId);
   const existing = await db.select({ id: planningMembers.id })
     .from(planningMembers)
     .where(and(eq(planningMembers.planningId, planningId), eq(planningMembers.userId, userId)))
@@ -208,6 +243,9 @@ const UpdateContactSchema = z.object({
 
 export async function updateContact(input: z.infer<typeof UpdateContactSchema>) {
   const data = UpdateContactSchema.parse(input);
+  await requireAuth().then(({ role }) => {
+    if (role !== "admin") throw new Error("Réservé aux administrateurs.");
+  });
 
   await db.update(users)
     .set({ name: data.name, ...(data.role ? { role: data.role } : {}) })
@@ -251,6 +289,9 @@ export async function getContactsForPlanning(planningId: string): Promise<{
 // ── Supprimer définitivement un contact ───────────────────────────────────────
 
 export async function deleteContact(userId: string) {
+  await requireAuth().then(({ role }) => {
+    if (role !== "admin") throw new Error("Réservé aux administrateurs.");
+  });
   await db.delete(users).where(eq(users.id, userId));
   revalidatePath("/parametres");
   revalidatePath("/ressources");

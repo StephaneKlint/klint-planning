@@ -12,13 +12,27 @@ import { phases, lots, domains, milestones, activityLog, planningMembers, users,
 import { eq, inArray, gte, and } from "drizzle-orm";
 import { getGanttData } from "@/lib/db/queries";
 import type { GanttData } from "@/lib/db/queries";
+import { auth } from "@/auth";
 
 // ---------------------------------------------------------------------------
-// Permission guard (placeholder — real auth in Jalon 5)
+// Permission guard — vérifie que l'utilisateur connecté peut modifier ce planning
 // ---------------------------------------------------------------------------
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function assertCanEdit(_planningId: string): Promise<void> {
-  // TODO Jalon 5: verify user session + planning_member.permission !== 'viewer'
+async function assertCanEdit(planningId: string): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Non authentifié.");
+  if (session.user.role === "admin") return; // admin : accès total
+
+  const [member] = await db
+    .select({ permission: planningMembers.permission })
+    .from(planningMembers)
+    .where(and(
+      eq(planningMembers.planningId, planningId),
+      eq(planningMembers.userId, session.user.id),
+    ))
+    .limit(1);
+
+  if (!member) throw new Error("Accès non autorisé à ce planning.");
+  if (member.permission === "viewer") throw new Error("Accès en lecture seule.");
 }
 
 // ---------------------------------------------------------------------------

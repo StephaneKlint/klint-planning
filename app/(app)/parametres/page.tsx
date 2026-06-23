@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 
+import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { listPlannings, getGanttData, listUsersNotInPlanning, getActivityLog, listConnectionLogs, listAllDirectoryContacts } from "@/lib/db/queries";
+import { listPlannings, listPlanningsForUser, getGanttData, listUsersNotInPlanning, getActivityLog, listConnectionLogs, listAllDirectoryContacts } from "@/lib/db/queries";
 import { getAppSettings, getPermissions } from "@/lib/actions/appSettings";
 import type { ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact, UserRole } from "@/lib/db/queries";
 import { ParametresTabs } from "./ParametresTabs";
@@ -15,26 +16,34 @@ interface Props {
 export default async function ParametresPage({ searchParams }: Props) {
   const { planningId: qPlanningId } = await searchParams;
 
-  const [session, planningList, appCfg, permissions] = await Promise.all([
-    auth(),
-    listPlannings(),
+  const session = await auth();
+  const userId  = session?.user?.id;
+  const userRole: UserRole = (session?.user?.role ?? "contact") as UserRole;
+  const isAdmin = userRole === "admin";
+
+  const [planningList, appCfg, permissions] = await Promise.all([
+    userId && !isAdmin ? listPlanningsForUser(userId) : listPlannings(),
     getAppSettings(),
     getPermissions(),
   ]);
-
-  const userRole: UserRole = (session?.user?.role ?? "contact") as UserRole;
 
   if (!planningList.length) {
     return <div className={styles.empty}>Aucun planning disponible.</div>;
   }
 
   const activePlanningId = qPlanningId ?? planningList[0].id;
+
+  // Vérifier l'accès si planningId vient de l'URL
+  if (qPlanningId && !isAdmin && !planningList.find((p) => p.id === activePlanningId)) {
+    notFound();
+  }
+
   const [data, existingUsers, activityEntries, connLogs, directoryContacts] = await Promise.all([
     getGanttData(activePlanningId),
     listUsersNotInPlanning(activePlanningId),
     getActivityLog(activePlanningId, 200),
-    listConnectionLogs(200),
-    listAllDirectoryContacts(),
+    isAdmin ? listConnectionLogs(200) : Promise.resolve([]),
+    isAdmin ? listAllDirectoryContacts() : Promise.resolve([]),
   ]);
   if (!data) return <div className={styles.empty}>Données introuvables.</div>;
 

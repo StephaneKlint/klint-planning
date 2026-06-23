@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
-import { listPlannings, getGanttData } from "@/lib/db/queries";
+import { notFound } from "next/navigation";
+import { auth } from "@/auth";
+import { listPlannings, listPlanningsForUser, getGanttData } from "@/lib/db/queries";
 import styles from "./Synthese.module.css";
 import { SyntheseClient } from "./SyntheseClient";
 import type { DomainSummary } from "./SyntheseClient";
@@ -10,16 +12,6 @@ function fmt(d: string) {
   return `${day}/${m}/${y}`;
 }
 
-function verbLabel(verb: string) {
-  const map: Record<string, string> = {
-    status_changed: "Statut modifié",
-    progress_updated: "Avancement mis à jour",
-    moved: "Déplacé",
-    bulk_status_changed: "Statut modifié (masse)",
-  };
-  return map[verb] ?? verb;
-}
-
 interface Props {
   searchParams: Promise<{ planningId?: string }>;
 }
@@ -27,16 +19,31 @@ interface Props {
 export default async function SynthesePage({ searchParams }: Props) {
   const { planningId: qPlanningId } = await searchParams;
 
-  const planningList = await listPlannings();
+  const session = await auth();
+  const userId  = session?.user?.id;
+  const role    = session?.user?.role ?? "contact";
+
+  const planningList = userId && role !== "admin"
+    ? await listPlanningsForUser(userId)
+    : await listPlannings();
+
   if (!planningList.length) {
     return (
       <div className={styles.empty}>
-        Aucun planning disponible. Lancez <code>pnpm db:seed</code>.
+        Aucun planning disponible.
       </div>
     );
   }
 
   const planningId = qPlanningId ?? planningList[0].id;
+
+  // Vérifier l'accès si planningId vient de l'URL
+  if (qPlanningId && role !== "admin" && userId) {
+    if (!planningList.find((p) => p.id === planningId)) {
+      notFound();
+    }
+  }
+
   const data = await getGanttData(planningId);
   if (!data) return <div className={styles.empty}>Données introuvables.</div>;
 
@@ -120,7 +127,6 @@ export default async function SynthesePage({ searchParams }: Props) {
   const upcoming30 = enrichMs(milestones.filter((m) => m.date >= todayStr && m.date <= in30Str).sort((a, b) => a.date.localeCompare(b.date)));
   const upcoming60 = enrichMs(milestones.filter((m) => m.date > in30Str  && m.date <= in60Str).sort((a, b) => a.date.localeCompare(b.date)));
   const upcoming90 = enrichMs(milestones.filter((m) => m.date > in60Str  && m.date <= in90Str).sort((a, b) => a.date.localeCompare(b.date)));
-  const upcoming = upcoming30; // backward compat
 
   // --- Late / risk phases ---
   const latePhases = phases

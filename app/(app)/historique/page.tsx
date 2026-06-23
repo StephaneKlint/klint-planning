@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { listPlannings, getActivityLog, listConnectionLogs } from "@/lib/db/queries";
+import { auth } from "@/auth";
+import { listPlannings, listPlanningsForUser, getActivityLog, listConnectionLogs } from "@/lib/db/queries";
 import styles from "./Historique.module.css";
 
 const VERB_LABELS: Record<string, string> = {
@@ -49,16 +50,24 @@ interface Props {
 
 export default async function HistoriquePage({ searchParams }: Props) {
   const sp: { tab?: string } = await (searchParams ?? Promise.resolve({}));
-  const activeTab = sp.tab === "connexions" ? "connexions" : "activite";
 
-  const planningList = await listPlannings();
+  const session = await auth();
+  const userId  = session?.user?.id;
+  const role    = session?.user?.role ?? "contact";
+  const isAdmin = role === "admin";
 
-  // Load tab-specific data
+  // L'onglet Connexions est réservé aux admins
+  const activeTab = sp.tab === "connexions" && isAdmin ? "connexions" : "activite";
+
+  const planningList = userId && !isAdmin
+    ? await listPlanningsForUser(userId)
+    : await listPlannings();
+
   const [entries, connLogs] = await Promise.all([
     activeTab === "activite" && planningList.length
       ? getActivityLog(planningList[0].id, 200)
       : Promise.resolve([]),
-    activeTab === "connexions"
+    activeTab === "connexions" && isAdmin
       ? listConnectionLogs(200)
       : Promise.resolve([]),
   ]);
@@ -79,7 +88,7 @@ export default async function HistoriquePage({ searchParams }: Props) {
         )}
       </header>
 
-      {/* Tabs */}
+      {/* Tabs — Connexions visible uniquement pour les admins */}
       <nav className={styles.tabs}>
         <Link
           href="/historique?tab=activite"
@@ -87,12 +96,14 @@ export default async function HistoriquePage({ searchParams }: Props) {
         >
           Activité
         </Link>
-        <Link
-          href="/historique?tab=connexions"
-          className={`${styles.tab} ${activeTab === "connexions" ? styles.tabActive : ""}`}
-        >
-          Connexions
-        </Link>
+        {isAdmin && (
+          <Link
+            href="/historique?tab=connexions"
+            className={`${styles.tab} ${activeTab === "connexions" ? styles.tabActive : ""}`}
+          >
+            Connexions
+          </Link>
+        )}
       </nav>
 
       {/* ── Activité ── */}
@@ -142,8 +153,8 @@ export default async function HistoriquePage({ searchParams }: Props) {
         </>
       )}
 
-      {/* ── Connexions ── */}
-      {activeTab === "connexions" && (
+      {/* ── Connexions (admin uniquement) ── */}
+      {activeTab === "connexions" && isAdmin && (
         <>
           {connLogs.length === 0 ? (
             <div className={styles.emptyState}>

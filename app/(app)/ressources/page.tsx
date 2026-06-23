@@ -1,7 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { listPlannings, getGanttData, listUsersNotInPlanning } from "@/lib/db/queries";
+import { notFound } from "next/navigation";
+import { auth } from "@/auth";
+import { listPlannings, listPlanningsForUser, getGanttData, listUsersNotInPlanning } from "@/lib/db/queries";
 import styles from "./Ressources.module.css";
 import { RessourcesClient } from "./RessourcesClient";
 
@@ -12,12 +14,25 @@ interface Props {
 export default async function RessourcesPage({ searchParams }: Props) {
   const { planningId: qPlanningId } = await searchParams;
 
-  const planningList = await listPlannings();
+  const session = await auth();
+  const userId  = session?.user?.id;
+  const role    = session?.user?.role ?? "contact";
+
+  const planningList = userId && role !== "admin"
+    ? await listPlanningsForUser(userId)
+    : await listPlannings();
+
   if (!planningList.length) {
     return <div className={styles.empty}>Aucun planning disponible.</div>;
   }
 
   const activePlanningId = qPlanningId ?? planningList[0].id;
+
+  // Vérifier l'accès si planningId vient de l'URL
+  if (qPlanningId && role !== "admin" && !planningList.find((p) => p.id === activePlanningId)) {
+    notFound();
+  }
+
   const [data, existingUsers] = await Promise.all([
     getGanttData(activePlanningId),
     listUsersNotInPlanning(activePlanningId),

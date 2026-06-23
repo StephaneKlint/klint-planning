@@ -1,21 +1,26 @@
 /**
- * /p — redirect to first available planning.
- * force-dynamic : must query DB at request time, never pre-render at build.
+ * /p — redirect to first planning accessible to the current user.
  */
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
-import { listPlannings } from "@/lib/db/queries";
+import { auth } from "@/auth";
+import { listPlannings, listPlanningsForUser } from "@/lib/db/queries";
 
 export default async function PlanningsIndexPage() {
-  const all = await listPlannings();
+  const session = await auth();
+  const userId  = session?.user?.id;
+  const role    = session?.user?.role ?? "contact";
+
+  const all = userId && role !== "admin"
+    ? await listPlanningsForUser(userId)
+    : await listPlannings();
+
   if (all.length === 0) {
     return (
       <div style={{ padding: 32, fontFamily: "var(--font-display, system-ui)" }}>
         <h1>Aucun planning disponible</h1>
-        <p>
-          Lancez <code>pnpm db:seed</code> pour créer le planning CCI 2026.
-        </p>
+        <p>Vous n&apos;êtes encore membre d&apos;aucun planning.</p>
       </div>
     );
   }

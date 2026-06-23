@@ -151,6 +151,15 @@ export async function listPlanningsForUser(userId: string) {
   return rows.filter((r) => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
 }
 
+/** IDs de tous les plannings auxquels l'utilisateur appartient, tous statuts confondus. */
+export async function getAccessiblePlanningIds(userId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({ planningId: planningMembers.planningId })
+    .from(planningMembers)
+    .where(eq(planningMembers.userId, userId));
+  return new Set(rows.map((r) => r.planningId));
+}
+
 export async function listPlannings(filter: "active" | "archived" | "disabled" | "all" | "templates" | "trashed" = "active") {
   const notDeleted = isNull(plannings.deletedAt);
   const rows = await db
@@ -339,8 +348,10 @@ export type PortfolioCard = {
   status: "on-track" | "at-risk" | "late";
 };
 
-export async function getPortfolioData(): Promise<PortfolioCard[]> {
-  const planningList = await listPlannings("active");
+export async function getPortfolioData(userId?: string): Promise<PortfolioCard[]> {
+  const planningList = userId
+    ? await listPlanningsForUser(userId)
+    : await listPlannings("active");
   if (planningList.length === 0) return [];
 
   const planningIds = planningList.map((p) => p.id);
