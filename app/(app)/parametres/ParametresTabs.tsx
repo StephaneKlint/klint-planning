@@ -1467,7 +1467,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
               >
                 <option value="contact">Contact</option>
                 <option value="user">Utilisateur</option>
-                <option value="admin">Admin</option>
+                <option value="admin">Administrateur</option>
               </select>
             </div>
           </div>
@@ -1559,7 +1559,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                       >
                         <option value="contact">Contact</option>
                         <option value="user">Utilisateur</option>
-                        <option value="admin">Admin</option>
+                        <option value="admin">Administrateur</option>
                       </select>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
@@ -1601,7 +1601,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                           </span>
                           {c.role === "admin" && (
                             <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 999, background: "#001036", color: "#fff", whiteSpace: "nowrap", flexShrink: 0, letterSpacing: "0.05em", textTransform: "uppercase" as const }}>
-                              Admin
+                              Administrateur
                             </span>
                           )}
                           {c.role === "user" && (
@@ -1913,7 +1913,7 @@ function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
         <thead>
           <tr>
             <th style={TH_LEFT}>Fonctionnalité</th>
-            <th style={TH_STYLE}>Admin</th>
+            <th style={TH_STYLE}>Administrateur</th>
             <th style={TH_STYLE}>Responsable</th>
             <th style={TH_STYLE}>Contributeur</th>
             <th style={TH_STYLE}>Observateur</th>
@@ -1946,7 +1946,7 @@ function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.6 }}>
-        Les <strong>Admins</strong> ont toujours accès à tout.
+        Les <strong>Administrateurs</strong> ont toujours accès à tout.
         Les <strong>Contacts</strong> n&apos;ont pas accès à l&apos;application.
         Les rôles de planning (Responsable / Contributeur / Observateur) sont attribués par planning dans l&apos;onglet Répertoire.
       </p>
@@ -1961,7 +1961,7 @@ function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
             <thead>
               <tr>
                 <th style={TH_LEFT}>Fonctionnalité</th>
-                <th style={TH_STYLE}>Admin</th>
+                <th style={TH_STYLE}>Administrateur</th>
                 <th style={TH_STYLE}>Utilisateur</th>
               </tr>
             </thead>
@@ -2083,7 +2083,7 @@ function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
 
       {/* Note légende */}
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "#6B7280", paddingTop: 4 }}>
-        <span><span style={{ ...CHECK, fontSize: 13 }}>✓</span> Admin — toujours autorisé</span>
+        <span><span style={{ ...CHECK, fontSize: 13 }}>✓</span> Administrateur — toujours autorisé</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
           <span style={{ display: "inline-block", width: 28, height: 16, borderRadius: 999, background: "#001036", position: "relative", verticalAlign: "middle" }}>
             <span style={{ position: "absolute", width: 10, height: 10, borderRadius: "50%", background: "#fff", top: 3, right: 3 }} />

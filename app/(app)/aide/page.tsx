@@ -1065,7 +1065,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
 
       <h3 style={S.h3}>Rôles plateforme</h3>
       <dl style={S.dl}>
-        <div><dt style={S.dt}>Admin</dt><dd style={S.dd}>Accès complet à tout : tous les plannings, tous les onglets Paramètres, gestion des droits, suppression. Non limitable.</dd></div>
+        <div><dt style={S.dt}>Administrateur</dt><dd style={S.dd}>Accès complet à tout : tous les plannings, tous les onglets Paramètres, gestion des droits, suppression. Non limitable.</dd></div>
         <div><dt style={S.dt}>Utilisateur</dt><dd style={S.dd}>Accès aux plannings dont il est membre. Les onglets et actions disponibles dépendent de la matrice de droits configurée par l&apos;admin.</dd></div>
         <div><dt style={S.dt}>Contact</dt><dd style={S.dd}>Référencé dans le Répertoire mais sans accès à l&apos;application. Peut être ajouté comme responsable de phases/jalons.</dd></div>
       </dl>
@@ -1091,7 +1091,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       </How>
 
       <How title="Inviter un utilisateur ou admin">
-        <Step n={1}>Dans <UI>Paramètres → Répertoire</UI>, trouvez le contact (rôle Utilisateur ou Admin).</Step>
+        <Step n={1}>Dans <UI>Paramètres → Répertoire</UI>, trouvez le contact (rôle Utilisateur ou Administrateur).</Step>
         <Step n={2}>Cliquez sur l&apos;icône de lien sur sa carte — un lien d&apos;invitation valable 7 jours est généré.</Step>
         <Step n={3}>Copiez le lien et transmettez-le par email. L&apos;invité clique sur le lien, choisit son mot de passe et se connecte.</Step>
       </How>
