@@ -1749,9 +1749,9 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                             onChange={(e) => setAddingRole(e.target.value as "owner" | "editor" | "viewer")}
                             style={{ flex: 1, fontSize: 12, padding: "3px 6px", border: "1px solid #BFDBFE", borderRadius: 6, background: "#fff", color: "#1D4ED8" }}
                           >
-                            <option value="owner">Propriétaire</option>
-                            <option value="editor">Éditeur</option>
-                            <option value="viewer">Lecteur</option>
+                            <option value="owner">Responsable planning</option>
+                            <option value="editor">Contributeur</option>
+                            <option value="viewer">Observateur</option>
                           </select>
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
@@ -1796,9 +1796,9 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                           }}
                           style={{ fontSize: 11, padding: "2px 4px", border: "1px solid var(--klint-line, #E6E8EE)", borderRadius: 5, background: "var(--klint-paper, #F6F7FB)", color: "var(--klint-navy)", flex: 1 }}
                         >
-                          <option value="owner">Propriétaire</option>
-                          <option value="editor">Éditeur</option>
-                          <option value="viewer">Lecteur</option>
+                          <option value="owner">Responsable planning</option>
+                          <option value="editor">Contributeur</option>
+                          <option value="viewer">Observateur</option>
                         </select>
                       </div>
                     )}
@@ -1915,9 +1915,9 @@ function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
           <tr>
             <th style={TH_LEFT}>Fonctionnalité</th>
             <th style={TH_STYLE}>Admin</th>
-            <th style={TH_STYLE}>Propriétaire</th>
-            <th style={TH_STYLE}>Éditeur</th>
-            <th style={TH_STYLE}>Lecteur</th>
+            <th style={TH_STYLE}>Responsable</th>
+            <th style={TH_STYLE}>Contributeur</th>
+            <th style={TH_STYLE}>Observateur</th>
           </tr>
         </thead>
         <tbody>
@@ -1949,7 +1949,7 @@ function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
       <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.6 }}>
         Les <strong>Admins</strong> ont toujours accès à tout.
         Les <strong>Contacts</strong> n&apos;ont pas accès à l&apos;application.
-        Les rôles de planning (Propriétaire / Éditeur / Lecteur) sont attribués par planning dans l&apos;onglet Répertoire.
+        Les rôles de planning (Responsable / Contributeur / Observateur) sont attribués par planning dans l&apos;onglet Répertoire.
       </p>
 
       {/* ─ Table 1 : Accès plateforme (Utilisateur) ─ */}

@@ -5,6 +5,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSession } from "next-auth/react";
 
 const S = {
   page: {
@@ -339,6 +340,7 @@ interface SectionDef {
   title: string;
   emoji: string;
   keywords: string;
+  minRole?: "admin"; // undefined = visible par tous les utilisateurs authentifiés
 }
 
 const SECTIONS: SectionDef[] = [
@@ -355,13 +357,13 @@ const SECTIONS: SectionDef[] = [
   { id: "ressources",   num: "11", emoji: "👥", title: "Vue Ressources",                      keywords: "ressources membres responsables ajouter modifier supprimer attribution phases planning email initiales couleur picker existant" },
   { id: "portefeuille", num: "12", emoji: "🗂️", title: "Vue Portefeuille",                    keywords: "portefeuille dashboard multi-plannings vue globale consolidée jalons à venir dépassés retard risque filtre statut progression cards timeline cross-planning" },
   { id: "parametres",   num: "13", emoji: "⚙️", title: "Paramètres",                          keywords: "paramètres général cadence types phases jalons statuts membres droits apparence logo calendrier fermetures jours fériés modèle template répertoire contacts ajouter rôle propriétaire éditeur lecteur inviter lien icônes" },
-  { id: "logo",         num: "14", emoji: "🎨", title: "Logo & Apparence",                    keywords: "logo apparence navbar png svg favicon changer enregistrer réinitialiser" },
+  { id: "logo",         num: "14", emoji: "🎨", title: "Logo & Apparence",                    keywords: "logo apparence navbar png svg favicon changer enregistrer réinitialiser",   minRole: "admin" },
   { id: "exports",      num: "15", emoji: "📥", title: "Exports (PDF, PNG, Excel, JSON)",     keywords: "pdf export a3 imprimer impression format paysage capture download télécharger png powerpoint excel xlsx json données visuels dropdown exporter" },
   { id: "presentation", num: "16", emoji: "🖥️", title: "Mode Présentation",                   keywords: "présentation plein écran fullscreen tout afficher fit-view zoom hauteur lignes capture export" },
   { id: "calendrier",   num: "17", emoji: "📅", title: "Fermetures & Jours fériés",           keywords: "fermetures jours fériés calendrier congés été hiver gel gel-code période custom bande colorée affichage toggle" },
-  { id: "historique",   num: "18", emoji: "📜", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log" },
-  { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt" },
-  { id: "droits",       num: "20", emoji: "🛡️", title: "Rôles & droits d'accès",               keywords: "rôles droits admin utilisateur contact propriétaire éditeur lecteur permissions crud accès matrice onglets plateforme planning membres inviter lien invitation ajouter gantt toolbar" },
+  { id: "historique",   num: "18", emoji: "📜", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log",                                                                                                                             minRole: "admin" },
+  { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt",                                                                                                                                   minRole: "admin" },
+  { id: "droits",       num: "20", emoji: "🛡️", title: "Rôles & droits d'accès",               keywords: "rôles droits admin utilisateur contact propriétaire éditeur lecteur permissions crud accès matrice onglets plateforme planning membres inviter lien invitation ajouter gantt toolbar",                                                        minRole: "admin" },
 ];
 
 /* ── Section bodies (module scope — purely static JSX) ──────────────────── */
@@ -1127,6 +1129,52 @@ const SECTION_ILLUS: Record<string, { bg: string; el: React.ReactNode }> = {
 };
 
 /* ── Section card with hover state ─────────────────────────────────────── */
+function LockedCard({ section }: { section: SectionDef }) {
+  const illus = SECTION_ILLUS[section.id] ?? { bg: "linear-gradient(135deg,#94a3b8,#64748b)", el: null };
+  return (
+    <div
+      style={{
+        ...S.card,
+        cursor: "default",
+        opacity: 0.58,
+        filter: "grayscale(55%)",
+      }}
+      aria-disabled="true"
+      title="Réservé aux administrateurs"
+    >
+      <div style={{
+        background: illus.bg,
+        height: 72,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        flexShrink: 0,
+        position: "relative",
+      }}>
+        {illus.el}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.38)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <span style={{ fontSize: 22 }}>🔒</span>
+        </div>
+      </div>
+      <div style={{ padding: "10px 13px 12px", display: "flex", flexDirection: "column", gap: 3 }}>
+        <span style={S.cardNum}>Section {section.num}</span>
+        <span style={S.cardTitle}>{section.title}</span>
+        <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 600, marginTop: 2 }}>
+          Réservé aux administrateurs
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function SectionCard({ section, onClick }: { section: SectionDef; onClick: () => void }) {
   const [hov, setHov] = useState(false);
   const illus = SECTION_ILLUS[section.id] ?? { bg: "linear-gradient(135deg,#374151,#111827)", el: null };
@@ -1188,20 +1236,42 @@ function NavBtn({ label, onClick, align }: { label: string; onClick: () => void;
 export default function AidePage() {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
 
+  // Sections accessibles (hors admin-only pour les non-admins)
+  const accessibleSections = useMemo(
+    () => SECTIONS.filter((s) => !s.minRole || isAdmin),
+    [isAdmin],
+  );
+
+  // Filtrage par recherche — les sections verrouillées n'apparaissent pas dans les résultats
   const filteredSections = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return SECTIONS;
-    return SECTIONS.filter((s) =>
+    if (!q) return SECTIONS; // grille complète, les locked sont rendues différemment
+    return accessibleSections.filter((s) =>
       s.title.toLowerCase().includes(q) || s.keywords.toLowerCase().includes(q)
     );
-  }, [search]);
+  }, [search, accessibleSections]);
 
   /* ── Section view ───────────────────────────────────────────────────── */
   if (activeIdx !== null) {
     const sec = SECTIONS[activeIdx];
-    const prev = activeIdx > 0 ? SECTIONS[activeIdx - 1] : null;
-    const next = activeIdx < SECTIONS.length - 1 ? SECTIONS[activeIdx + 1] : null;
+
+    // Bloquer l'accès direct à une section admin pour les non-admins
+    if (sec.minRole === "admin" && !isAdmin) {
+      setActiveIdx(null);
+      return null;
+    }
+
+    // Prev/next : ignorer les sections verrouillées pour les non-admins
+    const prevIdx = [...SECTIONS].slice(0, activeIdx).reduceRight<number>(
+      (found, s, i) => found === -1 && (!s.minRole || isAdmin) ? i : found,
+      -1,
+    );
+    const nextIdx = SECTIONS.findIndex((s, i) => i > activeIdx && (!s.minRole || isAdmin));
+    const prev = prevIdx >= 0 ? SECTIONS[prevIdx] : null;
+    const next = nextIdx >= 0 ? SECTIONS[nextIdx] : null;
 
     return (
       <div style={{ ...S.page, maxWidth: 760 }}>
@@ -1215,7 +1285,7 @@ export default function AidePage() {
           </span>
           <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
             <button
-              onClick={() => prev && setActiveIdx(activeIdx - 1)}
+              onClick={() => prev && setActiveIdx(prevIdx)}
               disabled={!prev}
               style={{ ...S.topArrowBtn, opacity: prev ? 1 : 0.3, cursor: prev ? "pointer" : "default" }}
               title={prev ? `${prev.num}. ${prev.title}` : undefined}
@@ -1223,7 +1293,7 @@ export default function AidePage() {
               ←
             </button>
             <button
-              onClick={() => next && setActiveIdx(activeIdx + 1)}
+              onClick={() => next && setActiveIdx(nextIdx)}
               disabled={!next}
               style={{ ...S.topArrowBtn, opacity: next ? 1 : 0.3, cursor: next ? "pointer" : "default" }}
               title={next ? `${next.num}. ${next.title}` : undefined}
@@ -1242,7 +1312,7 @@ export default function AidePage() {
             {prev && (
               <NavBtn
                 label={`← ${prev.num}. ${prev.title}`}
-                onClick={() => setActiveIdx(activeIdx - 1)}
+                onClick={() => setActiveIdx(prevIdx)}
                 align="left"
               />
             )}
@@ -1252,7 +1322,7 @@ export default function AidePage() {
             {next && (
               <NavBtn
                 label={`${next.num}. ${next.title} →`}
-                onClick={() => setActiveIdx(activeIdx + 1)}
+                onClick={() => setActiveIdx(nextIdx)}
                 align="right"
               />
             )}
@@ -1293,6 +1363,9 @@ export default function AidePage() {
         <div style={S.cardGrid}>
           {filteredSections.map((sec) => {
             const idx = SECTIONS.findIndex((s) => s.id === sec.id);
+            if (sec.minRole === "admin" && !isAdmin) {
+              return <LockedCard key={sec.id} section={sec} />;
+            }
             return (
               <SectionCard key={sec.id} section={sec} onClick={() => setActiveIdx(idx)} />
             );
