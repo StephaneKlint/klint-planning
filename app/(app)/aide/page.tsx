@@ -269,6 +269,24 @@ const S = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
   } as React.CSSProperties,
+  topNavLink: {
+    background: "var(--klint-paper, #F6F7FB)",
+    border: "1.5px solid var(--klint-line, #E6E8EE)",
+    borderRadius: 7,
+    padding: "5px 12px",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--klint-navy, #001036)",
+    cursor: "pointer",
+    fontFamily: "var(--font-display, system-ui)",
+    lineHeight: 1.3,
+    maxWidth: 200,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+    display: "block",
+    flexShrink: 0,
+  } as React.CSSProperties,
   topArrowBtn: {
     background: "var(--klint-paper, #F6F7FB)",
     border: "1.5px solid var(--klint-line, #E6E8EE)",
@@ -525,7 +543,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <How title="Ajouter un membre depuis le Gantt">
         <Step n={1}>Dans la barre d&apos;outils, cliquez sur le bouton <UI>+</UI> situé à droite des avatars de présence.</Step>
         <Step n={2}>Dans la modale, recherchez un contact par <strong>nom</strong> ou <strong>email</strong> parmi les contacts du Répertoire non encore membres de ce planning.</Step>
-        <Step n={3}>Sélectionnez le contact dans la liste, choisissez un rôle (<strong>Propriétaire</strong>, <strong>Éditeur</strong> ou <strong>Lecteur</strong>), puis cliquez sur <UI>Ajouter</UI>.</Step>
+        <Step n={3}>Sélectionnez le contact dans la liste, choisissez un rôle (<strong>Responsable planning</strong>, <strong>Contributeur</strong> ou <strong>Observateur</strong>), puis cliquez sur <UI>Ajouter</UI>.</Step>
         <Step n={4}>Le nouveau membre apparaît dans les avatars et dans l&apos;onglet <UI>Répertoire</UI> des Paramètres.</Step>
       </How>
       <Tip>Sur un grand planning : combinez <UI>Projets</UI> (masquer les lots terminés) + zoom 12m pour une vue synthèse propre avant un COPIL ou un export PDF.</Tip>
@@ -583,7 +601,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={1}>Cliquez-glissez le <strong>losange</strong> du jalon horizontalement — un losange fantôme suit le curseur.</Step>
         <Step n={2}>Pour changer de projet : déplacez verticalement pendant le glissement (même bande bleue).</Step>
       </How>
-      <Warn>Le drag &amp; drop nécessite les droits <strong>Éditeur</strong> ou <strong>Propriétaire</strong>. Les Lecteurs voient le planning en lecture seule.</Warn>
+      <Warn>Le drag &amp; drop nécessite les droits <strong>Contributeur</strong> ou <strong>Responsable planning</strong>. Les Observateurs voient le planning en lecture seule.</Warn>
       <Tip>Après un déplacement accidentel : appuyez immédiatement sur <Kbd>Ctrl+Z</Kbd> pour annuler.</Tip>
     </section>
   ),
@@ -818,10 +836,10 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
               <div style={{ fontWeight: 700, fontSize: 13, color: "#001036" }}>Stéphane Durand</div>
               <div style={{ fontSize: 11, color: "#9CA3AF" }}>sdurand@klint-consulting.com</div>
             </div>
-            <select style={{ fontSize: 11, fontWeight: 600, color: "#001036", background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }} defaultValue="Éditeur">
-              <option>Propriétaire</option>
-              <option>Éditeur</option>
-              <option>Lecteur</option>
+            <select style={{ fontSize: 11, fontWeight: 600, color: "#001036", background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }} defaultValue="Contributeur">
+              <option>Responsable planning</option>
+              <option>Contributeur</option>
+              <option>Observateur</option>
             </select>
           </div>
           <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 8, display: "flex", alignItems: "center" as const, justifyContent: "space-between" }}>
@@ -855,8 +873,8 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={2}>Cliquez à nouveau (<UI>12 phases ▼</UI>) pour afficher le détail des phases assignées.</Step>
       </How>
       <How title="Gérer les droits d'accès">
-        <Step n={1}>Sur chaque carte membre, le menu déroulant <UI>Propriétaire / Éditeur / Lecteur</UI> gère les droits d&apos;accès au planning.</Step>
-        <Step n={2}><strong>Propriétaire</strong> : accès total. <strong>Éditeur</strong> : modifie le contenu (pas les paramètres). <strong>Lecteur</strong> : consultation uniquement.</Step>
+        <Step n={1}>Sur chaque carte membre, le menu déroulant <UI>Responsable planning / Contributeur / Observateur</UI> gère les droits d&apos;accès au planning.</Step>
+        <Step n={2}><strong>Responsable planning</strong> : accès total. <strong>Contributeur</strong> : modifie le contenu (pas les paramètres). <strong>Observateur</strong> : consultation uniquement.</Step>
       </How>
       <Tip>Note : les membres sont propres à chaque planning. Un responsable doit être ajouté sur chaque planning où il intervient. Utilisez l&apos;<strong>Annuaire</strong> (icône personnes dans le rail) pour retrouver et réutiliser rapidement un responsable existant.</Tip>
     </section>
@@ -916,8 +934,8 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <How title="Onglet Répertoire (contacts & membres)">
         <Step n={1}>Liste tous les contacts de la plateforme avec leur rôle (Admin / Utilisateur / Contact), leur statut actif/inactif et leurs appartenance aux plannings.</Step>
         <Step n={2}>Chaque carte affiche une ligne d&apos;icônes harmonisées : <strong>crayon</strong> (modifier nom/initiales/couleur), <strong>+</strong> (ajouter au planning avec choix du rôle), <strong>×</strong> (retirer du planning actif), <strong>œil/barré</strong> (activer ou désactiver l&apos;accès), <strong>lien</strong> (générer un lien d&apos;invitation), <strong>corbeille</strong> (supprimer définitivement).</Step>
-        <Step n={3}>Pour <strong>ajouter un contact au planning actif</strong> : cliquez sur <UI>+</UI> — un panneau s&apos;affiche directement sur la carte pour choisir le rôle (<strong>Propriétaire / Éditeur / Lecteur</strong>), puis cliquer sur <UI>Ajouter</UI>.</Step>
-        <Step n={4}>Pour <strong>changer le rôle d&apos;un membre existant</strong> : le menu déroulant Propriétaire/Éditeur/Lecteur est affiché directement sur la carte, la modification est immédiate.</Step>
+        <Step n={3}>Pour <strong>ajouter un contact au planning actif</strong> : cliquez sur <UI>+</UI> — un panneau s&apos;affiche directement sur la carte pour choisir le rôle (<strong>Responsable planning / Contributeur / Observateur</strong>), puis cliquer sur <UI>Ajouter</UI>.</Step>
+        <Step n={4}>Pour <strong>changer le rôle d&apos;un membre existant</strong> : le menu déroulant Responsable planning / Contributeur / Observateur est affiché directement sur la carte, la modification est immédiate.</Step>
         <Step n={5}>Pour <strong>inviter un utilisateur ou admin</strong> : cliquez sur l&apos;icône de lien — un lien d&apos;accès valable 7 jours est généré. Copiez-le et transmettez-le par email.</Step>
       </How>
       <Tip>Vous pouvez aussi ajouter un membre directement depuis la vue <UI>Gantt</UI> via le bouton <UI>+</UI> dans la barre d&apos;outils (à côté des avatars), sans passer par les Paramètres.</Tip>
@@ -1054,15 +1072,15 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
 
       <h3 style={S.h3}>Rôles dans un planning</h3>
       <dl style={S.dl}>
-        <div><dt style={S.dt}>Propriétaire</dt><dd style={S.dd}>Droits complets sur le planning : modifier les paramètres, archiver, gérer les membres, exporter, partager.</dd></div>
-        <div><dt style={S.dt}>Éditeur</dt><dd style={S.dd}>Peut créer et modifier phases et jalons, dupliquer, exporter. Ne peut pas supprimer le planning ni gérer les membres.</dd></div>
-        <div><dt style={S.dt}>Lecteur</dt><dd style={S.dd}>Consultation uniquement. Peut exporter si l&apos;admin le permet.</dd></div>
+        <div><dt style={S.dt}>Responsable planning</dt><dd style={S.dd}>Droits complets sur le planning : modifier les paramètres, archiver, gérer les membres, exporter, partager.</dd></div>
+        <div><dt style={S.dt}>Contributeur</dt><dd style={S.dd}>Peut créer et modifier phases et jalons, dupliquer, exporter. Ne peut pas supprimer le planning ni gérer les membres.</dd></div>
+        <div><dt style={S.dt}>Observateur</dt><dd style={S.dd}>Consultation uniquement. Peut exporter si l&apos;admin le permet.</dd></div>
       </dl>
 
       <How title="Configurer la matrice de droits (admin uniquement)">
         <Step n={1}>Allez dans <UI>Paramètres → onglet Rôles &amp; droits</UI>.</Step>
         <Step n={2}><strong>Tableau 1 — Accès plateforme</strong> : activez ou désactivez chaque fonctionnalité et chaque onglet Paramètres pour le rôle Utilisateur.</Step>
-        <Step n={3}><strong>Tableaux 2-4 — Rôles planning</strong> : pour chaque action (modifier, archiver, supprimer, créer phases…), activez-la pour Propriétaire, Éditeur et/ou Lecteur.</Step>
+        <Step n={3}><strong>Tableaux 2-4 — Rôles planning</strong> : pour chaque action (modifier, archiver, supprimer, créer phases…), activez-la pour Responsable planning, Contributeur et/ou Observateur.</Step>
         <Step n={4}>Cliquez sur <UI>Enregistrer</UI> — la matrice est appliquée immédiatement pour tous les utilisateurs connectés.</Step>
       </How>
 
@@ -1078,7 +1096,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={3}>Copiez le lien et transmettez-le par email. L&apos;invité clique sur le lien, choisit son mot de passe et se connecte.</Step>
       </How>
 
-      <Tip>Les droits de la matrice sont appliqués en plus des rôles planning. Un Éditeur ne peut accéder à un onglet Paramètres désactivé pour les Utilisateurs que si l&apos;admin l&apos;active explicitement.</Tip>
+      <Tip>Les droits de la matrice sont appliqués en plus des rôles planning. Un Contributeur ne peut accéder à un onglet Paramètres désactivé pour les Utilisateurs que si l&apos;admin l&apos;active explicitement.</Tip>
       <Warn>Seul un Admin peut modifier la matrice de droits. Si vous ne voyez pas l&apos;onglet <UI>Rôles &amp; droits</UI>, demandez à votre administrateur.</Warn>
     </section>
   ),
@@ -1245,10 +1263,10 @@ export default function AidePage() {
     [isAdmin],
   );
 
-  // Filtrage par recherche — les sections verrouillées n'apparaissent pas dans les résultats
+  // Filtrage par recherche — sections inaccessibles toujours exclues
   const filteredSections = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return SECTIONS; // grille complète, les locked sont rendues différemment
+    if (!q) return accessibleSections;
     return accessibleSections.filter((s) =>
       s.title.toLowerCase().includes(q) || s.keywords.toLowerCase().includes(q)
     );
@@ -1283,23 +1301,29 @@ export default function AidePage() {
           <span style={S.topNavCenter}>
             {sec.emoji}&nbsp;{activeIdx + 1}&nbsp;/&nbsp;{SECTIONS.length}&ensp;—&ensp;{sec.title}
           </span>
-          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-            <button
-              onClick={() => prev && setActiveIdx(prevIdx)}
-              disabled={!prev}
-              style={{ ...S.topArrowBtn, opacity: prev ? 1 : 0.3, cursor: prev ? "pointer" : "default" }}
-              title={prev ? `${prev.num}. ${prev.title}` : undefined}
-            >
-              ←
-            </button>
-            <button
-              onClick={() => next && setActiveIdx(nextIdx)}
-              disabled={!next}
-              style={{ ...S.topArrowBtn, opacity: next ? 1 : 0.3, cursor: next ? "pointer" : "default" }}
-              title={next ? `${next.num}. ${next.title}` : undefined}
-            >
-              →
-            </button>
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            {prev ? (
+              <button
+                onClick={() => setActiveIdx(prevIdx)}
+                style={S.topNavLink}
+                title={`${prev.num}. ${prev.title}`}
+              >
+                ← {prev.num}. {prev.title}
+              </button>
+            ) : (
+              <span style={{ width: 0 }} />
+            )}
+            {next ? (
+              <button
+                onClick={() => setActiveIdx(nextIdx)}
+                style={S.topNavLink}
+                title={`${next.num}. ${next.title}`}
+              >
+                {next.num}. {next.title} →
+              </button>
+            ) : (
+              <span style={{ width: 0 }} />
+            )}
           </div>
         </div>
 
@@ -1363,9 +1387,6 @@ export default function AidePage() {
         <div style={S.cardGrid}>
           {filteredSections.map((sec) => {
             const idx = SECTIONS.findIndex((s) => s.id === sec.id);
-            if (sec.minRole === "admin" && !isAdmin) {
-              return <LockedCard key={sec.id} section={sec} />;
-            }
             return (
               <SectionCard key={sec.id} section={sec} onClick={() => setActiveIdx(idx)} />
             );

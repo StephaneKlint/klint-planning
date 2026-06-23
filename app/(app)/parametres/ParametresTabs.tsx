@@ -1576,7 +1576,7 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                       >
                         {isPending ? "…" : "Enregistrer"}
                       </button>
-                      <button className={styles.deleteRowBtn} onClick={() => setEditingId(null)}>Annuler</button>
+                      <button className={styles.cancelBtn} onClick={() => setEditingId(null)}>Annuler</button>
                     </div>
                   </>
                 ) : (
@@ -1770,9 +1770,8 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                             {isPending ? "…" : "Confirmer"}
                           </button>
                           <button
-                            className={styles.deleteRowBtn}
+                            className={styles.cancelBtn}
                             onClick={() => setAddingUserId(null)}
-                            style={{ fontSize: 12, padding: "4px 10px" }}
                           >
                             Annuler
                           </button>

@@ -433,6 +433,26 @@
   border-color: var(--st-late-c);
 }
 
+/* Bouton Annuler textuel (mode édition inline) */
+.cancelBtn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1.5px solid var(--klint-line);
+  background: var(--klint-paper, #F6F7FB);
+  color: var(--klint-navy, #001036);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-display, system-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms, border-color 120ms;
+}
+.cancelBtn:hover {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+}
+
 .editRowBtn {
   width: 22px;
   height: 22px;

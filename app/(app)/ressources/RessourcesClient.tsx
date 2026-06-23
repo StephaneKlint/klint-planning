@@ -315,9 +315,9 @@ export function RessourcesClient({ data, existingUsers }: Props) {
                   title="Droit d'accès au planning"
                   style={{ fontSize: 11, padding: "3px 6px", borderRadius: 6, border: "1px solid var(--klint-line, #E6E8EE)", background: "var(--klint-paper, #F6F7FB)", color: "var(--klint-navy, #001036)", cursor: "pointer", fontFamily: "var(--font-display, system-ui)", fontWeight: 600 }}
                 >
-                  <option value="owner">Propriétaire</option>
-                  <option value="editor">Éditeur</option>
-                  <option value="viewer">Lecteur</option>
+                  <option value="owner">Responsable planning</option>
+                  <option value="editor">Contributeur</option>
+                  <option value="viewer">Observateur</option>
                 </select>
                 <button
                   className={styles.attributeBtn}

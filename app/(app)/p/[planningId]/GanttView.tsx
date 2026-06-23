@@ -761,9 +761,9 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
                     value={addMemberRole}
                     onChange={(e) => setAddMemberRole(e.target.value as "owner" | "editor" | "viewer")}
                   >
-                    <option value="owner">Propriétaire</option>
-                    <option value="editor">Éditeur</option>
-                    <option value="viewer">Lecteur</option>
+                    <option value="owner">Responsable planning</option>
+                    <option value="editor">Contributeur</option>
+                    <option value="viewer">Observateur</option>
                   </select>
                   <button
                     className={styles.shareGenerateBtn}
