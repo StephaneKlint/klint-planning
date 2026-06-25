@@ -121,10 +121,10 @@ export function Gantt({
     const header = headerRef.current;
     if (!body) return;
     const containerW = body.clientWidth || 800;
-    const target = todayScrollLeft(referenceDate, viewStart, ppd, containerW);
+    const target = todayScrollLeft(new Date().toISOString().slice(0, 10), viewStart, ppd, containerW);
     body.scrollLeft = target;
     if (header) header.scrollLeft = target;
-  }, [zoom, ppd, referenceDate, viewStart]);
+  }, [zoom, ppd, viewStart]);
 
   // Consume scroll requests from the Toolbar prev/next/today buttons
   useEffect(() => {
@@ -133,7 +133,7 @@ export function Gantt({
     const header = headerRef.current;
     if (scrollRequest === "today") {
       const containerW = body.clientWidth || 800;
-      const target = todayScrollLeft(referenceDate, viewStart, ppd, containerW);
+      const target = todayScrollLeft(new Date().toISOString().slice(0, 10), viewStart, ppd, containerW);
       body.scrollLeft = target;
       if (header) header.scrollLeft = target;
     } else {
@@ -142,7 +142,7 @@ export function Gantt({
       if (header) header.scrollLeft = body.scrollLeft;
     }
     requestScroll(null);
-  }, [scrollRequest, ppd, referenceDate, viewStart, requestScroll]);
+  }, [scrollRequest, ppd, viewStart, requestScroll]);
 
   // Derive lot-level stats
   const phasesByLot = phases.reduce<Record<string, typeof phases>>((acc, p) => {
@@ -152,7 +152,7 @@ export function Gantt({
 
   const lotProgress: Record<string, number> = {};
   const lotStatus: Record<string, StatusCode> = {};
-  const today = new Date(referenceDate);
+  const today = new Date();
 
   for (const lot of lots) {
     const lotPhases = phasesByLot[lot.id] ?? [];

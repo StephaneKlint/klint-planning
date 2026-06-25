@@ -116,7 +116,8 @@ export function TimelineBody({
     }, {});
 
   const weekendBands = showWeekends ? buildWeekendBands(viewStart, viewEnd, ppd) : [];
-  const todayX = xOf(referenceDate, viewStart, ppd);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayX = xOf(todayStr, viewStart, ppd);
 
   const xOfDate = (date: string) => xOf(date, viewStart, ppd);
 
@@ -450,7 +451,7 @@ export function TimelineBody({
 
       {/* Today line */}
       {todayX >= 0 && todayX <= totalW && (
-        <TodayLine x={todayX} totalH={totalH} date={referenceDate} />
+        <TodayLine x={todayX} totalH={totalH} date={todayStr} />
       )}
     </div>
   );
