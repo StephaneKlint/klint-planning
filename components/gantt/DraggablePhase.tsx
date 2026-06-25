@@ -77,7 +77,7 @@ export function DraggablePhase({
   const displayStart = localDates?.start ?? phase.startDate;
   const displayEnd   = localDates?.end   ?? phase.endDate;
   const left  = xOf(displayStart, viewStart, ppd);
-  const right = xOf(displayEnd,   viewStart, ppd);
+  const right = xOf(displayEnd,   viewStart, ppd) + ppd; // endDate inclusive: extend to end of day
   const width = Math.max(ppd, right - left);
 
   const getZone = (localX: number, pillW: number): DragMode => {

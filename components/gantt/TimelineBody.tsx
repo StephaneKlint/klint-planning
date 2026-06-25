@@ -267,7 +267,7 @@ export function TimelineBody({
         // Phase pills
         const pills = lotPhases.map((phase) => {
           const left = xOfDate(phase.startDate);
-          const right = xOfDate(phase.endDate);
+          const right = xOfDate(phase.endDate) + ppd; // endDate inclusive: extend to end of day
           const width = right - left;
           // Multi-track: each track occupies singleRowH, pill centered within its track
           const track = trackByPhaseId[phase.id] ?? 0;
@@ -290,7 +290,7 @@ export function TimelineBody({
 
           const bSnap = showBaseline && baselinePhases ? baselinePhases[phase.id] : null;
           const bLeft  = bSnap ? xOfDate(bSnap.startDate) : 0;
-          const bRight = bSnap ? xOfDate(bSnap.endDate)   : 0;
+          const bRight = bSnap ? xOfDate(bSnap.endDate) + ppd : 0; // endDate inclusive
           const bWidth = Math.max(bRight - bLeft, 4);
           const bChanged = bSnap && (bSnap.startDate !== phase.startDate || bSnap.endDate !== phase.endDate);
 

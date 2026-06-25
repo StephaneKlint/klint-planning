@@ -48,8 +48,8 @@ export function assignTracks(
   for (const phase of sorted) {
     let assigned = false;
     for (let t = 0; t < trackEnds.length; t++) {
-      // Track is free if its last phase ends on or before this one starts (adjacent = same day is OK)
-      if (trackEnds[t] <= phase.startDate) {
+      // Track is free if its last phase ends strictly before this one starts (endDate is inclusive)
+      if (trackEnds[t] < phase.startDate) {
         trackEnds[t] = phase.endDate;
         trackByPhaseId[phase.id] = t;
         assigned = true;
