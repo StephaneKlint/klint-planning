@@ -508,7 +508,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <How title="Naviguer dans le temps">
         <Step n={1}><strong>Défiler</strong> : molette ou trackpad horizontalement sur la timeline (le panneau gauche reste fixe).</Step>
         <Step n={2}><strong>Zoom</strong> : cliquez sur <TB icon="🔍">1m</TB> <TB icon="🔍">3m</TB> <TB icon="🔍">6m</TB> ou <TB icon="🔍">12m</TB> dans la barre d&apos;outils.</Step>
-        <Step n={3}><strong>Aller à aujourd&apos;hui</strong> : cliquez sur <TB icon="📅">Aujourd&apos;hui</TB> pour recentrer sur la ligne rouge verticale (date du jour).</Step>
+        <Step n={3}><strong>Aller à aujourd&apos;hui</strong> : cliquez sur <TB icon="📅">Aujourd&apos;hui</TB> pour recentrer sur le <strong>trait vert vertical</strong> (date du jour en temps réel).</Step>
         <Step n={4}><strong>Avancer/reculer d&apos;une période</strong> : boutons <UI>‹</UI> et <UI>›</UI>, ou raccourcis <Kbd>←</Kbd> <Kbd>→</Kbd>.</Step>
         <Step n={5}><strong>Filtrer par période</strong> : renseignez les champs <UI>Du … au …</UI> dans la barre d&apos;outils. Cliquez <UI>×</UI> pour réinitialiser.</Step>
       </How>
@@ -590,7 +590,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       </How>
       <How title="Redimensionner une phase (modifier les dates)">
         <Step n={1}>Pointez le <strong>bord gauche</strong> de la phase — le curseur change. Glissez pour modifier la <strong>date de début</strong>.</Step>
-        <Step n={2}>Pointez le <strong>bord droit</strong> pour modifier la <strong>date de fin</strong>.</Step>
+        <Step n={2}>Pointez le <strong>bord droit</strong> pour modifier la <strong>date de fin</strong>. La capsule couvre le jour de fin en entier — une phase se terminant le <strong>4 décembre</strong> remplit visuellement toute la colonne du 4.</Step>
       </How>
       <How title="Déplacer vers un autre projet (inter-lot)">
         <Step n={1}>Commencez un glissement sur la phase.</Step>
@@ -598,7 +598,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={3}>Relâchez pour rattacher la phase à ce projet. Les dates sont conservées.</Step>
       </How>
       <How title="Déplacer un jalon">
-        <Step n={1}>Cliquez-glissez le <strong>losange</strong> du jalon horizontalement — un losange fantôme suit le curseur.</Step>
+        <Step n={1}>Cliquez-glissez le <strong>losange</strong> du jalon horizontalement — un losange fantôme suit le curseur. Le losange est centré dans la colonne du jour pour éviter toute ambiguïté de lecture.</Step>
         <Step n={2}>Pour changer de projet : déplacez verticalement pendant le glissement (même bande bleue).</Step>
       </How>
       <Warn>Le drag &amp; drop nécessite les droits <strong>Contributeur</strong> ou <strong>Responsable planning</strong>. Les Observateurs voient le planning en lecture seule.</Warn>
