@@ -348,7 +348,8 @@ export function TimelineBody({
           label: m.label,
           labelPos: m.labelPos as "auto" | "above" | "below",
         }));
-        const msLayout = computeMilestoneLayout(msInputs, xOfDate, isDomainFirstLot);
+        const xOfDateMid = (date: string) => xOfDate(date) + ppd / 2; // center in day column
+        const msLayout = computeMilestoneLayout(msInputs, xOfDateMid, isDomainFirstLot);
 
         const flags = msLayout.map((layout, i) => {
           const ms = lotMilestones[i];
