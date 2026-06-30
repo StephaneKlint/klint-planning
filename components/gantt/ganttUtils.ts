@@ -48,8 +48,9 @@ export function assignTracks(
   for (const phase of sorted) {
     let assigned = false;
     for (let t = 0; t < trackEnds.length; t++) {
-      // Track is free if its last phase ends strictly before this one starts (endDate is inclusive)
-      if (trackEnds[t] < phase.startDate) {
+      // Adjacent phases (endDate A == startDate B) share the same track.
+      // The +ppd visual tail of A is visually covered by B rendered on top.
+      if (trackEnds[t] <= phase.startDate) {
         trackEnds[t] = phase.endDate;
         trackByPhaseId[phase.id] = t;
         assigned = true;
