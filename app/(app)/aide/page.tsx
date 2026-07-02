@@ -362,7 +362,7 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
-  { id: "plannings",    num: "1",  emoji: "📋", title: "Mes plannings",                       keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono modele vide renommer supprimer corbeille restaurer soft delete template bibliothèque" },
+  { id: "plannings",    num: "1",  emoji: "📋", title: "Mes plannings",                       keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono modele vide renommer supprimer corbeille restaurer soft delete template bibliothèque projet dossier grouper regrouper portefeuille sections" },
   { id: "structure",    num: "2",  emoji: "🏗️", title: "Structure d'un planning",             keywords: "domaine lot sous-projet phase jalon hiérarchie structure organisation créer ajouter type cadrage dev développement recette formation personnalisé ordre réordonner" },
   { id: "gantt",        num: "3",  emoji: "📊", title: "Vue Gantt — navigation et affichage", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter membre toolbar barre outils filtres vide empty état domaine créer supprimer tooltip survol dates stacking pile track hauteur week-end fermeture bandes baseline" },
   { id: "drag",         num: "4",  emoji: "🖱️", title: "Glisser-déposer (drag & drop)",       keywords: "drag drop glisser déposer déplacer phase jalon inter-lot horizontale verticale date resize redimensionner bord gauche droit annuler undo ctrl z fantôme ghost" },
@@ -438,6 +438,29 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={1}>Cliquez sur <TB icon="⬆">Importer JSON</TB> en haut à droite de la liste.</Step>
         <Step n={2}>Choisissez <UI>Créer un nouveau planning</UI> (import complet) ou <UI>Mettre à jour un planning existant</UI> (met à jour les éléments matchés par code domaine + nom lot + type).</Step>
       </How>
+      <How title="Grouper les plannings par projet">
+        <Step n={1}>Dans la liste des plannings actifs, cliquez sur l&apos;icône <UI>✎ crayon</UI> d&apos;une carte pour ouvrir la modale <UI>Modifier le planning</UI>.</Step>
+        <Step n={2}>Renseignez le champ <UI>Projet (dossier)</UI> avec le nom du projet auquel appartient ce planning (ex : <em>B2B EDU</em>, <em>CRM Interne</em>). Le champ propose l&apos;autocomplétion sur les projets existants.</Step>
+        <Step n={3}>Enregistrez. La liste se réorganise automatiquement : tous les plannings partageant le même nom de projet apparaissent regroupés sous une section repliable.</Step>
+        <Step n={4}>Cliquez sur l&apos;en-tête d&apos;une section pour la replier ou déplier. Les plannings sans projet apparaissent dans la section <UI>Sans projet</UI> en bas de liste.</Step>
+      </How>
+      <Mock label="Groupement par projet">
+        {[
+          { project: "B2B EDU", count: 2, open: true, items: ["B2B EDU — Kickoff comparatif", "B2B EDU — Formation Inter & Intra"] },
+          { project: "CRM Interne", count: 1, open: false, items: [] },
+        ].map((g) => (
+          <div key={g.project} style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 4px", borderBottom: "1px solid #E2E8F0", cursor: "default" }}>
+              <span style={{ fontSize: 10, color: "#94A3B8" }}>{g.open ? "▼" : "▶"}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#001036", flex: 1 }}>{g.project}</span>
+              <span style={{ fontSize: 10, color: "#94A3B8", background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 20, padding: "1px 8px" }}>{g.count}</span>
+            </div>
+            {g.open && g.items.map((name) => (
+              <div key={name} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8, padding: "8px 12px", margin: "8px 0 0 0", fontSize: 12, fontWeight: 600, color: "#334155" }}>{name}</div>
+            ))}
+          </div>
+        ))}
+      </Mock>
       <Tip>Pour un démarrage rapide, dupliquez un planning existant de même nature — vous gardez la structure des domaines, les types de jalons et la cadence configurée.</Tip>
     </section>
   ),
