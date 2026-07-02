@@ -187,6 +187,7 @@ const UpdatePlanningSchema = z.object({
   viewStart:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   viewEnd:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   description: z.string().max(500).nullable().optional(),
+  projectName: z.string().max(100).nullable().optional(),
 });
 
 export async function updatePlanningMeta(input: z.infer<typeof UpdatePlanningSchema>) {
@@ -198,6 +199,7 @@ export async function updatePlanningMeta(input: z.infer<typeof UpdatePlanningSch
       viewStart:   data.viewStart,
       viewEnd:     data.viewEnd,
       description: data.description ?? null,
+      projectName: data.projectName ?? null,
     })
     .where(eq(plannings.id, data.planningId));
   revalidatePath(`/p/${data.planningId}`);

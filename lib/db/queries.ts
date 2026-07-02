@@ -131,6 +131,7 @@ export async function listPlanningsForUser(userId: string) {
       viewStart: plannings.viewStart,
       viewEnd: plannings.viewEnd,
       createdAt: plannings.createdAt,
+      projectName: plannings.projectName,
       domainCount: sql<number>`(SELECT COUNT(*) FROM domains WHERE domains.planning_id = ${plannings.id})::int`,
     })
     .from(plannings)
@@ -175,6 +176,7 @@ export async function listPlannings(filter: "active" | "archived" | "disabled" |
       viewStart: plannings.viewStart,
       viewEnd: plannings.viewEnd,
       createdAt: plannings.createdAt,
+      projectName: plannings.projectName,
       domainCount: sql<number>`(SELECT COUNT(*) FROM domains WHERE domains.planning_id = ${plannings.id})::int`,
     })
     .from(plannings)

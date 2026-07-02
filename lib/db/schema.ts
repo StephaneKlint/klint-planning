@@ -124,6 +124,7 @@ export const plannings = pgTable("plannings", {
   archived: boolean("archived").default(false).notNull(),
   disabled: boolean("disabled").default(false).notNull(),
   isTemplate: boolean("is_template").default(false).notNull(),
+  projectName: varchar("project_name", { length: 100 }),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

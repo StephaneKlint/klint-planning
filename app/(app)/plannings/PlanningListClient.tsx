@@ -23,6 +23,7 @@ type PlanningRow = {
   viewStart: string;
   viewEnd: string;
   createdAt: Date;
+  projectName: string | null;
   domainCount: number;
 };
 
@@ -46,17 +47,19 @@ const TYPE_LABELS: Record<string, string> = {
 // ── Rename modal ─────────────────────────────────────────────────────────────
 interface RenameModalProps {
   planning: PlanningRow;
+  allProjects: string[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-function RenameModal({ planning, onClose, onSaved }: RenameModalProps) {
-  const [name, setName]           = useState(planning.name);
-  const [year, setYear]           = useState(String(planning.year));
-  const [viewStart, setViewStart] = useState(planning.viewStart);
-  const [viewEnd, setViewEnd]     = useState(planning.viewEnd);
-  const [isPending, startT]       = useTransition();
-  const [error, setError]         = useState<string | null>(null);
+function RenameModal({ planning, allProjects, onClose, onSaved }: RenameModalProps) {
+  const [name, setName]               = useState(planning.name);
+  const [year, setYear]               = useState(String(planning.year));
+  const [viewStart, setViewStart]     = useState(planning.viewStart);
+  const [viewEnd, setViewEnd]         = useState(planning.viewEnd);
+  const [projectName, setProjectName] = useState(planning.projectName ?? "");
+  const [isPending, startT]           = useTransition();
+  const [error, setError]             = useState<string | null>(null);
 
   const handleSave = () => {
     if (!name.trim()) { setError("Le nom est requis."); return; }
@@ -69,6 +72,7 @@ function RenameModal({ planning, onClose, onSaved }: RenameModalProps) {
           year: Number(year),
           viewStart,
           viewEnd,
+          projectName: projectName.trim() || null,
         });
         onSaved();
       } catch (e) {
@@ -96,6 +100,23 @@ function RenameModal({ planning, onClose, onSaved }: RenameModalProps) {
               maxLength={200}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
             />
+          </div>
+          <div className={styles.modalField}>
+            <label className={styles.modalLabel}>Projet (dossier)</label>
+            <input
+              type="text"
+              className={styles.modalInput}
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              list="project-suggestions"
+              placeholder="Ex : B2B EDU, CRM Interne…"
+              maxLength={100}
+            />
+            {allProjects.length > 0 && (
+              <datalist id="project-suggestions">
+                {allProjects.map((p) => <option key={p} value={p} />)}
+              </datalist>
+            )}
           </div>
           <div className={styles.modalRow}>
             <div className={styles.modalField}>
@@ -393,6 +414,17 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
   // Multi-select (active tab only)
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  // Collapsible project sections (active tab only)
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   // Rename modal
   const [renamePlanning, setRenamePlanning] = useState<PlanningRow | null>(null);
 
@@ -585,6 +617,32 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
   // ── Current list ──
   const currentList = tab === "active" ? active : tab === "archived" ? archived : tab === "disabled" ? disabled : trashed;
 
+  // Groupement par projet (onglet Actifs uniquement)
+  const allProjects = [...new Set(active.map((p) => p.projectName).filter(Boolean) as string[])].sort();
+
+  type ProjectGroup = { key: string; label: string; items: PlanningRow[] };
+  const activeGroups: ProjectGroup[] = (() => {
+    const byProject = new Map<string, PlanningRow[]>();
+    const noProject: PlanningRow[] = [];
+    for (const p of active) {
+      if (p.projectName) {
+        if (!byProject.has(p.projectName)) byProject.set(p.projectName, []);
+        byProject.get(p.projectName)!.push(p);
+      } else {
+        noProject.push(p);
+      }
+    }
+    const groups: ProjectGroup[] = [];
+    for (const [name, items] of byProject) {
+      groups.push({ key: name, label: name, items });
+    }
+    groups.sort((a, b) => a.label.localeCompare(b.label, "fr"));
+    if (noProject.length > 0) {
+      groups.push({ key: "__none__", label: "Sans projet", items: noProject });
+    }
+    return groups;
+  })();
+
   const sharedCardProps = {
     loadingId,
     loadingAction,
@@ -637,7 +695,7 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
         )}
       </div>
 
-      {/* Grid */}
+      {/* Grid — Actifs groupés par projet, autres onglets = grille plate */}
       {currentList.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>
@@ -655,7 +713,49 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
             </>
           )}
         </div>
+      ) : tab === "active" ? (
+        // ── Groupement par projet ─────────────────────────────────────────
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {activeGroups.map((group) => {
+            const isCollapsed = collapsedSections.has(group.key);
+            return (
+              <div key={group.key} className={styles.sectionBlock}>
+                <div
+                  className={styles.sectionHeader}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!isCollapsed}
+                  onClick={() => toggleSection(group.key)}
+                  onKeyDown={(e) => (e.key === " " || e.key === "Enter") && toggleSection(group.key)}
+                >
+                  <span className={`${styles.sectionChevron} ${isCollapsed ? styles.sectionChevronClosed : styles.sectionChevronOpen}`}>▼</span>
+                  <span className={styles.sectionTitle}>
+                    {group.key === "__none__" ? "Sans projet" : group.label}
+                  </span>
+                  <span className={styles.sectionCount}>{group.items.length}</span>
+                </div>
+                {!isCollapsed && (
+                  <div className={styles.sectionGrid}>
+                    {group.items.map((p) => (
+                      <PlanningCard
+                        key={p.id}
+                        p={p}
+                        tab="active"
+                        {...sharedCardProps}
+                        selected={selected.has(p.id)}
+                        onSelect={toggleSelect}
+                        onArchive={handleArchive}
+                        onDisable={handleDisable}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
+        // ── Grille plate (archived / disabled / trashed) ──────────────────
         <div className={styles.grid}>
           {currentList.map((p) => (
             <PlanningCard
@@ -663,8 +763,8 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
               p={p}
               tab={tab}
               {...sharedCardProps}
-              selected={selected.has(p.id)}
-              onSelect={tab === "active" ? toggleSelect : undefined}
+              selected={false}
+              onSelect={undefined}
               onArchive={handleArchive}
               onDisable={handleDisable}
               onEnable={handleEnable}
@@ -680,6 +780,7 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
       {renamePlanning && (
         <RenameModal
           planning={renamePlanning}
+          allProjects={allProjects}
           onClose={() => setRenamePlanning(null)}
           onSaved={() => { setRenamePlanning(null); router.refresh(); }}
         />
