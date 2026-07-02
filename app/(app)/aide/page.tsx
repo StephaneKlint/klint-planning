@@ -537,7 +537,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       </How>
       <Mock label="Barre d'outils — affichage & membres">
         <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, alignItems: "center" }}>
-          <TB icon="⚙️">Affichage ▾</TB>
+          <TB icon="👁">Affichage ▾</TB>
           <TB icon="🎨">Coloration ▾</TB>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 8, padding: "3px 8px" }}>
             <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#001D63", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0 }}>AB</span>
@@ -560,7 +560,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={3}>Les lots masqués disparaissent du Gantt et des exports.</Step>
       </How>
       <How title="Options du menu Affichage">
-        <Step n={1}>Cliquez sur <TB icon="⚙️">Affichage ▾</TB> pour accéder à :</Step>
+        <Step n={1}>Cliquez sur <TB icon="👁">Affichage ▾</TB> pour accéder à :</Step>
         <Step n={2}><strong>Bandes domaines</strong> — fonds colorés. <strong>Week-ends</strong> — bandes grises. <strong>Jours fériés / Fermetures</strong> — bandes calendaires. <strong>Responsables</strong> — initiales sur les phases. <strong>Baseline</strong> — barres bleues comparatives.</Step>
       </How>
       <How title="Ajouter un membre depuis le Gantt">
@@ -787,22 +787,22 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       </Mock>
 
       <How title="Créer la baseline (1 seule par planning)">
-        <Step n={1}>Dans la barre d&apos;outils, cliquez sur <TB icon="⚙️">Affichage ▾</TB>.</Step>
+        <Step n={1}>Dans la barre d&apos;outils, cliquez sur <TB icon="👁">Affichage ▾</TB>.</Step>
         <Step n={2}>Sélectionnez <UI>Baseline → Créer une baseline</UI>. Toutes les dates de phases et jalons sont sauvegardées à cet instant.</Step>
         <Step n={3}>Si une baseline existait déjà, elle est <strong>remplacée</strong> par la nouvelle. Il n&apos;y a qu&apos;un seul snapshot par planning.</Step>
       </How>
       <How title="Afficher et lire les écarts">
-        <Step n={1}>Dans <TB icon="⚙️">Affichage ▾</TB>, activez <UI>Afficher la baseline</UI>.</Step>
+        <Step n={1}>Dans <TB icon="👁">Affichage ▾</TB>, activez <UI>Afficher la baseline</UI>.</Step>
         <Step n={2}>Les phases dont les dates ont bougé affichent une <strong>barre bleue (4 px)</strong> juste en dessous de la capsule.</Step>
         <Step n={3}><strong>Barre décalée à gauche</strong> de la capsule actuelle → phase prise en retard. <strong>Barre plus longue</strong> que la capsule → phase raccourcie. <strong>Barre plus courte</strong> → phase allongée. <strong>Pas de barre</strong> → aucun écart.</Step>
         <Step n={4}>Survolez la barre bleue pour voir un <strong>tooltip</strong> avec les dates d&apos;origine exactes (début → fin de la baseline).</Step>
       </How>
       <How title="Replanifier : remplacer la baseline">
         <Step n={1}>Après validation d&apos;une révision majeure (avenant, replanification), recréez une baseline pour repartir d&apos;un nouveau plan de référence.</Step>
-        <Step n={2}>Allez dans <TB icon="⚙️">Affichage ▾</TB> → <UI>Baseline → Créer une baseline</UI>. L&apos;ancienne est automatiquement remplacée.</Step>
+        <Step n={2}>Allez dans <TB icon="👁">Affichage ▾</TB> → <UI>Baseline → Créer une baseline</UI>. L&apos;ancienne est automatiquement remplacée.</Step>
       </How>
       <How title="Supprimer la baseline">
-        <Step n={1}><TB icon="⚙️">Affichage ▾</TB> → <UI>Baseline → Supprimer la baseline</UI>. La suppression est définitive — les barres bleues disparaissent.</Step>
+        <Step n={1}><TB icon="👁">Affichage ▾</TB> → <UI>Baseline → Supprimer la baseline</UI>. La suppression est définitive — les barres bleues disparaissent.</Step>
       </How>
       <Tip>Bonne pratique : nommez chaque baseline selon son contexte (ex : <em>Kick-off 15/06</em>, <em>Avenant 1 — 10/09</em>) pour garder une trace dans le nom affiché dans la toolbar.</Tip>
     </section>
@@ -920,7 +920,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <How title="Attribuer des phases à un responsable">
         <Step n={1}>Sur la carte du membre, cliquez sur <TB icon="📋">Attribuer</TB>.</Step>
         <Step n={2}>La modale liste les phases par domaine et projet. Cochez chaque phase à attribuer, ou cliquez <UI>Tout le lot</UI> pour attribuer tout un projet en une action.</Step>
-        <Step n={3}>Les initiales du responsable s&apos;affichent sur les phases dans le Gantt si l&apos;option est activée dans <TB icon="⚙️">Affichage ▾</TB> → <UI>Responsables</UI>.</Step>
+        <Step n={3}>Les initiales du responsable s&apos;affichent sur les phases dans le Gantt si l&apos;option est activée dans <TB icon="👁">Affichage ▾</TB> → <UI>Responsables</UI>.</Step>
       </How>
       <How title="Afficher / réduire les phases d'une carte">
         <Step n={1}>Cliquez sur le compteur de phases sur la carte (ex. <UI>12 phases ▲</UI>) pour réduire la liste et compacter l&apos;affichage.</Step>
@@ -1053,7 +1053,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <How title="Conseils pour un bon export">
         <Step n={1}>Passez en zoom <TB icon="🔍">12m</TB> pour capturer l&apos;année entière.</Step>
         <Step n={2}>Utilisez <TB icon="📂">Projets ▾</TB> pour masquer les lots non pertinents.</Step>
-        <Step n={3}>Activez les bandes de fermeture dans <TB icon="⚙️">Affichage ▾</TB> si le planning doit illustrer les contraintes calendaires.</Step>
+        <Step n={3}>Activez les bandes de fermeture dans <TB icon="👁">Affichage ▾</TB> si le planning doit illustrer les contraintes calendaires.</Step>
         <Step n={4}>Attendez que le Gantt soit entièrement chargé avant de lancer l&apos;export.</Step>
       </How>
       <Tip>Pour PowerPoint : préférez le PNG (téléchargement direct, haute définition). Pour impression physique : utilisez le PDF A3.</Tip>
@@ -1089,7 +1089,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={3}>Pour chaque période : renseignez le libellé, les dates de début/fin et une couleur d&apos;identification.</Step>
       </How>
       <How title="Afficher / masquer dans le Gantt">
-        <Step n={1}>Dans la barre d&apos;outils, cliquez sur <TB icon="⚙️">Affichage ▾</TB>.</Step>
+        <Step n={1}>Dans la barre d&apos;outils, cliquez sur <TB icon="👁">Affichage ▾</TB>.</Step>
         <Step n={2}>Activez/désactivez <UI>Jours fériés</UI> et <UI>Fermetures / Gel</UI> — les bandes colorées disparaissent ou réapparaissent instantanément.</Step>
       </How>
       <Tip>Les bandes de fermeture sont visibles à l&apos;export PDF et PNG. Pensez à les afficher si votre planning doit illustrer les contraintes calendaires.</Tip>
