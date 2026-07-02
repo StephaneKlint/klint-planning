@@ -732,48 +732,79 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
     <section style={S.section}>
       <h2 style={S.h2}><span style={S.pill}>8</span> Plan de r&#233;f&#233;rence (Baseline)</h2>
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
-        Snapshot du planning à un instant T. Les phases dont les dates ont bougé affichent une <strong>barre bleue fine</strong> en dessous, dans le Gantt.
+        La baseline est une <strong>photographie figée</strong> de toutes les dates du planning à un instant T — généralement la version validée par le sponsor au kick-off. Elle sert de <strong>ligne de référence</strong> pour mesurer les glissements au fil du projet, sans modifier le planning réel.
       </p>
-      <Mock label="Comparaison visuelle dans le Gantt">
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: 12, fontSize: 12 }}>
-          {/* Phase unchanged */}
+
+      {/* Cas d'usage */}
+      <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "12px 16px", marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: "#0369A1", marginBottom: 8 }}>Quand utiliser la baseline ?</div>
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 6 }}>
+          {[
+            ["🚀 Kick-off", "Créez la baseline juste après validation du planning initial par le sponsor ou le comité de pilotage. C'est le \"contrat de départ\"."],
+            ["📊 COPIL / Réunion d'avancement", "Activez la baseline avant chaque comité pour montrer en un coup d'œil les phases décalées depuis le plan d'origine."],
+            ["📝 Après une replanification", "Supprimez l'ancienne baseline et créez-en une nouvelle après validation d'un avenant ou d'une révision majeure du planning."],
+            ["🤝 Reporting client / MOA", "Partagez le lien en lecture seule (section 9) avec la baseline activée pour que le client voie les écarts sans accéder à l'édition."],
+          ].map(([title, desc]) => (
+            <div key={title as string} style={{ display: "flex", gap: 8, alignItems: "flex-start" as const }}>
+              <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{title}</span>
+              <span style={{ fontSize: 12, color: "#475569" }}>{desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Mock comparaison */}
+      <Mock label="Lecture des écarts dans le Gantt">
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 16, fontSize: 12 }}>
           <div>
-            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Phase inchangée — pas de barre baseline</div>
-            <div style={{ width: 180, height: 22, background: "#86EFAC", borderRadius: 5 }} />
+            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, fontWeight: 600 }}>Phase inchangée</div>
+            <div style={{ width: 200, height: 22, background: "#86EFAC", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: "#166534" }}>Recette unitaire</span>
+            </div>
+            <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 3 }}>Pas de barre bleue — aucun écart</div>
           </div>
-          {/* Phase delayed — baseline to the left */}
           <div>
-            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Phase décalée vers la droite — baseline (bleu) reste à sa position d&apos;origine</div>
-            <div style={{ position: "relative" as const, height: 36 }}>
-              <div style={{ position: "absolute" as const, left: 30, top: 0, width: 180, height: 22, background: "#FCD34D", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#92400E" }}>Position actuelle</span>
+            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, fontWeight: 600 }}>Phase décalée (retard)</div>
+            <div style={{ position: "relative" as const, height: 46 }}>
+              <div style={{ position: "absolute" as const, left: 40, top: 0, width: 200, height: 22, background: "#FDE68A", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#92400E" }}>Développements B2B ← décalé</span>
               </div>
-              <div style={{ position: "absolute" as const, left: 0, top: 26, width: 160, height: 4, background: "#3B82F6", borderRadius: 2, opacity: 0.8 }} />
+              <div style={{ position: "absolute" as const, left: 0, top: 28, width: 190, height: 4, background: "#3B82F6", borderRadius: 2 }} />
+              <div style={{ position: "absolute" as const, left: 0, top: 36, fontSize: 10, color: "#3B82F6", fontWeight: 600 }}>Baseline : position d&apos;origine</div>
             </div>
           </div>
-          {/* Phase shortened */}
           <div>
-            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Phase raccourcie — baseline (bleu) plus longue</div>
-            <div style={{ position: "relative" as const, height: 36 }}>
-              <div style={{ position: "absolute" as const, left: 0, top: 0, width: 100, height: 22, background: "#A5B4FC", borderRadius: 5 }} />
-              <div style={{ position: "absolute" as const, left: 0, top: 26, width: 180, height: 4, background: "#3B82F6", borderRadius: 2, opacity: 0.8 }} />
+            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, fontWeight: 600 }}>Phase raccourcie</div>
+            <div style={{ position: "relative" as const, height: 46 }}>
+              <div style={{ position: "absolute" as const, left: 0, top: 0, width: 110, height: 22, background: "#C7D2FE", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#3730A3" }}>Formation</span>
+              </div>
+              <div style={{ position: "absolute" as const, left: 0, top: 28, width: 200, height: 4, background: "#3B82F6", borderRadius: 2 }} />
+              <div style={{ position: "absolute" as const, left: 0, top: 36, fontSize: 10, color: "#3B82F6", fontWeight: 600 }}>Baseline : durée prévue plus longue</div>
             </div>
           </div>
         </div>
       </Mock>
-      <How title="Créer la baseline">
+
+      <How title="Créer la baseline (1 seule par planning)">
         <Step n={1}>Dans la barre d&apos;outils, cliquez sur <TB icon="⚙️">Affichage ▾</TB>.</Step>
-        <Step n={2}>Sélectionnez <UI>Baseline → Créer une baseline</UI>. L&apos;état actuel de toutes les phases est sauvegardé. Un seul snapshot par planning.</Step>
+        <Step n={2}>Sélectionnez <UI>Baseline → Créer une baseline</UI>. Toutes les dates de phases et jalons sont sauvegardées à cet instant.</Step>
+        <Step n={3}>Si une baseline existait déjà, elle est <strong>remplacée</strong> par la nouvelle. Il n&apos;y a qu&apos;un seul snapshot par planning.</Step>
       </How>
-      <How title="Afficher et lire la comparaison">
+      <How title="Afficher et lire les écarts">
         <Step n={1}>Dans <TB icon="⚙️">Affichage ▾</TB>, activez <UI>Afficher la baseline</UI>.</Step>
-        <Step n={2}>Les phases dont les dates ont changé affichent une <strong>barre bleue (4 px)</strong> juste en dessous.</Step>
-        <Step n={3}><strong>Barre plus courte décalée à gauche</strong> → phase décalée/allongée. <strong>Barre plus longue</strong> → phase raccourcie. <strong>Pas de barre</strong> → phase inchangée.</Step>
+        <Step n={2}>Les phases dont les dates ont bougé affichent une <strong>barre bleue (4 px)</strong> juste en dessous de la capsule.</Step>
+        <Step n={3}><strong>Barre décalée à gauche</strong> de la capsule actuelle → phase prise en retard. <strong>Barre plus longue</strong> que la capsule → phase raccourcie. <strong>Barre plus courte</strong> → phase allongée. <strong>Pas de barre</strong> → aucun écart.</Step>
+        <Step n={4}>Survolez la barre bleue pour voir un <strong>tooltip</strong> avec les dates d&apos;origine exactes (début → fin de la baseline).</Step>
+      </How>
+      <How title="Replanifier : remplacer la baseline">
+        <Step n={1}>Après validation d&apos;une révision majeure (avenant, replanification), recréez une baseline pour repartir d&apos;un nouveau plan de référence.</Step>
+        <Step n={2}>Allez dans <TB icon="⚙️">Affichage ▾</TB> → <UI>Baseline → Créer une baseline</UI>. L&apos;ancienne est automatiquement remplacée.</Step>
       </How>
       <How title="Supprimer la baseline">
-        <Step n={1}><TB icon="⚙️">Affichage ▾</TB> → <UI>Baseline → Supprimer la baseline</UI>. La suppression est définitive.</Step>
+        <Step n={1}><TB icon="⚙️">Affichage ▾</TB> → <UI>Baseline → Supprimer la baseline</UI>. La suppression est définitive — les barres bleues disparaissent.</Step>
       </How>
-      <Tip>Créez la baseline au kick-off ou après validation du planning par le sponsor. Activez-la lors des COPIL pour mesurer les glissements d&apos;un coup d&apos;œil.</Tip>
+      <Tip>Bonne pratique : nommez chaque baseline selon son contexte (ex : <em>Kick-off 15/06</em>, <em>Avenant 1 — 10/09</em>) pour garder une trace dans le nom affiché dans la toolbar.</Tip>
     </section>
   ),
 
