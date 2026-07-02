@@ -11,6 +11,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import type { StatusCode } from "@/components/ui/StatusPill";
 import type { GanttData } from "@/lib/db/queries";
+import { PhaseItemsSection } from "@/components/panels/PhaseItemsSection";
 import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
   updatePhaseDates, updatePhaseColor, updatePhaseLabel,
@@ -562,6 +563,12 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               }}
             />
           </div>
+
+          <PhaseItemsSection
+            phaseId={phase.id}
+            planningId={planningId}
+            phaseColor={phase.color ?? undefined}
+          />
         </div>
 
         {/* ── Footer ── */}

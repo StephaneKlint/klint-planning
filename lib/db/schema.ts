@@ -418,6 +418,49 @@ export const connectionLogs = pgTable(
   (t) => [index("cl_by_user").on(t.userId), index("cl_created").on(t.createdAt)]
 );
 
+// ---- Éléments de phase (sous-items génériques) ---------------------------
+
+export const phaseItemStatusEnum = pgEnum("phase_item_status", [
+  "todo",
+  "doing",
+  "done",
+  "cancelled",
+]);
+
+export const phaseItems = pgTable(
+  "phase_items",
+  {
+    id:        uuid("id").defaultRandom().primaryKey(),
+    phaseId:   uuid("phase_id")
+      .notNull()
+      .references(() => phases.id, { onDelete: "cascade" }),
+    title:     varchar("title", { length: 300 }).notNull(),
+    detail:    text("detail"),
+    date:      date("date"),
+    status:    phaseItemStatusEnum("status").notNull().default("todo"),
+    sortOrder: smallint("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("pi_by_phase").on(t.phaseId)]
+);
+
+export const phaseItemImports = pgTable(
+  "phase_item_imports",
+  {
+    id:        uuid("id").defaultRandom().primaryKey(),
+    phaseId:   uuid("phase_id")
+      .notNull()
+      .references(() => phases.id, { onDelete: "cascade" }),
+    rawText:   text("raw_text").notNull(),
+    status:    varchar("status", { length: 20 }).notNull().default("pending"),
+    resultJson: jsonb("result_json"),
+    errorMsg:  text("error_msg"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (t) => [index("pii_status").on(t.status), index("pii_by_phase").on(t.phaseId)]
+);
+
 // ---- Logs d'erreurs applicatifs ------------------------------------------
 
 export const appErrors = pgTable(
