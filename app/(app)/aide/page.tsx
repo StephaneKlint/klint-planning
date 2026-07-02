@@ -366,7 +366,7 @@ const SECTIONS: SectionDef[] = [
   { id: "structure",    num: "2",  emoji: "🏗️", title: "Structure d'un planning",             keywords: "domaine lot sous-projet phase jalon hiérarchie structure organisation créer ajouter type cadrage dev développement recette formation personnalisé ordre réordonner" },
   { id: "gantt",        num: "3",  emoji: "📊", title: "Vue Gantt — navigation et affichage", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter membre toolbar barre outils filtres vide empty état domaine créer supprimer tooltip survol dates stacking pile track hauteur week-end fermeture bandes baseline" },
   { id: "drag",         num: "4",  emoji: "🖱️", title: "Glisser-déposer (drag & drop)",       keywords: "drag drop glisser déposer déplacer phase jalon inter-lot horizontale verticale date resize redimensionner bord gauche droit annuler undo ctrl z fantôme ghost" },
-  { id: "edit",         num: "5",  emoji: "✏️", title: "Édition phases et jalons",            keywords: "éditer phase jalon dates statut avancement couleur note assigné responsable sélection multiple recherche palette commandes ctrl k fermer overlay dupliquer duplication copier" },
+  { id: "edit",         num: "5",  emoji: "✏️", title: "Édition phases et jalons",            keywords: "éditer phase jalon dates statut avancement couleur note assigné responsable sélection multiple recherche palette commandes ctrl k fermer overlay dupliquer duplication copier éléments items ateliers livrables tickets cas recette importer import bridge claude fichier json md csv statut todo doing done fait annulé avancement automatique progress" },
   { id: "bulkbar",      num: "6",  emoji: "☑️", title: "Sélection multiple et actions groupées", keywords: "sélection multiple phases jalons bulkbar barre actions groupées ctrl clic multi select statut dupliquer vers lot confirmer désélectionner" },
   { id: "raccourcis",   num: "7",  emoji: "⌨️", title: "Raccourcis clavier",                  keywords: "raccourcis clavier ctrl k esc flèches zoom selection escape undo annuler ctrl z" },
   { id: "baseline",     num: "8",  emoji: "📌", title: "Plan de référence (Baseline)",        keywords: "baseline plan référence comparaison barre bleue dates décalées snapshot toggle afficher masquer créer supprimer" },
@@ -668,6 +668,43 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={2}>Champs disponibles : <strong>Type</strong>, <strong>Libellé</strong>, <strong>Date</strong>, <strong>Position drapeau</strong> (Au-dessus / En-dessous / Auto), <strong>Couleur</strong>, <strong>Note</strong>.</Step>
         <Step n={3}>Dupliquer : cliquez sur <UI>Dupliquer</UI> dans le footer → choisissez le projet cible. Utile pour les jalons MEP ou Livraison partagés entre plusieurs projets.</Step>
       </How>
+      <How title="Palette de commandes (recherche rapide)">
+        <Step n={1}>Appuyez sur <Kbd>⌘K</Kbd> (Mac) ou <Kbd>Ctrl+K</Kbd> (Windows) — une barre de recherche s&apos;ouvre au centre de l&apos;écran.</Step>
+        <Step n={2}>Tapez un libellé, type ou nom de projet. Cliquez sur le résultat pour ouvrir le panneau et centrer la vue sur l&apos;élément dans le Gantt.</Step>
+      </How>
+
+      <How title="Éléments de phase (ateliers, livrables, tickets…)">
+        <Step n={1}>Ouvrez le panneau d&apos;une phase — une section <UI>Éléments de la phase</UI> apparaît sous le champ Note.</Step>
+        <Step n={2}>Cliquez sur <UI>+ Ajouter un élément</UI> pour créer manuellement : <strong>titre</strong>, détail, date et statut.</Step>
+        <Step n={3}>Cliquez sur le <strong>statut coloré</strong> (À faire / En cours / Fait / Annulé) pour le faire avancer d&apos;un cran. L&apos;avancement de la phase (cercle) se recalcule automatiquement.</Step>
+        <Step n={4}>Basculez entre vue <UI>☰ Liste</UI> et <UI>▦ Cartes</UI> selon vos préférences.</Step>
+      </How>
+      <Mock label="Éléments de phase — calcul automatique de l'avancement">
+        <div style={{ fontSize: 12, display: "flex", flexDirection: "column" as const, gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ background: "#DCFCE7", color: "#15803D", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>Fait</span>
+            <span style={{ background: "#DBEAFE", color: "#1D4ED8", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>En cours</span>
+            <span style={{ background: "#F1F5F9", color: "#64748B", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>À faire</span>
+            <span style={{ background: "#FEE2E2", color: "#B91C1C", borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>Annulé</span>
+          </div>
+          <div style={{ color: "#6B7280", fontSize: 12 }}>
+            Formule : <strong>Fait ÷ (Total − Annulés) × 100</strong>. Les annulés ne comptent pas comme des éléments à faire. Si aucun élément n&apos;est défini, l&apos;avancement reste modifiable manuellement.
+          </div>
+        </div>
+      </Mock>
+      <How title="Importer des éléments via Claude (texte libre)">
+        <Step n={1}>Dans la section Éléments, cliquez sur <UI>↑ Importer</UI> → onglet <UI>Coller du texte</UI>.</Step>
+        <Step n={2}>Collez n&apos;importe quel texte décrivant vos éléments (liste d&apos;ateliers, tickets Jira, notes de réunion…).</Step>
+        <Step n={3}>Cliquez sur <UI>Analyser avec Claude</UI> — le bridge local envoie le texte à Claude, qui extrait automatiquement titre, détail, date et statut.</Step>
+        <Step n={4}>Les éléments apparaissent dans la liste dès que Claude a terminé (30 à 60 secondes). Aucun coût API : le bridge utilise votre compte Claude.</Step>
+      </How>
+      <How title="Importer des éléments depuis un fichier">
+        <Step n={1}>Cliquez sur <UI>↑ Importer</UI> → onglet <UI>Fichier</UI>.</Step>
+        <Step n={2}>Choisissez un fichier <strong>.json</strong>, <strong>.md</strong> ou <strong>.csv</strong>. Le fichier est analysé directement dans le navigateur — aucun upload serveur.</Step>
+        <Step n={3}>Un aperçu liste les éléments détectés. Confirmez pour les ajouter à la phase.</Step>
+      </How>
+      <Tip>Les éléments de phase sont génériques : ateliers de formation, tickets de dev, cas de recette, livrables, spécifications… Utilisez-les sur n&apos;importe quelle phase pour avoir un suivi fin sans créer de jalons supplémentaires.</Tip>
+
       <How title="Palette de commandes (recherche rapide)">
         <Step n={1}>Appuyez sur <Kbd>⌘K</Kbd> (Mac) ou <Kbd>Ctrl+K</Kbd> (Windows) — une barre de recherche s&apos;ouvre au centre de l&apos;écran.</Step>
         <Step n={2}>Tapez un libellé, type ou nom de projet. Cliquez sur le résultat pour ouvrir le panneau et centrer la vue sur l&apos;élément dans le Gantt.</Step>
