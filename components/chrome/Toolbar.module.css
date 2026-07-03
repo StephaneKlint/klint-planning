@@ -270,6 +270,111 @@
   margin: 6px 8px;
 }
 
+/* ── Multi-baselines ────────────────────────────────────────────────── */
+.baselineRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 0 0;
+}
+
+.baselineItemBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: var(--font-display, system-ui);
+  font-weight: 500;
+  color: var(--klint-navy, #001036);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: left;
+  transition: background 0.12s;
+  min-width: 0;
+}
+
+.baselineItemBtn:hover { background: var(--klint-paper, #F6F7FB); }
+
+.baselineName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baselineDate {
+  font-size: 10px;
+  color: #9CA3AF;
+  flex-shrink: 0;
+}
+
+.baselineDelete {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: #9CA3AF;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.baselineDelete:hover { background: #FEE2E2; color: #DC2626; }
+
+.baselineCreate {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 6px;
+}
+
+.baselineInput {
+  flex: 1;
+  height: 26px;
+  border: 1px solid var(--klint-line, #E6E8EE);
+  border-radius: 5px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-family: var(--font-display, system-ui);
+  color: var(--klint-navy, #001036);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.baselineInput:focus { border-color: var(--klint-primary, #3B82F6); }
+.baselineInput::placeholder { color: #9CA3AF; }
+
+.baselineAddBtn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--klint-primary, #3B82F6);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 0.12s;
+  line-height: 1;
+}
+
+.baselineAddBtn:hover:not(:disabled) { background: #2563EB; }
+.baselineAddBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* Export PDF */
 .exportBtn {
   background: var(--klint-navy, #001036);

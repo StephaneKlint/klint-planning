@@ -304,6 +304,8 @@ export type BaselineRow = {
   milestones: Record<string, { date: string }>;
 };
 
+export type BaselineMeta = { id: string; name: string; createdAt: Date };
+
 export async function getLatestBaselineForPlanning(planningId: string): Promise<BaselineRow | null> {
   const [row] = await db
     .select()
@@ -321,6 +323,14 @@ export async function getLatestBaselineForPlanning(planningId: string): Promise<
     phases: snap.phases ?? {},
     milestones: snap.milestones ?? {},
   };
+}
+
+export async function listBaselinesForPlanning(planningId: string): Promise<BaselineMeta[]> {
+  return db
+    .select({ id: baselines.id, name: baselines.name, createdAt: baselines.createdAt })
+    .from(baselines)
+    .where(eq(baselines.planningId, planningId))
+    .orderBy(desc(baselines.createdAt));
 }
 
 export async function getGanttDataByToken(token: string): Promise<GanttData | null> {

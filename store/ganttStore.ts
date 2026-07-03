@@ -111,8 +111,10 @@ interface GanttState {
   // Baseline
   baselinePhases: Record<string, { startDate: string; endDate: string }> | null;
   showBaseline: boolean;
+  activeBaselineId: string | null;
   setBaselinePhases: (phases: Record<string, { startDate: string; endDate: string }> | null) => void;
   toggleShowBaseline: () => void;
+  setActiveBaselineId: (id: string | null) => void;
 }
 
 export const useGanttStore = create<GanttState>((set, get) => ({
@@ -137,6 +139,7 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   projectFilterOpen: false,
   baselinePhases: null,
   showBaseline: false,
+  activeBaselineId: null,
 
   setZoom: (zoom) => set({ zoom }),
   setDensity: (density) => set({ density }),
@@ -192,6 +195,7 @@ export const useGanttStore = create<GanttState>((set, get) => ({
 
   setBaselinePhases: (baselinePhases) => set({ baselinePhases }),
   toggleShowBaseline: () => set((s) => ({ showBaseline: !s.showBaseline })),
+  setActiveBaselineId: (activeBaselineId) => set({ activeBaselineId }),
 
   pushUndo: (entry) => set((s) => ({
     undoStack: [entry, ...s.undoStack].slice(0, UNDO_MAX),

@@ -27,8 +27,8 @@ import {
 import { restoreMember, getContactsForPlanning, assignExistingContactToPlanning } from "@/lib/actions/members";
 import { getOrCreateShareToken, revokeShareToken } from "@/lib/actions/share";
 import { importLegacyPlanningJSON, updatePlanningFromJSON } from "@/lib/actions/plannings";
-import { createBaseline, deleteBaseline } from "@/lib/actions/baseline";
-import type { BaselineRow } from "@/lib/db/queries";
+import { createBaseline, deleteBaselineById, getBaselineById } from "@/lib/actions/baseline";
+import type { BaselineRow, BaselineMeta } from "@/lib/db/queries";
 import type { GanttProps } from "@/components/gantt/types";
 import type { GanttData } from "@/lib/db/queries";
 import type { UndoEntry } from "@/store/ganttStore";
@@ -36,13 +36,14 @@ import styles from "./GanttView.module.css";
 
 interface GanttViewProps extends GanttProps {
   initialData: GanttData;
-  /** Premier membre du planning — utilisé pour le heartbeat demo (Jalon 5: auth session) */
   demoMemberId?: string;
-  /** Baseline chargée côté serveur au démarrage (null si aucune) */
+  /** Snapshot de la baseline la plus récente (pour affichage immédiat au chargement) */
   initialBaseline?: BaselineRow | null;
+  /** Liste des baselines (metadata seule, sans snapshot) */
+  initialBaselines?: BaselineMeta[];
 }
 
-export function GanttView({ initialData, demoMemberId, initialBaseline, ...props }: GanttViewProps) {
+export function GanttView({ initialData, demoMemberId, initialBaseline, initialBaselines, ...props }: GanttViewProps) {
   const ganttRef = useRef<HTMLDivElement>(null);
   const importJsonRef = useRef<HTMLInputElement>(null);
   const [importPending, setImportPending] = useState(false);
@@ -80,14 +81,22 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
     editTarget, closeEdit,
     baselinePhases, setBaselinePhases,
     showBaseline, toggleShowBaseline,
+    activeBaselineId, setActiveBaselineId,
   } = useGanttStore();
 
   const hasBaseline = baselinePhases !== null;
 
-  // Initialise le store avec la baseline chargée côté serveur
+  // Liste locale des baselines (metadata)
+  const [baselineList, setBaselineList] = useState<BaselineMeta[]>(initialBaselines ?? []);
+  const [baselineName, setBaselineName] = useState("");
+  const [baselineCreating, setBaselineCreating] = useState(false);
+
+  // Initialise le store avec la baseline la plus récente au chargement
   useEffect(() => {
     if (initialBaseline) {
       setBaselinePhases(initialBaseline.phases);
+      setActiveBaselineId(initialBaseline.id);
+      // showBaseline reste false : l'utilisateur active manuellement
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -522,21 +531,43 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
     XLSX.writeFile(wb, `${safeName}_planning.xlsx`);
   };
 
-  // ── Baseline ────────────────────────────────────────────────────────────────
-  const handleCreateBaseline = async () => {
-    const today = new Date().toLocaleDateString("fr-FR");
-    await createBaseline(props.planningId, `Baseline du ${today}`);
-    const snapshot = Object.fromEntries(
-      liveData.phases.map((p) => [p.id, { startDate: p.startDate, endDate: p.endDate }])
-    );
-    setBaselinePhases(snapshot);
+  // ── Baseline (multi) ────────────────────────────────────────────────────────
+  const handleCreateBaseline = async (name?: string) => {
+    setBaselineCreating(true);
+    try {
+      const label = (name ?? baselineName).trim() || `Baseline du ${new Date().toLocaleDateString("fr-FR")}`;
+      const row = await createBaseline(props.planningId, label);
+      const meta: BaselineMeta = { id: row.id, name: row.name, createdAt: row.createdAt };
+      setBaselineList((prev) => [meta, ...prev]);
+      setBaselinePhases(row.phases);
+      setActiveBaselineId(row.id);
+      setBaselineName("");
+      if (!showBaseline) toggleShowBaseline();
+    } finally {
+      setBaselineCreating(false);
+    }
+  };
+
+  const handleSelectBaseline = async (id: string) => {
+    if (id === activeBaselineId) {
+      toggleShowBaseline();
+      return;
+    }
+    const row = await getBaselineById(id);
+    if (!row) return;
+    setBaselinePhases(row.phases);
+    setActiveBaselineId(id);
     if (!showBaseline) toggleShowBaseline();
   };
 
-  const handleDeleteBaseline = async () => {
-    await deleteBaseline(props.planningId);
-    setBaselinePhases(null);
-    if (showBaseline) toggleShowBaseline();
+  const handleDeleteBaselineById = async (id: string) => {
+    await deleteBaselineById(id);
+    setBaselineList((prev) => prev.filter((b) => b.id !== id));
+    if (id === activeBaselineId) {
+      setBaselinePhases(null);
+      setActiveBaselineId(null);
+      if (showBaseline) toggleShowBaseline();
+    }
   };
 
   // ── Share link ──────────────────────────────────────────────────────────────
@@ -651,11 +682,15 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, ...props
         showClosures={showClosures}
         onToggleHolidays={toggleHolidays}
         onToggleClosures={toggleClosures}
-        hasBaseline={hasBaseline}
+        baselines={baselineList}
+        activeBaselineId={activeBaselineId}
         showBaseline={showBaseline}
-        onToggleBaseline={toggleShowBaseline}
+        baselineName={baselineName}
+        baselineCreating={baselineCreating}
+        onBaselineNameChange={setBaselineName}
+        onSelectBaseline={handleSelectBaseline}
         onCreateBaseline={handleCreateBaseline}
-        onDeleteBaseline={handleDeleteBaseline}
+        onDeleteBaselineById={handleDeleteBaselineById}
       />
 
       {/* Input file caché — import JSON */}

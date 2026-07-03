@@ -56,12 +56,16 @@ interface ToolbarProps {
   onToggleClosures?: () => void;
   colorMode?: "domain" | "status" | "person";
   onColorModeChange?: (mode: "domain" | "status" | "person") => void;
-  // Baseline
-  hasBaseline?: boolean;
+  // Multi-baselines
+  baselines?: { id: string; name: string; createdAt: Date }[];
+  activeBaselineId?: string | null;
   showBaseline?: boolean;
-  onToggleBaseline?: () => void;
-  onCreateBaseline?: () => void;
-  onDeleteBaseline?: () => void;
+  baselineName?: string;
+  baselineCreating?: boolean;
+  onBaselineNameChange?: (name: string) => void;
+  onSelectBaseline?: (id: string) => void;
+  onCreateBaseline?: (name?: string) => void;
+  onDeleteBaselineById?: (id: string) => void;
 }
 
 const ZOOM_LEVELS: ZoomLevel[] = ["1m", "3m", "6m", "12m"];
@@ -111,11 +115,15 @@ export function Toolbar({
   onToggleClosures,
   colorMode,
   onColorModeChange,
-  hasBaseline = false,
+  baselines = [],
+  activeBaselineId,
   showBaseline = false,
-  onToggleBaseline,
+  baselineName = "",
+  baselineCreating = false,
+  onBaselineNameChange,
+  onSelectBaseline,
   onCreateBaseline,
-  onDeleteBaseline,
+  onDeleteBaselineById,
 }: ToolbarProps) {
   const hasFilter = !!(filterStart || filterEnd);
 
@@ -290,24 +298,53 @@ export function Toolbar({
 
               <div className={styles.dropdownDivider} />
 
-              {/* Baseline */}
-              <p className={styles.dropdownSection}>Plan de référence</p>
-              {hasBaseline && (
-                <button className={styles.dropdownItem} onClick={onToggleBaseline}>
-                  <span className={styles.dropdownCheck}>{showBaseline ? "✓" : ""}</span>
-                  Afficher la baseline
+              {/* Multi-baselines */}
+              <p className={styles.dropdownSection}>Plans de référence</p>
+              {baselines.map((b) => {
+                const isActive = b.id === activeBaselineId;
+                const d = new Date(b.createdAt);
+                const label = `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}`;
+                return (
+                  <div key={b.id} className={styles.baselineRow}>
+                    <button
+                      className={styles.baselineItemBtn}
+                      onClick={() => onSelectBaseline?.(b.id)}
+                      title={b.name}
+                    >
+                      <span className={styles.dropdownCheck}>
+                        {isActive ? (showBaseline ? "✓" : "○") : ""}
+                      </span>
+                      <span className={styles.baselineName}>{b.name}</span>
+                      <span className={styles.baselineDate}>{label}</span>
+                    </button>
+                    <button
+                      className={styles.baselineDelete}
+                      onClick={() => onDeleteBaselineById?.(b.id)}
+                      title="Supprimer cette baseline"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+              <div className={styles.baselineCreate}>
+                <input
+                  className={styles.baselineInput}
+                  placeholder="Nom de la baseline…"
+                  value={baselineName}
+                  onChange={(e) => onBaselineNameChange?.(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") onCreateBaseline?.(); }}
+                  disabled={baselineCreating}
+                />
+                <button
+                  className={styles.baselineAddBtn}
+                  onClick={() => onCreateBaseline?.()}
+                  disabled={baselineCreating}
+                  title="Créer la baseline"
+                >
+                  {baselineCreating ? "…" : "+"}
                 </button>
-              )}
-              <button className={styles.dropdownItem} onClick={onCreateBaseline}>
-                <span className={styles.dropdownCheck} />
-                {hasBaseline ? "Recréer la baseline" : "Créer une baseline"}
-              </button>
-              {hasBaseline && (
-                <button className={styles.dropdownItem} onClick={onDeleteBaseline} style={{ color: "#DC2626" }}>
-                  <span className={styles.dropdownCheck} />
-                  Supprimer la baseline
-                </button>
-              )}
+              </div>
 
               <div className={styles.dropdownDivider} />
 

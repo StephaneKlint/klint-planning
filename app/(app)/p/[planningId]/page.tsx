@@ -3,7 +3,7 @@
  */
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { getGanttData, getLatestBaselineForPlanning, listPlanningsForUser } from "@/lib/db/queries";
+import { getGanttData, getLatestBaselineForPlanning, listBaselinesForPlanning, listPlanningsForUser } from "@/lib/db/queries";
 import { GanttView } from "./GanttView";
 
 interface Props {
@@ -25,9 +25,10 @@ export default async function PlanningPage({ params }: Props) {
     }
   }
 
-  const [data, initialBaseline] = await Promise.all([
+  const [data, initialBaseline, initialBaselines] = await Promise.all([
     getGanttData(planningId),
     getLatestBaselineForPlanning(planningId),
+    listBaselinesForPlanning(planningId),
   ]);
   if (!data) notFound();
 
@@ -42,6 +43,7 @@ export default async function PlanningPage({ params }: Props) {
     <GanttView
       initialData={data}
       initialBaseline={initialBaseline}
+      initialBaselines={initialBaselines}
       demoMemberId={currentMemberId}
       planningId={planningId}
       domains={data.domains}
