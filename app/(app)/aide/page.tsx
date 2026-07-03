@@ -369,7 +369,7 @@ const SECTIONS: SectionDef[] = [
   { id: "edit",         num: "5",  emoji: "✏️", title: "Édition phases et jalons",            keywords: "éditer phase jalon dates statut avancement couleur note assigné responsable sélection multiple recherche palette commandes ctrl k fermer overlay dupliquer duplication copier éléments items ateliers livrables tickets cas recette importer import bridge claude fichier json md csv statut todo doing done fait annulé avancement automatique progress" },
   { id: "bulkbar",      num: "6",  emoji: "☑️", title: "Sélection multiple et actions groupées", keywords: "sélection multiple phases jalons bulkbar barre actions groupées ctrl clic multi select statut dupliquer vers lot confirmer désélectionner" },
   { id: "raccourcis",   num: "7",  emoji: "⌨️", title: "Raccourcis clavier",                  keywords: "raccourcis clavier ctrl k esc flèches zoom selection escape undo annuler ctrl z" },
-  { id: "baseline",     num: "8",  emoji: "📌", title: "Plan de référence (Baseline)",        keywords: "baseline plan référence comparaison barre bleue dates décalées snapshot toggle afficher masquer créer supprimer" },
+  { id: "baseline",     num: "8",  emoji: "📌", title: "Plans de référence (Baselines)",      keywords: "baseline plan référence multi plusieurs nommée comparaison barre bleue dates décalées snapshot toggle afficher masquer créer supprimer glissement retard raccourci écart kick-off copil avenant avant après liste dropdown" },
   { id: "share",        num: "9",  emoji: "🔗", title: "Lien de partage (lecture seule)",     keywords: "partager partage lien url lecture seule share token public sans connexion révoquer copier bannière" },
   { id: "synthese",     num: "10", emoji: "📈", title: "Vue Synthèse",                        keywords: "synthèse kpi indicateurs jalons retard risque alertes avancement domaine collapsible ouvrir fermer sous-projets lots chips statuts J+30 J+60 J+90" },
   { id: "ressources",   num: "11", emoji: "👥", title: "Vue Ressources",                      keywords: "ressources membres responsables ajouter modifier supprimer attribution phases planning email initiales couleur picker existant" },
@@ -767,81 +767,220 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
 
   baseline: (
     <section style={S.section}>
-      <h2 style={S.h2}><span style={S.pill}>8</span> Plan de r&#233;f&#233;rence (Baseline)</h2>
+      <h2 style={S.h2}><span style={S.pill}>8</span> Plans de r&#233;f&#233;rence (Baselines)</h2>
       <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
-        La baseline est une <strong>photographie figée</strong> de toutes les dates du planning à un instant T — généralement la version validée par le sponsor au kick-off. Elle sert de <strong>ligne de référence</strong> pour mesurer les glissements au fil du projet, sans modifier le planning réel.
+        Une baseline est une <strong>photographie figée</strong> de toutes les dates du planning à un instant précis (kick-off, COPIL, avenant…). Elle s&apos;affiche sous forme de <strong>barres bleues</strong> sous les phases pour visualiser immédiatement les écarts. Vous pouvez avoir <strong>plusieurs baselines</strong> par planning et basculer de l&apos;une à l&apos;autre.
       </p>
 
-      {/* Cas d'usage */}
-      <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "12px 16px", marginBottom: 20 }}>
-        <div style={{ fontWeight: 700, fontSize: 12, color: "#0369A1", marginBottom: 8 }}>Quand utiliser la baseline ?</div>
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: 6 }}>
+      {/* ── Visuel 1 : AVANT / APRÈS ──────────────────────────────── */}
+      <Mock label="Avant / Après : ce que la baseline vous montre">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {/* AVANT */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 8 }}>
+              Sans baseline activée
+            </div>
+            <svg viewBox="0 0 240 130" width="100%" style={{ display: "block", borderRadius: 8, border: "1px solid #E2E8F0", background: "#F8FAFC" }}>
+              {/* En-tête mois */}
+              <rect x="70" y="0" width="170" height="16" fill="#F1F5F9" />
+              <text x="105" y="11" fontSize="7" fill="#94A3B8" fontWeight="600">Juil.</text>
+              <text x="155" y="11" fontSize="7" fill="#94A3B8" fontWeight="600">Août</text>
+              <text x="205" y="11" fontSize="7" fill="#94A3B8" fontWeight="600">Sept.</text>
+              {/* Séparateurs colonnes */}
+              {[70,120,170,220].map(x => <line key={x} x1={x} y1="16" x2={x} y2="130" stroke="#E2E8F0" strokeWidth="0.5"/>)}
+              {/* Labels phases */}
+              <text x="4" y="34" fontSize="8" fill="#475569" fontWeight="600">Cadrage</text>
+              <text x="4" y="62" fontSize="8" fill="#475569" fontWeight="600">Dev.</text>
+              <text x="4" y="90" fontSize="8" fill="#475569" fontWeight="600">Recette</text>
+              <text x="4" y="118" fontSize="8" fill="#475569" fontWeight="600">Formation</text>
+              {/* Séparateur label/timeline */}
+              <line x1="70" y1="16" x2="70" y2="130" stroke="#CBD5E1" strokeWidth="1"/>
+              {/* Phases : positions initiales (plan de départ) */}
+              <rect x="72" y="23" width="90" height="16" rx="4" fill="#6366F1" />
+              <text x="76" y="34" fontSize="7" fill="#fff" fontWeight="600">Ateliers cadrage</text>
+              <rect x="120" y="51" width="80" height="16" rx="4" fill="#0EA5E9" />
+              <text x="124" y="62" fontSize="7" fill="#fff" fontWeight="600">Développement</text>
+              <rect x="160" y="79" width="60" height="16" rx="4" fill="#10B981" />
+              <text x="164" y="90" fontSize="7" fill="#fff" fontWeight="600">Recette</text>
+              <rect x="195" y="107" width="42" height="16" rx="4" fill="#F59E0B" />
+              <text x="199" y="118" fontSize="7" fill="#fff" fontWeight="600">Formation</text>
+              {/* Légende */}
+              <text x="72" y="128" fontSize="6" fill="#94A3B8">Dates actuelles uniquement — aucune comparaison possible</text>
+            </svg>
+          </div>
+          {/* APRÈS */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#0369A1", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 8 }}>
+              Avec baseline activée ✓
+            </div>
+            <svg viewBox="0 0 240 130" width="100%" style={{ display: "block", borderRadius: 8, border: "1.5px solid #BAE6FD", background: "#F0F9FF" }}>
+              {/* En-tête mois */}
+              <rect x="70" y="0" width="170" height="16" fill="#E0F2FE" />
+              <text x="105" y="11" fontSize="7" fill="#0369A1" fontWeight="600">Juil.</text>
+              <text x="155" y="11" fontSize="7" fill="#0369A1" fontWeight="600">Août</text>
+              <text x="205" y="11" fontSize="7" fill="#0369A1" fontWeight="600">Sept.</text>
+              {[70,120,170,220].map(x => <line key={x} x1={x} y1="16" x2={x} y2="130" stroke="#BAE6FD" strokeWidth="0.5"/>)}
+              {/* Labels */}
+              <text x="4" y="34" fontSize="8" fill="#475569" fontWeight="600">Cadrage</text>
+              <text x="4" y="62" fontSize="8" fill="#475569" fontWeight="600">Dev.</text>
+              <text x="4" y="90" fontSize="8" fill="#475569" fontWeight="600">Recette</text>
+              <text x="4" y="118" fontSize="8" fill="#475569" fontWeight="600">Formation</text>
+              <line x1="70" y1="16" x2="70" y2="130" stroke="#93C5FD" strokeWidth="1"/>
+              {/* Cadrage : inchangé */}
+              <rect x="72" y="23" width="90" height="16" rx="4" fill="#6366F1" />
+              <text x="76" y="34" fontSize="7" fill="#fff" fontWeight="600">Ateliers cadrage</text>
+              {/* Pas de barre bleue → aucun écart */}
+              {/* Dev : décalé de +2 semaines → barre bleue à gauche */}
+              <rect x="134" y="51" width="80" height="16" rx="4" fill="#0EA5E9" />
+              <text x="138" y="62" fontSize="7" fill="#fff" fontWeight="600">Développement +2sem</text>
+              <rect x="120" y="69" width="80" height="4" rx="2" fill="#3B82F6" opacity="0.85"/>
+              <text x="120" y="77" fontSize="6" fill="#2563EB" fontWeight="600">← baseline (position d&apos;origine)</text>
+              {/* Recette : raccourcie */}
+              <rect x="180" y="79" width="40" height="16" rx="4" fill="#10B981" />
+              <text x="184" y="90" fontSize="7" fill="#fff" fontWeight="600">Recette</text>
+              <rect x="160" y="97" width="60" height="4" rx="2" fill="#3B82F6" opacity="0.85"/>
+              <text x="160" y="105" fontSize="6" fill="#2563EB" fontWeight="600">← baseline (durée prévue plus longue)</text>
+              {/* Formation : identique */}
+              <rect x="195" y="107" width="42" height="16" rx="4" fill="#F59E0B" />
+              <text x="199" y="118" fontSize="7" fill="#fff" fontWeight="600">Formation</text>
+              <text x="72" y="128" fontSize="6" fill="#0369A1">Les barres bleues révèlent les glissements</text>
+            </svg>
+          </div>
+        </div>
+        {/* Légende barres bleues */}
+        <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" as const }}>
           {[
-            ["🚀 Kick-off", "Créez la baseline juste après validation du planning initial par le sponsor ou le comité de pilotage. C'est le \"contrat de départ\"."],
-            ["📊 COPIL / Réunion d'avancement", "Activez la baseline avant chaque comité pour montrer en un coup d'œil les phases décalées depuis le plan d'origine."],
-            ["📝 Après une replanification", "Supprimez l'ancienne baseline et créez-en une nouvelle après validation d'un avenant ou d'une révision majeure du planning."],
-            ["🤝 Reporting client / MOA", "Partagez le lien en lecture seule (section 9) avec la baseline activée pour que le client voie les écarts sans accéder à l'édition."],
-          ].map(([title, desc]) => (
-            <div key={title as string} style={{ display: "flex", gap: 8, alignItems: "flex-start" as const }}>
-              <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{title}</span>
-              <span style={{ fontSize: 12, color: "#475569" }}>{desc}</span>
+            { color: "#3B82F6", text: "Barre bleue = position/durée d'origine de la phase" },
+            { color: "#6366F1", text: "Capsule colorée = planning actuel (modifiable)" },
+          ].map(({ color, text }) => (
+            <div key={text} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#475569" }}>
+              <div style={{ width: 24, height: 4, borderRadius: 2, background: color, flexShrink: 0 }} />
+              {text}
             </div>
           ))}
         </div>
-      </div>
+      </Mock>
 
-      {/* Mock comparaison */}
-      <Mock label="Lecture des écarts dans le Gantt">
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: 16, fontSize: 12 }}>
+      {/* ── Visuel 2 : lecture d'un écart (zoom) ──────────────── */}
+      <Mock label="Lire un écart : 3 situations">
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 18 }}>
+
+          {/* Cas 1 — Phase inchangée */}
           <div>
-            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, fontWeight: 600 }}>Phase inchangée</div>
-            <div style={{ width: 200, height: 22, background: "#86EFAC", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, color: "#166534" }}>Recette unitaire</span>
-            </div>
-            <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 3 }}>Pas de barre bleue — aucun écart</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, fontWeight: 600 }}>Phase décalée (retard)</div>
-            <div style={{ position: "relative" as const, height: 46 }}>
-              <div style={{ position: "absolute" as const, left: 40, top: 0, width: 200, height: 22, background: "#FDE68A", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, color: "#92400E" }}>Développements B2B ← décalé</span>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#166534", marginBottom: 6 }}>✅ Phase inchangée — aucune barre bleue</div>
+            <div style={{ position: "relative" as const, height: 24 }}>
+              <div style={{ position: "absolute" as const, left: 0, top: 0, width: 180, height: 20, background: "#10B981", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#fff" }}>Recette unitaire</span>
               </div>
-              <div style={{ position: "absolute" as const, left: 0, top: 28, width: 190, height: 4, background: "#3B82F6", borderRadius: 2 }} />
-              <div style={{ position: "absolute" as const, left: 0, top: 36, fontSize: 10, color: "#3B82F6", fontWeight: 600 }}>Baseline : position d&apos;origine</div>
+            </div>
+            <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>Dates non bougées depuis la baseline → aucun écart à signaler.</div>
+          </div>
+
+          {/* Cas 2 — Retard */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#92400E", marginBottom: 6 }}>⚠️ Phase décalée en retard — barre bleue à gauche de la capsule</div>
+            <div style={{ position: "relative" as const, height: 42 }}>
+              {/* Barre bleue (origine) */}
+              <div style={{ position: "absolute" as const, left: 0, top: 22, width: 200, height: 5, background: "#3B82F6", borderRadius: 3 }} />
+              <div style={{ position: "absolute" as const, left: 0, top: 30, fontSize: 10, color: "#2563EB", fontWeight: 600 }}>📌 Baseline : 1er juil. → 31 juil.</div>
+              {/* Capsule actuelle (décalée à droite) */}
+              <div style={{ position: "absolute" as const, left: 48, top: 0, width: 200, height: 20, background: "#F59E0B", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#fff" }}>Développement (maintenant : 15 juil. → 14 août)</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>La capsule est à droite de la barre → phase démarrée en retard. L&apos;écart est visible d&apos;un coup d&apos;œil (ici ~2 semaines).</div>
+          </div>
+
+          {/* Cas 3 — Phase raccourcie */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#1D4ED8", marginBottom: 6 }}>📏 Phase raccourcie — barre bleue plus longue que la capsule</div>
+            <div style={{ position: "relative" as const, height: 42 }}>
+              <div style={{ position: "absolute" as const, left: 0, top: 22, width: 220, height: 5, background: "#3B82F6", borderRadius: 3 }} />
+              <div style={{ position: "absolute" as const, left: 0, top: 30, fontSize: 10, color: "#2563EB", fontWeight: 600 }}>📌 Baseline : durée prévue 8 semaines</div>
+              <div style={{ position: "absolute" as const, left: 0, top: 0, width: 130, height: 20, background: "#6366F1", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#fff" }}>Formation (réduite à 5 semaines)</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>La barre bleue dépasse à droite → la phase a été comprimée (gain de temps ou réduction de périmètre).</div>
+          </div>
+        </div>
+      </Mock>
+
+      {/* ── Visuel 3 : interface multi-baselines ──────────────── */}
+      <Mock label="Interface multi-baselines dans la barre d&apos;outils">
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" as const }}>
+          {/* Mockup dropdown */}
+          <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 10, padding: "8px 0", width: 220, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", flexShrink: 0 }}>
+            <div style={{ padding: "2px 12px 6px", fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase" as const, letterSpacing: "0.07em" }}>Plans de référence</div>
+            {[
+              { name: "COPIL #2 — Avenant", date: "03/07", active: true },
+              { name: "Kick-off validé", date: "15/06", active: false },
+              { name: "Baseline initiale", date: "02/05", active: false },
+            ].map((b) => (
+              <div key={b.name} style={{ display: "flex", alignItems: "center", padding: "4px 4px 4px 8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, padding: "3px 4px", borderRadius: 6, background: b.active ? "#EFF6FF" : "transparent" }}>
+                  <span style={{ width: 14, fontSize: 10, color: "#1D4ED8", textAlign: "center" as const }}>{b.active ? "✓" : ""}</span>
+                  <span style={{ fontSize: 12, fontWeight: b.active ? 700 : 500, color: b.active ? "#1D4ED8" : "#374151", flex: 1 }}>{b.name}</span>
+                  <span style={{ fontSize: 10, color: "#9CA3AF" }}>{b.date}</span>
+                </div>
+                <span style={{ fontSize: 10, color: "#9CA3AF", padding: "0 6px", cursor: "pointer" }}>✕</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 4, padding: "6px 8px 2px", borderTop: "1px solid #F1F5F9", marginTop: 4 }}>
+              <div style={{ flex: 1, height: 26, border: "1px solid #E2E8F0", borderRadius: 5, display: "flex", alignItems: "center", paddingLeft: 8, fontSize: 11, color: "#9CA3AF" }}>
+                Nom de la baseline…
+              </div>
+              <div style={{ width: 26, height: 26, background: "#3B82F6", borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, fontWeight: 300 }}>+</div>
             </div>
           </div>
-          <div>
-            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6, fontWeight: 600 }}>Phase raccourcie</div>
-            <div style={{ position: "relative" as const, height: 46 }}>
-              <div style={{ position: "absolute" as const, left: 0, top: 0, width: 110, height: 22, background: "#C7D2FE", borderRadius: 5, display: "flex", alignItems: "center" as const, paddingLeft: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, color: "#3730A3" }}>Formation</span>
-              </div>
-              <div style={{ position: "absolute" as const, left: 0, top: 28, width: 200, height: 4, background: "#3B82F6", borderRadius: 2 }} />
-              <div style={{ position: "absolute" as const, left: 0, top: 36, fontSize: 10, color: "#3B82F6", fontWeight: 600 }}>Baseline : durée prévue plus longue</div>
+          {/* Explications */}
+          <div style={{ fontSize: 12, color: "#475569", display: "flex", flexDirection: "column" as const, gap: 10, flex: 1, minWidth: 180 }}>
+            <div><strong style={{ color: "#1D4ED8" }}>✓ COPIL #2</strong> — baseline active, barres bleues visibles dans le Gantt</div>
+            <div><strong>○ Kick-off validé</strong> — cliquer pour basculer sur ce snapshot</div>
+            <div><strong>○ Baseline initiale</strong> — archive consultable à tout moment</div>
+            <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 8 }}>
+              <strong>Champ + bouton +</strong> → taper un nom et créer une nouvelle baseline à cet instant
+            </div>
+            <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 6, padding: "6px 8px", fontSize: 11 }}>
+              💡 Cliquer sur la baseline active (✓) bascule son affichage sans la désélectionner.
             </div>
           </div>
         </div>
       </Mock>
 
-      <How title="Créer la baseline (1 seule par planning)">
+      {/* ── Cas d'usage ──────────────────────────────────────────── */}
+      <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "12px 16px", marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: "#0369A1", marginBottom: 8 }}>Quand créer une baseline ?</div>
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 6 }}>
+          {([
+            ["🚀 Kick-off", "Juste après validation du planning initial par le sponsor. C&apos;est le « contrat de départ »."],
+            ["📊 Avant chaque COPIL", "Créez « COPIL #1 », « COPIL #2 »… pour garder l&apos;historique des glissements comité par comité."],
+            ["📝 Après un avenant", "Validez le nouvel avenant → créez « Avenant 1 — dd/mm » comme nouveau plan de référence, en conservant les anciennes baselines."],
+            ["🤝 Reporting client", "Partagez le lien lecture seule (section 9) avec la baseline activée : le client voit les écarts sans pouvoir modifier."],
+          ] as [string, string][]).map(([title, desc]) => (
+            <div key={title} style={{ display: "flex", gap: 8, alignItems: "flex-start" as const }}>
+              <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{title}</span>
+              <span style={{ fontSize: 12, color: "#475569" }} dangerouslySetInnerHTML={{ __html: desc }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <How title="Créer une baseline nommée">
         <Step n={1}>Dans la barre d&apos;outils, cliquez sur <TB icon="👁">Affichage ▾</TB>.</Step>
-        <Step n={2}>Sélectionnez <UI>Baseline → Créer une baseline</UI>. Toutes les dates de phases et jalons sont sauvegardées à cet instant.</Step>
-        <Step n={3}>Si une baseline existait déjà, elle est <strong>remplacée</strong> par la nouvelle. Il n&apos;y a qu&apos;un seul snapshot par planning.</Step>
+        <Step n={2}>En bas de la section <strong>Plans de référence</strong>, tapez un nom dans le champ (ex : <em>Kick-off 09/07</em>) et appuyez sur <Kbd>Enter</Kbd> ou cliquez sur <UI>+</UI>.</Step>
+        <Step n={3}>Klint Planning prend un snapshot de toutes les dates de phases et jalons à cet instant et la baseline devient active (barres bleues visibles).</Step>
       </How>
-      <How title="Afficher et lire les écarts">
-        <Step n={1}>Dans <TB icon="👁">Affichage ▾</TB>, activez <UI>Afficher la baseline</UI>.</Step>
-        <Step n={2}>Les phases dont les dates ont bougé affichent une <strong>barre bleue (4 px)</strong> juste en dessous de la capsule.</Step>
-        <Step n={3}><strong>Barre décalée à gauche</strong> de la capsule actuelle → phase prise en retard. <strong>Barre plus longue</strong> que la capsule → phase raccourcie. <strong>Barre plus courte</strong> → phase allongée. <strong>Pas de barre</strong> → aucun écart.</Step>
-        <Step n={4}>Survolez la barre bleue pour voir un <strong>tooltip</strong> avec les dates d&apos;origine exactes (début → fin de la baseline).</Step>
+      <How title="Afficher et masquer les barres bleues">
+        <Step n={1}>Dans le dropdown, cliquez sur une baseline pour l&apos;activer (<strong>✓</strong>) — les barres bleues apparaissent sur le Gantt.</Step>
+        <Step n={2}>Cliquez à nouveau sur la baseline active pour <strong>masquer temporairement</strong> les barres (✓ → ○) sans la désélectionner.</Step>
+        <Step n={3}>Cliquez sur une autre baseline pour basculer sur son snapshot.</Step>
       </How>
-      <How title="Replanifier : remplacer la baseline">
-        <Step n={1}>Après validation d&apos;une révision majeure (avenant, replanification), recréez une baseline pour repartir d&apos;un nouveau plan de référence.</Step>
-        <Step n={2}>Allez dans <TB icon="👁">Affichage ▾</TB> → <UI>Baseline → Créer une baseline</UI>. L&apos;ancienne est automatiquement remplacée.</Step>
+      <How title="Supprimer une baseline individuelle">
+        <Step n={1}>Dans le dropdown, cliquez sur <UI>✕</UI> à droite de la baseline à supprimer.</Step>
+        <Step n={2}>Si c&apos;était la baseline active, les barres bleues disparaissent. Les autres baselines restent intactes.</Step>
       </How>
-      <How title="Supprimer la baseline">
-        <Step n={1}><TB icon="👁">Affichage ▾</TB> → <UI>Baseline → Supprimer la baseline</UI>. La suppression est définitive — les barres bleues disparaissent.</Step>
-      </How>
-      <Tip>Bonne pratique : nommez chaque baseline selon son contexte (ex : <em>Kick-off 15/06</em>, <em>Avenant 1 — 10/09</em>) pour garder une trace dans le nom affiché dans la toolbar.</Tip>
+      <Tip>Convention de nommage recommandée : <em>Kick-off 09/07</em> · <em>COPIL #1 — 03/09</em> · <em>Avenant 1 — 15/10</em>. Un nom daté permet de retrouver immédiatement le contexte lors d&apos;une réunion sans regarder la colonne de date.</Tip>
     </section>
   ),
 
