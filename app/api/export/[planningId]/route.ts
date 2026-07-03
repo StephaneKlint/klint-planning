@@ -7,13 +7,28 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { getGanttData } from "@/lib/db/queries";
+import { auth } from "@/auth";
+import { getGanttData, listPlanningsForUser } from "@/lib/db/queries";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ planningId: string }> }
 ) {
   const { planningId } = await params;
+
+  const session = await auth();
+  const userId  = session?.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
+  const role = session?.user?.role ?? "contact";
+  if (role !== "admin") {
+    const accessible = await listPlanningsForUser(userId);
+    if (!accessible.find((p) => p.id === planningId)) {
+      return NextResponse.json({ error: "Planning introuvable" }, { status: 404 });
+    }
+  }
 
   const data = await getGanttData(planningId);
   if (!data) {
