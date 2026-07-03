@@ -259,6 +259,20 @@ export async function updateContact(input: z.infer<typeof UpdateContactSchema>) 
   revalidatePath("/ressources");
 }
 
+// ── Autoriser/refuser les connexions internationales pour un utilisateur ──────
+
+export async function setUserAllowInternational(userId: string, allow: boolean) {
+  await requireAuth().then(({ role }) => {
+    if (role !== "admin") throw new Error("Réservé aux administrateurs.");
+  });
+
+  await db.update(users)
+    .set({ allowInternational: allow })
+    .where(eq(users.id, userId));
+
+  revalidatePath("/parametres");
+}
+
 // ── Lister les contacts assignables à un planning ─────────────────────────────
 
 export async function getContactsForPlanning(planningId: string): Promise<{

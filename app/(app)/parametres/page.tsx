@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { listPlannings, listPlanningsForUser, getGanttData, listUsersNotInPlanning, getActivityLog, listConnectionLogs, listAllDirectoryContacts } from "@/lib/db/queries";
-import { getAppSettings, getPermissions } from "@/lib/actions/appSettings";
+import { getAppSettings, getPermissions, getSecuritySettings } from "@/lib/actions/appSettings";
 import type { ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact, UserRole } from "@/lib/db/queries";
 import { ParametresTabs } from "./ParametresTabs";
 import { PlanningSelector } from "./PlanningSelector";
@@ -21,10 +21,11 @@ export default async function ParametresPage({ searchParams }: Props) {
   const userRole: UserRole = (session?.user?.role ?? "contact") as UserRole;
   const isAdmin = userRole === "admin";
 
-  const [planningList, appCfg, permissions] = await Promise.all([
+  const [planningList, appCfg, permissions, securitySettings] = await Promise.all([
     userId && !isAdmin ? listPlanningsForUser(userId) : listPlannings(),
     getAppSettings(),
     getPermissions(),
+    getSecuritySettings(),
   ]);
 
   if (!planningList.length) {
@@ -61,6 +62,7 @@ export default async function ParametresPage({ searchParams }: Props) {
         appCfg={appCfg}
         userRole={userRole}
         permissions={permissions}
+        securitySettings={securitySettings}
         existingUsers={existingUsers as ExistingUserRow[]}
         activityEntries={activityEntries as ActivityEntry[]}
         connLogs={connLogs as ConnectionLogRow[]}

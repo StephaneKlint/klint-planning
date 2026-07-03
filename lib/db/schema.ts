@@ -43,6 +43,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash"),
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   role: text("role").notNull().default("contact"), // 'admin' | 'user' | 'contact'
+  allowInternational: boolean("allow_international").notNull().default(false),
 });
 
 // ---- Tokens d'invitation (lien "Définir mon mot de passe") ---------------
@@ -107,6 +108,7 @@ export const appSettings = pgTable("app_settings", {
   logoAlt:         varchar("logo_alt", { length: 100 }).default("Klint"),
   faviconDataUrl:  text("favicon_data_url"),                      // base64 ou null → favicon.svg
   permissionsJson: jsonb("permissions_json"),                     // matrice droits par rôle
+  securitySettings: jsonb("security_settings"),                   // { enabled, trustedCountries }
   updatedAt:       timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -413,6 +415,7 @@ export const connectionLogs = pgTable(
     city: text("city"),
     userAgent: text("user_agent"),
     isAlert: boolean("is_alert").notNull().default(false),
+    blocked: boolean("blocked").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("cl_by_user").on(t.userId), index("cl_created").on(t.createdAt)]

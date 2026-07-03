@@ -4,8 +4,9 @@ import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./Parametres.module.css";
 import type { GanttData, UserRole } from "@/lib/db/queries";
-import type { AppSettings } from "@/lib/actions/appSettings";
-import { savePermissions } from "@/lib/actions/appSettings";
+import type { AppSettings, SecuritySettings } from "@/lib/actions/appSettings";
+import { savePermissions, saveSecuritySettings } from "@/lib/actions/appSettings";
+import { setUserAllowInternational } from "@/lib/actions/members";
 import type { PermissionMatrix, RolePermRow } from "@/lib/permissions";
 import { DEFAULT_PERMISSIONS } from "@/lib/permissions";
 import { Icon } from "@/components/ui/Icon";
@@ -98,9 +99,10 @@ interface ParametresTabsProps {
   activityEntries?: ActivityEntry[];
   connLogs?: ConnectionLogRow[];
   directoryContacts?: DirectoryContact[];
+  securitySettings?: SecuritySettings;
 }
 
-export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = DEFAULT_PERMISSIONS, existingUsers = [], activityEntries = [], connLogs = [], directoryContacts = [] }: ParametresTabsProps) {
+export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = DEFAULT_PERMISSIONS, existingUsers = [], activityEntries = [], connLogs = [], directoryContacts = [], securitySettings = { enabled: true, trustedCountries: ["FR"] } }: ParametresTabsProps) {
   const router = useRouter();
   const visibleTabs = buildVisibleTabs(userRole, permissions);
   const [active, setActive] = useState<Tab>(() => visibleTabs[0]?.id ?? "general");
@@ -148,6 +150,12 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
   const [secConfirm, setSecConfirm]     = useState("");
   const [secMsg, setSecMsg]             = useState<{ ok: boolean; text: string } | null>(null);
   const [secPending, setSecPending]     = useState(false);
+
+  // ── Sécurité — géo-blocage ──────────────────────────────────────────────
+  const [geoEnabled, setGeoEnabled]     = useState(securitySettings.enabled);
+  const [geoCountries, setGeoCountries] = useState(securitySettings.trustedCountries.join(", "));
+  const [geoMsg, setGeoMsg]             = useState<{ ok: boolean; text: string } | null>(null);
+  const [geoPending, setGeoPending]     = useState(false);
 
   // Phase type form state
   const [newPTCode, setNewPTCode] = useState("");
@@ -1148,6 +1156,79 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
               <li>En cas d&apos;oubli, contactez un administrateur</li>
             </ul>
           </div>
+
+          {userRole === "admin" && (
+            <>
+              <hr style={{ border: "none", borderTop: "1px solid var(--klint-line)", margin: "28px 0 20px" }} />
+              <div style={{ maxWidth: 400 }}>
+                <p className={styles.fieldLabel} style={{ marginBottom: 6 }}>Géo-sécurité</p>
+                <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 12px" }}>
+                  Bloque la connexion des comptes qui se connectent depuis un pays hors de la liste de confiance
+                  (sauf comptes autorisés individuellement dans l&apos;onglet Répertoire — icône <Icon name="globe" size={11} aria-hidden />).
+                </p>
+
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, marginBottom: 12, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={geoEnabled}
+                    onChange={(e) => setGeoEnabled(e.target.checked)}
+                    disabled={geoPending}
+                  />
+                  Bloquer les connexions hors pays de confiance
+                </label>
+
+                <div className={styles.field} style={{ marginBottom: 14 }}>
+                  <label className={styles.fieldLabel} htmlFor="geoCountries">
+                    Pays de confiance (codes ISO à 2 lettres, séparés par des virgules)
+                  </label>
+                  <input
+                    id="geoCountries"
+                    type="text"
+                    placeholder="FR, BE, CH"
+                    value={geoCountries}
+                    onChange={(e) => setGeoCountries(e.target.value)}
+                    disabled={geoPending}
+                    style={{
+                      width: "100%", padding: "9px 12px", fontSize: 13,
+                      border: "1.5px solid var(--klint-line)", borderRadius: 8,
+                      fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+
+                {geoMsg && (
+                  <p style={{
+                    fontSize: 13, margin: "0 0 14px",
+                    color: geoMsg.ok ? "#16A34A" : "#DC2626",
+                    background: geoMsg.ok ? "#DCFCE7" : "#FEE2E2",
+                    borderRadius: 6, padding: "8px 12px",
+                  }}>
+                    {geoMsg.text}
+                  </p>
+                )}
+
+                <button
+                  className={styles.addBtn}
+                  disabled={geoPending}
+                  onClick={() => {
+                    const trustedCountries = geoCountries.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+                    if (geoEnabled && trustedCountries.length === 0) {
+                      setGeoMsg({ ok: false, text: "Indiquez au moins un pays de confiance, ou désactivez le blocage." });
+                      return;
+                    }
+                    setGeoPending(true);
+                    startTransition(async () => {
+                      await saveSecuritySettings({ enabled: geoEnabled, trustedCountries });
+                      setGeoPending(false);
+                      setGeoMsg({ ok: true, text: "Paramètres de géo-sécurité enregistrés." });
+                    });
+                  }}
+                >
+                  {geoPending ? "Enregistrement…" : "Enregistrer"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1720,6 +1801,20 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                           }}
                         >
                           <Icon name="link" size={13} aria-hidden />
+                        </button>
+                      )}
+
+                      {/* Autoriser/refuser les connexions internationales */}
+                      {c.role !== "contact" && (
+                        <button
+                          className={c.allowInternational ? styles.dirIconSuccessBtn : styles.dirIconBtn}
+                          disabled={isPending}
+                          title={c.allowInternational ? "Connexions internationales autorisées (clic pour restreindre à la France)" : "Connexions restreintes à la France (clic pour autoriser l'international)"}
+                          onClick={() => {
+                            startTransition(async () => { await setUserAllowInternational(c.userId, !c.allowInternational); refresh(); });
+                          }}
+                        >
+                          <Icon name="globe" size={13} aria-hidden />
                         </button>
                       )}
 

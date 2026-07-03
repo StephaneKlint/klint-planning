@@ -105,6 +105,38 @@ export async function saveAppLogo(logoDataUrl: string | null, logoAlt: string) {
   revalidatePath("/", "layout");
 }
 
+export type SecuritySettings = { enabled: boolean; trustedCountries: string[] };
+
+const DEFAULT_SECURITY_SETTINGS: SecuritySettings = { enabled: true, trustedCountries: ["FR"] };
+
+/** Paramètres de géo-sécurité (blocage connexion hors pays de confiance) */
+export async function getSecuritySettings(): Promise<SecuritySettings> {
+  const rows = await db
+    .select({ securitySettings: appSettings.securitySettings })
+    .from(appSettings)
+    .where(eq(appSettings.key, GLOBAL_KEY))
+    .limit(1);
+
+  const s = rows[0]?.securitySettings as Partial<SecuritySettings> | null | undefined;
+  if (!s) return DEFAULT_SECURITY_SETTINGS;
+  return {
+    enabled: s.enabled ?? DEFAULT_SECURITY_SETTINGS.enabled,
+    trustedCountries: Array.isArray(s.trustedCountries) ? s.trustedCountries : DEFAULT_SECURITY_SETTINGS.trustedCountries,
+  };
+}
+
+export async function saveSecuritySettings(settings: SecuritySettings) {
+  await db
+    .insert(appSettings)
+    .values({ key: GLOBAL_KEY, securitySettings: settings, logoAlt: "Klint" })
+    .onConflictDoUpdate({
+      target: appSettings.key,
+      set: { securitySettings: settings },
+    });
+
+  revalidatePath("/parametres");
+}
+
 /** Sauvegarde le favicon (dataUrl = null pour revenir au favicon par défaut) */
 export async function saveAppFavicon(faviconDataUrl: string | null) {
   await db

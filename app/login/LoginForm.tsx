@@ -25,7 +25,11 @@ export function LoginForm({ error }: { error?: boolean; verify?: boolean }) {
       });
 
       if (result?.error) {
-        setAuthError("Email ou mot de passe incorrect.");
+        setAuthError(
+          result.code === "geo-blocked"
+            ? "Connexion bloquée depuis ce pays. Contactez votre administrateur."
+            : "Email ou mot de passe incorrect."
+        );
       } else {
         router.push("/p");
         router.refresh();

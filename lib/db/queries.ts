@@ -455,6 +455,7 @@ export type DirectoryContact = {
   color: string | null;
   disabledAt: Date | null;
   role: UserRole;
+  allowInternational: boolean;
   plannings: { id: string; memberId: string; name: string; permission: string }[];
 };
 
@@ -468,6 +469,7 @@ export async function listAllDirectoryContacts(): Promise<DirectoryContact[]> {
       color:        planningMembers.color,
       disabledAt:   users.disabledAt,
       role:         users.role,
+      allowInternational: users.allowInternational,
       memberId:     planningMembers.id,
       planningId:   plannings.id,
       planningName: plannings.name,
@@ -489,6 +491,7 @@ export async function listAllDirectoryContacts(): Promise<DirectoryContact[]> {
         color:      row.color ?? null,
         disabledAt: row.disabledAt ?? null,
         role:       (row.role as UserRole) ?? "contact",
+        allowInternational: row.allowInternational ?? false,
         plannings:  [],
       });
     }
