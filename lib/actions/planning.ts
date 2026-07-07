@@ -268,6 +268,30 @@ export async function bulkUpdatePhaseStatus(input: z.infer<typeof BulkUpdateStat
 }
 
 // ---------------------------------------------------------------------------
+// Bulk delete
+// ---------------------------------------------------------------------------
+
+export async function bulkDeletePhases(phaseIds: string[], planningId: string) {
+  await assertCanEdit(planningId);
+  if (phaseIds.length === 0) return;
+  await db.delete(phases).where(inArray(phases.id, phaseIds));
+  await logActivity(planningId, "deleted", "phase", phaseIds[0],
+    `${phaseIds.length} phase${phaseIds.length > 1 ? "s" : ""} supprimée${phaseIds.length > 1 ? "s" : ""}`,
+    { phaseIds });
+  revalidatePath(`/p/${planningId}`);
+}
+
+export async function bulkDeleteMilestones(milestoneIds: string[], planningId: string) {
+  await assertCanEdit(planningId);
+  if (milestoneIds.length === 0) return;
+  await db.delete(milestones).where(inArray(milestones.id, milestoneIds));
+  await logActivity(planningId, "deleted", "milestone", milestoneIds[0],
+    `${milestoneIds.length} jalon${milestoneIds.length > 1 ? "s" : ""} supprimé${milestoneIds.length > 1 ? "s" : ""}`,
+    { milestoneIds });
+  revalidatePath(`/p/${planningId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Domain creation
 // ---------------------------------------------------------------------------
 

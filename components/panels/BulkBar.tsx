@@ -12,7 +12,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import type { StatusCode } from "@/components/ui/StatusPill";
 import type { LotRow } from "@/lib/db/queries";
-import { bulkUpdatePhaseStatus, duplicatePhase, duplicateMilestone } from "@/lib/actions/planning";
+import { bulkUpdatePhaseStatus, duplicatePhase, duplicateMilestone, bulkDeletePhases, bulkDeleteMilestones } from "@/lib/actions/planning";
 import styles from "./BulkBar.module.css";
 
 const STATUS_OPTIONS: { value: StatusCode; label: string }[] = [
@@ -33,6 +33,7 @@ export function BulkBar({ planningId, lots }: BulkBarProps) {
   const { selectedPhaseIds, selectedMilestoneIds, clearSelection } = useGanttStore();
   const [isPending, startTransition] = useTransition();
   const [dupLotId, setDupLotId] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const phaseCount = selectedPhaseIds.size;
   const msCount    = selectedMilestoneIds.size;
@@ -117,7 +118,52 @@ export function BulkBar({ planningId, lots }: BulkBarProps) {
         </button>
       </div>
 
-      <Button variant="ghost" size="sm" onClick={clearSelection}>
+      {/* Delete section */}
+      <div className={styles.deleteSection}>
+        {confirmDelete ? (
+          <>
+            <span className={styles.deleteConfirmLabel}>Supprimer définitivement ?</span>
+            <button
+              className={styles.deleteConfirmBtn}
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  await Promise.all([
+                    phaseCount > 0
+                      ? bulkDeletePhases(Array.from(selectedPhaseIds), planningId)
+                      : Promise.resolve(),
+                    msCount > 0
+                      ? bulkDeleteMilestones(Array.from(selectedMilestoneIds), planningId)
+                      : Promise.resolve(),
+                  ]);
+                  clearSelection();
+                  setConfirmDelete(false);
+                });
+              }}
+            >
+              Oui, supprimer
+            </button>
+            <button
+              className={styles.deleteCancelBtn}
+              disabled={isPending}
+              onClick={() => setConfirmDelete(false)}
+            >
+              Annuler
+            </button>
+          </>
+        ) : (
+          <button
+            className={styles.deleteBtn}
+            disabled={isPending}
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Icon name="trash" size={12} />
+            Supprimer
+          </button>
+        )}
+      </div>
+
+      <Button variant="ghost" size="sm" onClick={() => { clearSelection(); setConfirmDelete(false); }}>
         <Icon name="close" size={12} />
         Désélectionner
       </Button>
