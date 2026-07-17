@@ -291,6 +291,40 @@ export async function bulkDeleteMilestones(milestoneIds: string[], planningId: s
   revalidatePath(`/p/${planningId}`);
 }
 
+export async function bulkMovePhases(
+  moves: Array<{ phaseId: string; startDate: string; endDate: string; lotId: string }>,
+  planningId: string
+): Promise<void> {
+  await assertCanEdit(planningId);
+  if (moves.length === 0) return;
+  for (const m of moves) {
+    await db.update(phases)
+      .set({ startDate: m.startDate, endDate: m.endDate, lotId: m.lotId })
+      .where(eq(phases.id, m.phaseId));
+  }
+  await logActivity(planningId, "bulk_moved", "phase", moves[0].phaseId,
+    `${moves.length} phase${moves.length > 1 ? "s" : ""} déplacée${moves.length > 1 ? "s" : ""}`,
+    { count: moves.length });
+  revalidatePath(`/p/${planningId}`);
+}
+
+export async function bulkMoveMilestones(
+  moves: Array<{ milestoneId: string; date: string; lotId: string }>,
+  planningId: string
+): Promise<void> {
+  await assertCanEdit(planningId);
+  if (moves.length === 0) return;
+  for (const m of moves) {
+    await db.update(milestones)
+      .set({ date: m.date, lotId: m.lotId })
+      .where(eq(milestones.id, m.milestoneId));
+  }
+  await logActivity(planningId, "bulk_moved", "milestone", moves[0].milestoneId,
+    `${moves.length} jalon${moves.length > 1 ? "s" : ""} déplacé${moves.length > 1 ? "s" : ""}`,
+    { count: moves.length });
+  revalidatePath(`/p/${planningId}`);
+}
+
 // ---------------------------------------------------------------------------
 // Domain creation
 // ---------------------------------------------------------------------------

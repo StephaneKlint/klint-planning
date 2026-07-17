@@ -48,6 +48,7 @@ interface TimelineBodyProps {
   planningId?: string;
   bodyRef?: React.RefObject<HTMLDivElement | null>;
   headerRef?: React.RefObject<HTMLDivElement | null>;
+  onBulkMoveComplete?: (deltaDays: number, targetLotId: string) => void;
 }
 
 export function TimelineBody({
@@ -77,6 +78,7 @@ export function TimelineBody({
   planningId,
   bodyRef,
   headerRef,
+  onBulkMoveComplete,
 }: TimelineBodyProps) {
   const { togglePhaseSelection, selectedPhaseIds, openEdit, editTarget, baselinePhases, showBaseline } = useGanttStore();
   const domainById = Object.fromEntries(domains.map((d) => [d.id, d]));
@@ -318,6 +320,7 @@ export function TimelineBody({
                   dimmed={dimmed}
                   status={phase.status}
                   onPhaseClick={(e) => togglePhaseSelection(phase.id, e.metaKey || e.ctrlKey)}
+                  onBulkMoveComplete={onBulkMoveComplete}
                 />
               ) : null}
               {bSnap && bChanged && (
@@ -372,6 +375,7 @@ export function TimelineBody({
                 side={layout.side}
                 level={layout.level}
                 color={color}
+                onBulkMoveComplete={onBulkMoveComplete}
               />
             );
           }

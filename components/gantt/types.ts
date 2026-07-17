@@ -37,4 +37,6 @@ export interface GanttProps {
   onReorderLots?: (domainId: string, orderedLotIds: string[]) => void;
   /** Called when user drag-reorders domains */
   onReorderDomains?: (orderedDomainIds: string[]) => void;
+  /** Called when a bulk drag-drop completes (multiple selected items moved together) */
+  onBulkMoveComplete?: (deltaDays: number, targetLotId: string) => void;
 }

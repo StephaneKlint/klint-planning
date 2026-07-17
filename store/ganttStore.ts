@@ -17,6 +17,12 @@ export type EditTarget =
   | { kind: "create-milestone"; lotId: string }
   | null;
 
+// ── Bulk drag state ──────────────────────────────────────────────────────────
+export interface BulkDragState {
+  deltaDays: number;
+  targetLotId: string;
+}
+
 // ── Undo stack ───────────────────────────────────────────────────────────────
 export type UndoEntry =
   | { type: "phase-status";   phaseId: string; planningId: string; prev: string | null }
@@ -115,6 +121,9 @@ interface GanttState {
   setBaselinePhases: (phases: Record<string, { startDate: string; endDate: string }> | null) => void;
   toggleShowBaseline: () => void;
   setActiveBaselineId: (id: string | null) => void;
+  // Bulk drag (shared state between leader and follower items during a drag)
+  bulkDragState: BulkDragState | null;
+  setBulkDragState: (s: BulkDragState | null) => void;
 }
 
 export const useGanttStore = create<GanttState>((set, get) => ({
@@ -140,6 +149,7 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   baselinePhases: null,
   showBaseline: false,
   activeBaselineId: null,
+  bulkDragState: null,
 
   setZoom: (zoom) => set({ zoom }),
   setDensity: (density) => set({ density }),
@@ -196,6 +206,7 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   setBaselinePhases: (baselinePhases) => set({ baselinePhases }),
   toggleShowBaseline: () => set((s) => ({ showBaseline: !s.showBaseline })),
   setActiveBaselineId: (activeBaselineId) => set({ activeBaselineId }),
+  setBulkDragState: (bulkDragState) => set({ bulkDragState }),
 
   pushUndo: (entry) => set((s) => ({
     undoStack: [entry, ...s.undoStack].slice(0, UNDO_MAX),

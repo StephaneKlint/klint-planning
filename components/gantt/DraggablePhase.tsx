@@ -3,6 +3,7 @@
  * DraggablePhase — wraps PhasePill with horizontal drag (move + resize) + inter-lot move.
  * - move: drag pill body → shifts dates by Δdays; dragging vertically changes target lot
  * - resize-left / resize-right: changes startDate / endDate (same lot only)
+ * - bulk: when multiple items are selected and this phase is dragged, all selected items move together
  * Snap to day. Ctrl+Z via pushUndo("phase-dates" | "phase-move").
  */
 import { useRef, useState, useEffect } from "react";
@@ -38,6 +39,7 @@ export interface DraggablePhaseProps {
   dimmed: boolean;
   status: string | null;
   onPhaseClick: (e: React.MouseEvent) => void;
+  onBulkMoveComplete?: (deltaDays: number, targetLotId: string) => void;
 }
 
 export function DraggablePhase({
@@ -45,10 +47,10 @@ export function DraggablePhase({
   bodyRef, headerRef,
   rows, totalW,
   top, height, label, bg, fg, progress, hasNote, selected, editing, dimmed, status,
-  onPhaseClick,
+  onPhaseClick, onBulkMoveComplete,
 }: DraggablePhaseProps) {
   const patchPhase = useOptimisticPhase();
-  const { pushUndo } = useGanttStore();
+  const { pushUndo, selectedPhaseIds, selectedMilestoneIds, bulkDragState, setBulkDragState } = useGanttStore();
 
   const [localDates, setLocalDates] = useState<{ start: string; end: string } | null>(null);
   const [hoverZone, setHoverZone] = useState<DragMode>("move");
@@ -57,6 +59,9 @@ export function DraggablePhase({
   // Keep latest rows accessible inside the stable useEffect closure
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
+
+  // True when this phase is the bulk drag leader (stable ref, no re-render on change)
+  const isBulkLeaderRef = useRef(false);
 
   const drag = useRef<{
     mode: DragMode;
@@ -72,12 +77,20 @@ export function DraggablePhase({
     hasMoved: boolean;
   } | null>(null);
 
+  // Visual: when selected and a bulk drag is active (includes leader + followers)
+  const isBulkDragging = selected && bulkDragState !== null;
+
   const isDragging = localDates !== null;
 
-  const displayStart = localDates?.start ?? phase.startDate;
-  const displayEnd   = localDates?.end   ?? phase.endDate;
+  const displayStart = isBulkDragging
+    ? addDays(phase.startDate, bulkDragState!.deltaDays)
+    : (localDates?.start ?? phase.startDate);
+  const displayEnd = isBulkDragging
+    ? addDays(phase.endDate, bulkDragState!.deltaDays)
+    : (localDates?.end ?? phase.endDate);
+
   const left  = xOf(displayStart, viewStart, ppd);
-  const right = xOf(displayEnd,   viewStart, ppd) + ppd; // endDate inclusive: extend to end of day
+  const right = xOf(displayEnd, viewStart, ppd) + ppd; // endDate inclusive: extend to end of day
   const width = Math.max(ppd, right - left);
 
   const getZone = (localX: number, pillW: number): DragMode => {
@@ -88,7 +101,7 @@ export function DraggablePhase({
   };
 
   const getCursor = (): React.CSSProperties["cursor"] => {
-    if (isDragging) return drag.current?.mode === "move" ? "grabbing" : "ew-resize";
+    if (isDragging || isBulkDragging) return drag.current?.mode === "move" ? "grabbing" : "ew-resize";
     if (hoverZone !== "move") return "ew-resize";
     return "grab";
   };
@@ -102,7 +115,7 @@ export function DraggablePhase({
   };
 
   const handleMouseMove_local = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isDragging) return;
+    if (isDragging || isBulkDragging) return;
     const rect = e.currentTarget.getBoundingClientRect();
     setHoverZone(getZone(e.clientX - rect.left, rect.width));
   };
@@ -117,6 +130,12 @@ export function DraggablePhase({
 
     e.preventDefault();
     e.stopPropagation();
+
+    // Bulk mode: this phase is selected, multiple items selected, and it's a move (not resize)
+    const totalSelected = selectedPhaseIds.size + selectedMilestoneIds.size;
+    if (selected && totalSelected > 1 && mode === "move") {
+      isBulkLeaderRef.current = true;
+    }
 
     drag.current = {
       mode,
@@ -148,13 +167,26 @@ export function DraggablePhase({
 
       const daysDelta = Math.round(totalPx / ppd);
       const { mode, origStart, origEnd } = drag.current;
+
+      // Bulk leader: broadcast delta to store, followers react via bulkDragState
+      if (isBulkLeaderRef.current) {
+        if (mode === "move") {
+          const row = getLotAtY(e.clientY);
+          drag.current.currentLotId = row?.id ?? drag.current.origLotId;
+          drag.current.lastDelta = daysDelta;
+          setTargetRow(row);
+          setBulkDragState({ deltaDays: daysDelta, targetLotId: drag.current.currentLotId });
+        }
+        return;
+      }
+
+      // Normal single-item drag
       let newStart = origStart;
       let newEnd   = origEnd;
 
       if (mode === "move") {
         newStart = addDays(origStart, daysDelta);
         newEnd   = addDays(origEnd,   daysDelta);
-        // Inter-lot: detect target lot from cursor Y
         const row = getLotAtY(e.clientY);
         drag.current.currentLotId = row?.id ?? drag.current.origLotId;
         setTargetRow(row);
@@ -181,6 +213,16 @@ export function DraggablePhase({
       const d = drag.current;
       drag.current = null;
       setTargetRow(null);
+
+      // Bulk leader: notify parent, clear store state
+      if (isBulkLeaderRef.current) {
+        isBulkLeaderRef.current = false;
+        setBulkDragState(null);
+        if (d?.hasMoved) {
+          onBulkMoveComplete?.(d.lastDelta, d.currentLotId);
+        }
+        return;
+      }
 
       if (!d?.hasMoved) {
         setLocalDates(null);
@@ -217,12 +259,12 @@ export function DraggablePhase({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup",   onMouseUp);
     };
-  }, [phase.id, planningId, ppd, bodyRef, patchPhase, pushUndo]);
+  }, [phase.id, planningId, ppd, bodyRef, patchPhase, pushUndo, setBulkDragState, onBulkMoveComplete]);
 
   return (
     <>
-      {/* Target lot highlight — shown only when dragging "move" to a different lot */}
-      {isDragging && targetRow && targetRow.id !== phase.lotId && (
+      {/* Target lot highlight — shown when dragging "move" to a different lot (single or bulk leader) */}
+      {targetRow && targetRow.id !== phase.lotId && (isDragging || isBulkLeaderRef.current) && (
         <div
           style={{
             position: "absolute",
@@ -255,12 +297,12 @@ export function DraggablePhase({
         editing={editing}
         dimmed={dimmed}
         status={status}
-        dragging={isDragging}
+        dragging={isDragging || isBulkDragging}
         cursor={getCursor()}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove_local}
-        onMouseLeave_={() => { if (!isDragging) setHoverZone("move"); }}
-        onClick={isDragging ? undefined : onPhaseClick}
+        onMouseLeave_={() => { if (!isDragging && !isBulkDragging) setHoverZone("move"); }}
+        onClick={(isDragging || isBulkDragging) ? undefined : onPhaseClick}
       />
     </>
   );

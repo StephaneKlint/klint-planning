@@ -13,16 +13,18 @@ import { CommandPalette } from "@/components/panels/CommandPalette";
 import { PresenceStack } from "@/components/chrome/PresenceStack";
 import { Icon } from "@/components/ui/Icon";
 import { useGanttStore } from "@/store/ganttStore";
-import { usePlanning } from "@/lib/queries/usePlanning";
+import { usePlanning, useOptimisticPhase, useOptimisticMilestone } from "@/lib/queries/usePlanning";
 import { usePresence } from "@/lib/queries/usePresence";
 import { useQueryClient } from "@tanstack/react-query";
 import { planningQueryKey } from "@/lib/queries/usePlanning";
+import { addDays } from "@/components/gantt/ganttUtils";
 import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
   updatePhaseDates, updatePhaseColor, updatePhaseLabel,
   updateMilestone, moveMilestoneToLot, movePhaseToLot,
   restorePhase, restoreMilestone, restoreLot,
   markLotDone, reorderLots, reorderDomains,
+  bulkMovePhases, bulkMoveMilestones,
 } from "@/lib/actions/planning";
 import { restoreMember, getContactsForPlanning, assignExistingContactToPlanning } from "@/lib/actions/members";
 import { getOrCreateShareToken, revokeShareToken } from "@/lib/actions/share";
@@ -83,7 +85,11 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
     baselinePhases, setBaselinePhases,
     showBaseline, toggleShowBaseline,
     activeBaselineId, setActiveBaselineId,
+    selectedPhaseIds, selectedMilestoneIds,
   } = useGanttStore();
+
+  const patchPhase = useOptimisticPhase();
+  const patchMilestone = useOptimisticMilestone();
 
   const hasBaseline = baselinePhases !== null;
 
@@ -466,6 +472,50 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
     }
   }, [props.planningId, qc]);
 
+  // ── Bulk drag-drop: move all selected phases + milestones together ──────────
+  const handleBulkMoveComplete = useCallback(async (deltaDays: number, targetLotId: string) => {
+    if (deltaDays === 0) return;
+
+    const phasesToMove = liveData.phases.filter((p) => selectedPhaseIds.has(p.id));
+    const msToMove = liveData.milestones.filter((m) => selectedMilestoneIds.has(m.id));
+    if (phasesToMove.length === 0 && msToMove.length === 0) return;
+
+    const phaseMoves = phasesToMove.map((p) => ({
+      phaseId: p.id,
+      startDate: addDays(p.startDate, deltaDays),
+      endDate: addDays(p.endDate, deltaDays),
+      lotId: targetLotId,
+    }));
+    const milestoneMoves = msToMove.map((m) => ({
+      milestoneId: m.id,
+      date: addDays(m.date, deltaDays),
+      lotId: targetLotId,
+    }));
+
+    // Optimistic update
+    for (const move of phaseMoves) {
+      patchPhase(props.planningId, move.phaseId, { startDate: move.startDate, endDate: move.endDate, lotId: move.lotId });
+    }
+    for (const move of milestoneMoves) {
+      patchMilestone(props.planningId, move.milestoneId, { date: move.date, lotId: move.lotId });
+    }
+
+    try {
+      if (phaseMoves.length > 0) await bulkMovePhases(phaseMoves, props.planningId);
+      if (milestoneMoves.length > 0) await bulkMoveMilestones(milestoneMoves, props.planningId);
+      qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Erreur lors du déplacement groupé.");
+      // Rollback
+      for (const p of phasesToMove) {
+        patchPhase(props.planningId, p.id, { startDate: p.startDate, endDate: p.endDate, lotId: p.lotId });
+      }
+      for (const m of msToMove) {
+        patchMilestone(props.planningId, m.id, { date: m.date, lotId: m.lotId });
+      }
+    }
+  }, [liveData, selectedPhaseIds, selectedMilestoneIds, patchPhase, patchMilestone, props.planningId, qc]);
+
   // ── Export Excel (.xlsx) ────────────────────────────────────────────────────
   const handleExportExcel = async () => {
     const XLSX = (await import("xlsx")).default;
@@ -772,6 +822,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
           onMarkLotDone={handleMarkLotDone}
           onReorderLots={handleReorderLots}
           onReorderDomains={handleReorderDomains}
+          onBulkMoveComplete={handleBulkMoveComplete}
         />
       </div>
 

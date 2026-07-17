@@ -5,7 +5,8 @@
  * - Ghost diamond follows cursor (position: fixed)
  * - Original diamond fades to 0.3 opacity during drag
  * - Target lot row highlighted with a blue band
- * - Snap to day. Ctrl+Z via pushUndo("milestone-move").
+ * - bulk: when multiple items are selected and this milestone is dragged, all selected items move together
+ * Snap to day. Ctrl+Z via pushUndo("milestone-move").
  */
 import { useRef, useState, useEffect } from "react";
 import { MilestoneFlag } from "./MilestoneFlag";
@@ -33,15 +34,16 @@ export interface DraggableMilestoneProps {
   side: "above" | "below";
   level: number;
   color: string;
+  onBulkMoveComplete?: (deltaDays: number, targetLotId: string) => void;
 }
 
 export function DraggableMilestone({
   milestone, planningId, ppd, viewStart,
   bodyRef, rows, totalW,
-  centerX, rowY, rowH, side, level, color,
+  centerX, rowY, rowH, side, level, color, onBulkMoveComplete,
 }: DraggableMilestoneProps) {
   const patchMilestone = useOptimisticMilestone();
-  const { openEdit, pushUndo, toggleMilestoneSelection, selectedMilestoneIds } = useGanttStore();
+  const { openEdit, pushUndo, toggleMilestoneSelection, selectedMilestoneIds, selectedPhaseIds, bulkDragState, setBulkDragState } = useGanttStore();
 
   const isSelected = selectedMilestoneIds.has(milestone.id);
   const dimmed = selectedMilestoneIds.size > 0 && !isSelected;
@@ -49,6 +51,9 @@ export function DraggableMilestone({
   const [isDragging, setIsDragging] = useState(false);
   const [ghostPos, setGhostPos]     = useState<{ x: number; y: number } | null>(null);
   const [targetRow, setTargetRow]   = useState<RowEntry | null>(null);
+
+  // True when this milestone is the bulk drag leader (stable ref, no re-render on change)
+  const isBulkLeaderRef = useRef(false);
 
   const drag = useRef<{
     startClientX: number;
@@ -58,7 +63,12 @@ export function DraggableMilestone({
     hasMoved: boolean;
     lastDate: string;
     lastLotId: string;
+    lastDelta: number;
   } | null>(null);
+
+  // Visual: followers shift centerX horizontally when a bulk drag is active
+  const isBulkFollowing = isSelected && bulkDragState !== null && !isBulkLeaderRef.current;
+  const displayCenterX = isBulkFollowing ? centerX + bulkDragState!.deltaDays * ppd : centerX;
 
   const getLotAtY = (clientY: number): RowEntry | null => {
     const body = bodyRef.current;
@@ -76,6 +86,12 @@ export function DraggableMilestone({
     e.preventDefault();
     e.stopPropagation();
 
+    // Bulk mode: this milestone is selected and multiple items are selected
+    const totalSelected = selectedPhaseIds.size + selectedMilestoneIds.size;
+    if (isSelected && totalSelected > 1) {
+      isBulkLeaderRef.current = true;
+    }
+
     drag.current = {
       startClientX:   e.clientX,
       startScrollLeft: body.scrollLeft,
@@ -84,6 +100,7 @@ export function DraggableMilestone({
       hasMoved:  false,
       lastDate:  milestone.date,
       lastLotId: milestone.lotId,
+      lastDelta: 0,
     };
 
     document.body.style.cursor    = "grabbing";
@@ -101,20 +118,25 @@ export function DraggableMilestone({
 
       if (!drag.current.hasMoved) {
         drag.current.hasMoved = true;
-        setIsDragging(true);
+        if (!isBulkLeaderRef.current) setIsDragging(true);
+        else setIsDragging(true); // leader also shows ghost
       }
 
-      // New date from X delta
       const daysDelta = Math.round(totalPx / ppd);
       const newDate = addDays(drag.current.origDate, daysDelta);
       drag.current.lastDate = newDate;
+      drag.current.lastDelta = daysDelta;
 
-      // Target lot from Y
       const row = getLotAtY(e.clientY);
       drag.current.lastLotId = row?.id ?? drag.current.origLotId;
 
       setGhostPos({ x: e.clientX, y: e.clientY });
       setTargetRow(row);
+
+      // Bulk leader: broadcast delta to all selected items
+      if (isBulkLeaderRef.current) {
+        setBulkDragState({ deltaDays: daysDelta, targetLotId: drag.current.lastLotId });
+      }
     };
 
     const onMouseUp = () => {
@@ -126,6 +148,16 @@ export function DraggableMilestone({
       setIsDragging(false);
       setGhostPos(null);
       setTargetRow(null);
+
+      // Bulk leader: notify parent, clear store state
+      if (isBulkLeaderRef.current) {
+        isBulkLeaderRef.current = false;
+        setBulkDragState(null);
+        if (d?.hasMoved) {
+          onBulkMoveComplete?.(d.lastDelta, d.lastLotId);
+        }
+        return;
+      }
 
       if (!d?.hasMoved) return;
 
@@ -155,11 +187,11 @@ export function DraggableMilestone({
       window.removeEventListener("mouseup",   onMouseUp);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [milestone.id, milestone.date, milestone.lotId, planningId, ppd, bodyRef, patchMilestone, pushUndo]);
+  }, [milestone.id, milestone.date, milestone.lotId, planningId, ppd, bodyRef, patchMilestone, pushUndo, setBulkDragState, onBulkMoveComplete]);
 
   return (
     <>
-      {/* Target lot highlight */}
+      {/* Target lot highlight — leader shows highlight for the entire selection */}
       {isDragging && targetRow && (
         <div
           style={{
@@ -178,9 +210,9 @@ export function DraggableMilestone({
         />
       )}
 
-      {/* Original flag — faded during drag */}
+      {/* Original flag — faded during drag, shifted horizontally when following a bulk drag */}
       <MilestoneFlag
-        centerX={centerX}
+        centerX={displayCenterX}
         rowY={rowY}
         rowH={rowH}
         side={side}
@@ -197,10 +229,10 @@ export function DraggableMilestone({
         }}
         onDiamondMouseDown={handleMouseDown}
         isSelected={isSelected}
-        opacity={isDragging ? 0.25 : dimmed ? 0.35 : 1}
+        opacity={isDragging ? 0.25 : (isBulkFollowing ? 0.7 : (dimmed ? 0.35 : 1))}
       />
 
-      {/* Ghost diamond follows cursor */}
+      {/* Ghost diamond follows cursor (leader only) */}
       {isDragging && ghostPos && (
         <div
           style={{

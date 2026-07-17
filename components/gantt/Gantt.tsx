@@ -40,6 +40,7 @@ export function Gantt({
   onMarkLotDone,
   onReorderLots,
   onReorderDomains,
+  onBulkMoveComplete,
 }: GanttProps) {
   const { zoom: zoomRaw, density: densityRaw, colorMode, showWeekends, showDomainBands, showHolidays, showClosures, panelMode, scrollRequest, requestScroll, hiddenLotIds } = useGanttStore();
   const zoom = zoomRaw as import("@/store/ganttStore").ZoomLevel;
@@ -252,6 +253,7 @@ export function Gantt({
             planningId={planningId}
             bodyRef={bodyRef}
             headerRef={headerRef}
+            onBulkMoveComplete={onBulkMoveComplete}
           />
         </div>
       </div>
