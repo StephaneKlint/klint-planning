@@ -50,7 +50,6 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
   const importJsonRef = useRef<HTMLInputElement>(null);
   const [importPending, setImportPending] = useState(false);
   const [exportPending, setExportPending] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [exportPngPending, setExportPngPending] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
@@ -86,6 +85,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
     showBaseline, toggleShowBaseline,
     activeBaselineId, setActiveBaselineId,
     selectedPhaseIds, selectedMilestoneIds,
+    actionError, setActionError,
   } = useGanttStore();
 
   const patchPhase = useOptimisticPhase();

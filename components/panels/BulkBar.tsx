@@ -30,8 +30,14 @@ interface BulkBarProps {
 }
 
 export function BulkBar({ planningId, lots }: BulkBarProps) {
-  const { selectedPhaseIds, selectedMilestoneIds, clearSelection } = useGanttStore();
-  const [isPending, startTransition] = useTransition();
+  const { selectedPhaseIds, selectedMilestoneIds, clearSelection, setActionError } = useGanttStore();
+  const [isPending, startTransitionRaw] = useTransition();
+  // Safe wrapper: prevents uncaught async errors from propagating to the error.tsx boundary
+  const startTransition = (fn: () => Promise<void>) => {
+    startTransitionRaw(async () => {
+      try { await fn(); } catch (err) { setActionError(err instanceof Error ? err.message : "Action non autorisée."); }
+    });
+  };
   const [dupLotId, setDupLotId] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 

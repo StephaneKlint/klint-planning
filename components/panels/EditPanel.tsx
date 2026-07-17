@@ -60,8 +60,14 @@ interface EditPanelProps {
 }
 
 export function EditPanel({ planningId, data }: EditPanelProps) {
-  const { editTarget, closeEdit, pushUndo, openEdit } = useGanttStore();
-  const [isPending, startTransition] = useTransition();
+  const { editTarget, closeEdit, pushUndo, openEdit, setActionError } = useGanttStore();
+  const [isPending, startTransitionRaw] = useTransition();
+  // Safe wrapper: prevents uncaught async errors from propagating to the error.tsx boundary
+  const startTransition = (fn: () => Promise<void>) => {
+    startTransitionRaw(async () => {
+      try { await fn(); } catch (err) { setActionError(err instanceof Error ? err.message : "Action non autorisée."); }
+    });
+  };
   const [saved, setSaved] = useState(false);
   const patchPhase = useOptimisticPhase();
   const qc = useQueryClient();

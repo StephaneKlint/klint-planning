@@ -124,6 +124,9 @@ interface GanttState {
   // Bulk drag (shared state between leader and follower items during a drag)
   bulkDragState: BulkDragState | null;
   setBulkDragState: (s: BulkDragState | null) => void;
+  // Shared action error banner (set by EditPanel, BulkBar, GanttView; cleared on dismiss)
+  actionError: string | null;
+  setActionError: (err: string | null) => void;
 }
 
 export const useGanttStore = create<GanttState>((set, get) => ({
@@ -150,6 +153,7 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   showBaseline: false,
   activeBaselineId: null,
   bulkDragState: null,
+  actionError: null,
 
   setZoom: (zoom) => set({ zoom }),
   setDensity: (density) => set({ density }),
@@ -207,6 +211,8 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   toggleShowBaseline: () => set((s) => ({ showBaseline: !s.showBaseline })),
   setActiveBaselineId: (activeBaselineId) => set({ activeBaselineId }),
   setBulkDragState: (bulkDragState) => set({ bulkDragState }),
+
+  setActionError: (actionError) => set({ actionError }),
 
   pushUndo: (entry) => set((s) => ({
     undoStack: [entry, ...s.undoStack].slice(0, UNDO_MAX),
