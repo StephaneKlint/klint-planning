@@ -48,6 +48,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
   const importJsonRef = useRef<HTMLInputElement>(null);
   const [importPending, setImportPending] = useState(false);
   const [exportPending, setExportPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [exportPngPending, setExportPngPending] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
@@ -438,19 +439,31 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
 
   // ── Marquer toutes les phases d'un lot à 100% ───────────────────────────────
   const handleMarkLotDone = useCallback(async (lotId: string) => {
-    await markLotDone({ lotId, planningId: props.planningId });
-    qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    try {
+      await markLotDone({ lotId, planningId: props.planningId });
+      qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Action non autorisée.");
+    }
   }, [props.planningId, qc]);
 
   // ── Réordonnancement lots / domaines ────────────────────────────────────────
   const handleReorderLots = useCallback(async (domainId: string, lotIds: string[]) => {
-    await reorderLots({ domainId, lotIds, planningId: props.planningId });
-    qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    try {
+      await reorderLots({ domainId, lotIds, planningId: props.planningId });
+      qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Action non autorisée.");
+    }
   }, [props.planningId, qc]);
 
   const handleReorderDomains = useCallback(async (domainIds: string[]) => {
-    await reorderDomains({ planningId: props.planningId, domainIds });
-    qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    try {
+      await reorderDomains({ planningId: props.planningId, domainIds });
+      qc.invalidateQueries({ queryKey: planningQueryKey(props.planningId) });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Action non autorisée.");
+    }
   }, [props.planningId, qc]);
 
   // ── Export Excel (.xlsx) ────────────────────────────────────────────────────
@@ -543,30 +556,37 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
       setActiveBaselineId(row.id);
       setBaselineName("");
       if (!showBaseline) toggleShowBaseline();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Impossible de créer la baseline.");
     } finally {
       setBaselineCreating(false);
     }
   };
 
   const handleSelectBaseline = async (id: string) => {
-    if (id === activeBaselineId) {
-      toggleShowBaseline();
-      return;
+    try {
+      if (id === activeBaselineId) { toggleShowBaseline(); return; }
+      const row = await getBaselineById(id);
+      if (!row) return;
+      setBaselinePhases(row.phases);
+      setActiveBaselineId(id);
+      if (!showBaseline) toggleShowBaseline();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Impossible de charger la baseline.");
     }
-    const row = await getBaselineById(id);
-    if (!row) return;
-    setBaselinePhases(row.phases);
-    setActiveBaselineId(id);
-    if (!showBaseline) toggleShowBaseline();
   };
 
   const handleDeleteBaselineById = async (id: string) => {
-    await deleteBaselineById(id);
-    setBaselineList((prev) => prev.filter((b) => b.id !== id));
-    if (id === activeBaselineId) {
-      setBaselinePhases(null);
-      setActiveBaselineId(null);
-      if (showBaseline) toggleShowBaseline();
+    try {
+      await deleteBaselineById(id);
+      setBaselineList((prev) => prev.filter((b) => b.id !== id));
+      if (id === activeBaselineId) {
+        setBaselinePhases(null);
+        setActiveBaselineId(null);
+        if (showBaseline) toggleShowBaseline();
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Impossible de supprimer la baseline.");
     }
   };
 
@@ -632,6 +652,23 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
 
   return (
     <div className={styles.view}>
+      {actionError && (
+        <div style={{
+          position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)",
+          background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B",
+          borderRadius: 10, padding: "10px 16px 10px 14px",
+          display: "flex", alignItems: "center", gap: 10,
+          fontSize: 13, fontWeight: 500, zIndex: 9999, boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+          maxWidth: 480,
+        }}>
+          <span>⚠️</span>
+          <span style={{ flex: 1 }}>{actionError}</span>
+          <button
+            onClick={() => setActionError(null)}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#991B1B", padding: 0, lineHeight: 1 }}
+          >×</button>
+        </div>
+      )}
       <Toolbar
         zoom={zoom}
         onZoomChange={setZoom}
