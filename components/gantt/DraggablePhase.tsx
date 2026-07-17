@@ -44,7 +44,7 @@ export interface DraggablePhaseProps {
 
 export function DraggablePhase({
   phase, planningId, ppd, viewStart,
-  bodyRef, headerRef,
+  bodyRef,
   rows, totalW,
   top, height, label, bg, fg, progress, hasNote, selected, editing, dimmed, status,
   onPhaseClick, onBulkMoveComplete,
@@ -259,6 +259,7 @@ export function DraggablePhase({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup",   onMouseUp);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getLotAtY reads only from refs (bodyRef, rowsRef), never stale
   }, [phase.id, planningId, ppd, bodyRef, patchPhase, pushUndo, setBulkDragState, onBulkMoveComplete]);
 
   return (

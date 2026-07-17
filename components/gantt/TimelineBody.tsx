@@ -65,7 +65,6 @@ export function TimelineBody({
   members,
   viewStart,
   ppd,
-  referenceDate,
   colorMode,
   showWeekends,
   showDomainBands,
@@ -268,9 +267,6 @@ export function TimelineBody({
 
         // Phase pills
         const pills = lotPhases.map((phase) => {
-          const left = xOfDate(phase.startDate);
-          const right = xOfDate(phase.endDate) + ppd; // endDate inclusive: extend to end of day
-          const width = right - left;
           // Multi-track: each track occupies singleRowH, pill centered within its track
           const track = trackByPhaseId[phase.id] ?? 0;
           const pillTop = row.y + track * singleRowH + Math.floor((singleRowH - PILL_H) / 2);

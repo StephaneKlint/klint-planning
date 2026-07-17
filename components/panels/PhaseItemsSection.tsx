@@ -87,7 +87,7 @@ interface Props {
   phaseColor?: string;
 }
 
-export function PhaseItemsSection({ phaseId, planningId, phaseColor = "#3B82F6" }: Props) {
+export function PhaseItemsSection({ phaseId, phaseColor = "#3B82F6" }: Props) {
   const [items, setItems] = useState<PhaseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [layout, setLayout] = useState<"table" | "cards">("table");
@@ -106,7 +106,6 @@ export function PhaseItemsSection({ phaseId, planningId, phaseColor = "#3B82F6" 
   const [importTab, setImportTab] = useState<"text" | "file">("text");
   const [importText, setImportText] = useState("");
   const [importParsed, setImportParsed] = useState<Omit<PhaseItem, "id" | "phaseId" | "sortOrder">[] | null>(null);
-  const [importJobId, setImportJobId] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<"idle" | "pending" | "polling" | "done" | "error">("idle");
   const [importError, setImportError] = useState<string | null>(null);
 
@@ -172,7 +171,6 @@ export function PhaseItemsSection({ phaseId, planningId, phaseColor = "#3B82F6" 
     setImportError(null);
     try {
       const { jobId } = await submitPhaseItemImport(phaseId, importText);
-      setImportJobId(jobId);
       setImportStatus("polling");
       pollJob(jobId);
     } catch {
@@ -191,7 +189,6 @@ export function PhaseItemsSection({ phaseId, planningId, phaseColor = "#3B82F6" 
         loadItems();
         setShowImport(false);
         setImportText("");
-        setImportJobId(null);
         setImportStatus("idle");
       } else if (job.status === "error") {
         clearInterval(interval);

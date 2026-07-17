@@ -102,7 +102,7 @@ interface ParametresTabsProps {
   securitySettings?: SecuritySettings;
 }
 
-export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = DEFAULT_PERMISSIONS, existingUsers = [], activityEntries = [], connLogs = [], directoryContacts = [], securitySettings = { enabled: true, trustedCountries: ["FR"] } }: ParametresTabsProps) {
+export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = DEFAULT_PERMISSIONS, activityEntries = [], connLogs = [], directoryContacts = [], securitySettings = { enabled: true, trustedCountries: ["FR"] } }: ParametresTabsProps) {
   const router = useRouter();
   const visibleTabs = buildVisibleTabs(userRole, permissions);
   const [active, setActive] = useState<Tab>(() => visibleTabs[0]?.id ?? "general");
@@ -1370,8 +1370,6 @@ function CadenceRow({
   startTransition: (fn: () => void) => void;
 }) {
   const [cad, setCad] = useState(domain.cadence);
-  const styles_table = ""; // unused, handled at table level
-
   const save = (next: typeof cad) => {
     setCad(next);
     startTransition(async () => {

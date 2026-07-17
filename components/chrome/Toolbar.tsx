@@ -16,11 +16,6 @@ interface ToolbarProps {
   onTogglePanel?: () => void;
   onScrollPrev?: () => void;
   onScrollNext?: () => void;
-  /** @deprecated Use onToggleDomainBands instead */
-  onVisibilityClick?: () => void;
-  /** @deprecated Use onColorModeChange instead */
-  onColorModeClick?: () => void;
-  onSearchClick?: () => void;
   onExportPdf?: () => void;
   exportPdfPending?: boolean;
   onExportPng?: () => void;
@@ -31,8 +26,6 @@ interface ToolbarProps {
   onImportJson?: () => void;
   onProjectFilter?: () => void;
   projectFilterActive?: boolean;
-  /** @deprecated Use colorMode instead */
-  colorModeLabel?: string;
   presenceStack?: React.ReactNode;
   panelVisible?: boolean;
   // Date range filter
@@ -77,12 +70,6 @@ export function Toolbar({
   onTogglePanel,
   onScrollPrev,
   onScrollNext,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onVisibilityClick: _onVisibilityClick,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onColorModeClick: _onColorModeClick,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onSearchClick: _onSearchClick,
   onExportPdf,
   exportPdfPending = false,
   onExportPng,
@@ -93,8 +80,6 @@ export function Toolbar({
   onImportJson,
   onProjectFilter,
   projectFilterActive = false,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  colorModeLabel: _colorModeLabel,
   presenceStack,
   panelVisible = true,
   filterStart,

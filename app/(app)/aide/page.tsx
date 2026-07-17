@@ -1377,52 +1377,6 @@ const SECTION_ILLUS: Record<string, { bg: string; el: React.ReactNode }> = {
 };
 
 /* ── Section card with hover state ─────────────────────────────────────── */
-function LockedCard({ section }: { section: SectionDef }) {
-  const illus = SECTION_ILLUS[section.id] ?? { bg: "linear-gradient(135deg,#94a3b8,#64748b)", el: null };
-  return (
-    <div
-      style={{
-        ...S.card,
-        cursor: "default",
-        opacity: 0.58,
-        filter: "grayscale(55%)",
-      }}
-      aria-disabled="true"
-      title="Réservé aux administrateurs"
-    >
-      <div style={{
-        background: illus.bg,
-        height: 72,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-        flexShrink: 0,
-        position: "relative",
-      }}>
-        {illus.el}
-        <div style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(0,0,0,0.38)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}>
-          <span style={{ fontSize: 22 }}>🔒</span>
-        </div>
-      </div>
-      <div style={{ padding: "10px 13px 12px", display: "flex", flexDirection: "column", gap: 3 }}>
-        <span style={S.cardNum}>Section {section.num}</span>
-        <span style={S.cardTitle}>{section.title}</span>
-        <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 600, marginTop: 2 }}>
-          Réservé aux administrateurs
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function SectionCard({ section, onClick }: { section: SectionDef; onClick: () => void }) {
   const [hov, setHov] = useState(false);
   const illus = SECTION_ILLUS[section.id] ?? { bg: "linear-gradient(135deg,#374151,#111827)", el: null };

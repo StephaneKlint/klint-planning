@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import {
-  phaseTypes, milestoneTypes, statuses, domains, planningSettings, planningMembers,
+  phaseTypes, milestoneTypes, domains, planningSettings, planningMembers,
 } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 

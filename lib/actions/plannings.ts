@@ -684,7 +684,6 @@ export async function importLegacyPlanningJSON(planningId: string, jsonStr: stri
   if (!existing) throw new Error("Planning introuvable.");
 
   // Build domain id map
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const domainMap: Record<string, string> = {}; // oldId → new DB id
 
   for (let i = 0; i < data.domains.length; i++) {

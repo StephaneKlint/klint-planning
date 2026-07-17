@@ -30,7 +30,7 @@ export function Gantt({
   milestoneTypes,
   statuses,
   phaseAssignees,
-  phaseTypes: _phaseTypes, // eslint-disable-line @typescript-eslint/no-unused-vars
+  phaseTypes: _phaseTypes,
   members,
   viewStart,
   viewEnd,

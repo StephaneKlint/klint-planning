@@ -15,7 +15,7 @@ import type { RowEntry } from "./types";
 import { useOptimisticMilestone } from "@/lib/queries/usePlanning";
 import { useGanttStore } from "@/store/ganttStore";
 import { moveMilestoneToLot, updateMilestone } from "@/lib/actions/planning";
-import { addDays, xOf } from "./ganttUtils";
+import { addDays } from "./ganttUtils";
 
 const MS_DIAMOND = 10;
 
@@ -38,7 +38,7 @@ export interface DraggableMilestoneProps {
 }
 
 export function DraggableMilestone({
-  milestone, planningId, ppd, viewStart,
+  milestone, planningId, ppd,
   bodyRef, rows, totalW,
   centerX, rowY, rowH, side, level, color, onBulkMoveComplete,
 }: DraggableMilestoneProps) {

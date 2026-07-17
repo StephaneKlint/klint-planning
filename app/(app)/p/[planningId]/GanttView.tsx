@@ -68,7 +68,6 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
     zoom, setZoom,
     colorMode, setColorMode,
     panelMode, setPanelMode,
-    setCommandPaletteOpen,
     requestScroll,
     showDomainBands, toggleDomainBands,
     showWeekends, toggleWeekends,
@@ -81,7 +80,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
     projectFilterOpen, setProjectFilterOpen,
     hiddenLotIds,
     editTarget, closeEdit,
-    baselinePhases, setBaselinePhases,
+    setBaselinePhases,
     showBaseline, toggleShowBaseline,
     activeBaselineId, setActiveBaselineId,
     selectedPhaseIds, selectedMilestoneIds,
@@ -90,8 +89,6 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
 
   const patchPhase = useOptimisticPhase();
   const patchMilestone = useOptimisticMilestone();
-
-  const hasBaseline = baselinePhases !== null;
 
   // Liste locale des baselines (metadata)
   const [baselineList, setBaselineList] = useState<BaselineMeta[]>(initialBaselines ?? []);
@@ -451,7 +448,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Action non autorisée.");
     }
-  }, [props.planningId, qc]);
+  }, [props.planningId, qc, setActionError]);
 
   // ── Réordonnancement lots / domaines ────────────────────────────────────────
   const handleReorderLots = useCallback(async (domainId: string, lotIds: string[]) => {
@@ -461,7 +458,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Action non autorisée.");
     }
-  }, [props.planningId, qc]);
+  }, [props.planningId, qc, setActionError]);
 
   const handleReorderDomains = useCallback(async (domainIds: string[]) => {
     try {
@@ -470,7 +467,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Action non autorisée.");
     }
-  }, [props.planningId, qc]);
+  }, [props.planningId, qc, setActionError]);
 
   // ── Bulk drag-drop: move all selected phases + milestones together ──────────
   const handleBulkMoveComplete = useCallback(async (deltaDays: number, targetLotId: string) => {
@@ -514,7 +511,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
         patchMilestone(props.planningId, m.id, { date: m.date, lotId: m.lotId });
       }
     }
-  }, [liveData, selectedPhaseIds, selectedMilestoneIds, patchPhase, patchMilestone, props.planningId, qc]);
+  }, [liveData, selectedPhaseIds, selectedMilestoneIds, patchPhase, patchMilestone, props.planningId, qc, setActionError]);
 
   // ── Export Excel (.xlsx) ────────────────────────────────────────────────────
   const handleExportExcel = async () => {
@@ -726,7 +723,6 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
         onScrollPrev={() => requestScroll("prev")}
         onScrollNext={() => requestScroll("next")}
         onTogglePanel={handleTogglePanel}
-        onSearchClick={() => setCommandPaletteOpen(true)}
         onExportPdf={handleExportPdf}
         exportPdfPending={exportPending}
         onExportPng={handleExportPng}

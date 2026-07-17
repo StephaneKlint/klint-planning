@@ -240,10 +240,7 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
             <select
               className={styles.select}
               defaultValue={phase.type}
-              onChange={(e) => {
-                // Note : updatePhaseType pas encore implémenté — Jalon 5
-                console.log("type change:", e.target.value);
-              }}
+              onChange={() => {}}
             >
               {Object.entries(PHASE_TYPE_LABELS).map(([code, label]) => (
                 <option key={code} value={code}>{label}</option>
