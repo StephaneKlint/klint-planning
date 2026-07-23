@@ -210,6 +210,47 @@ export const lots = pgTable("lots", {
   postponedLabelSize: smallint("postponed_label_size"),
 });
 
+// ---- Synchronisation entre plannings liés --------------------------------
+
+export const planningGroups = pgTable("planning_groups", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const planningGroupMembers = pgTable(
+  "planning_group_members",
+  {
+    groupId: uuid("group_id").notNull().references(() => planningGroups.id, { onDelete: "cascade" }),
+    planningId: uuid("planning_id").notNull().references(() => plannings.id, { onDelete: "cascade" }),
+    addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
+    addedBy: uuid("added_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.planningId] })]
+);
+
+export const phaseSyncGroups = pgTable(
+  "phase_sync_groups",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    planningGroupId: uuid("planning_group_id").notNull().references(() => planningGroups.id, { onDelete: "cascade" }),
+    // Decision 3 Option B: status excluded by default
+    syncFields: jsonb("sync_fields").$type<string[]>().notNull().default(["startDate", "endDate", "progress", "color", "note", "label"]),
+  },
+  (t) => [index("psg_by_group").on(t.planningGroupId)]
+);
+
+export const milestoneSyncGroups = pgTable(
+  "milestone_sync_groups",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    planningGroupId: uuid("planning_group_id").notNull().references(() => planningGroups.id, { onDelete: "cascade" }),
+    syncFields: jsonb("sync_fields").$type<string[]>().notNull().default(["date", "color", "note", "label"]),
+  },
+  (t) => [index("msg_by_group").on(t.planningGroupId)]
+);
+
 // ---- Phases --------------------------------------------------------------
 
 export const phases = pgTable(
@@ -228,8 +269,10 @@ export const phases = pgTable(
     color: varchar("color", { length: 9 }),
     note: text("note"),
     sortOrder: smallint("sort_order").default(0).notNull(),
+    syncGroupId: uuid("sync_group_id").references(() => phaseSyncGroups.id, { onDelete: "set null" }),
+    version: integer("version").notNull().default(0),
   },
-  (t) => [index("phase_by_lot").on(t.lotId)]
+  (t) => [index("phase_by_lot").on(t.lotId), index("phase_by_sync_group").on(t.syncGroupId)]
 );
 
 // ---- Assignations phase ↔ membre ----------------------------------------
@@ -262,8 +305,10 @@ export const milestones = pgTable(
     color: varchar("color", { length: 9 }),
     labelPos: labelPosEnum("label_pos").default("auto").notNull(),
     note: text("note"),
+    syncGroupId: uuid("sync_group_id").references(() => milestoneSyncGroups.id, { onDelete: "set null" }),
+    version: integer("version").notNull().default(0),
   },
-  (t) => [index("ms_by_lot").on(t.lotId)]
+  (t) => [index("ms_by_lot").on(t.lotId), index("ms_by_sync_group").on(t.syncGroupId)]
 );
 
 // ---- Config par planning -------------------------------------------------
