@@ -19,7 +19,8 @@ import { saveAppLogo, saveAppFavicon } from "@/lib/actions/appSettings";
 import { seedHolidays, createClosurePeriod, updateClosurePeriod, deleteClosurePeriod } from "@/lib/actions/closurePeriods";
 import { changePassword } from "@/lib/actions/authActions";
 import { setTemplateFlag } from "@/lib/actions/plannings";
-import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact } from "@/lib/db/queries";
+import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact, PlanningGroupRow } from "@/lib/db/queries";
+import { SyncSection } from "./SyncSection";
 import { addMember, removeMember, disableContact, enableContact, assignExistingContactToPlanning, updateContact, deleteContact } from "@/lib/actions/members";
 import { updateMemberPermission } from "@/lib/actions/settings";
 import { generateInvitationLink } from "@/lib/actions/invitations";
@@ -100,9 +101,11 @@ interface ParametresTabsProps {
   connLogs?: ConnectionLogRow[];
   directoryContacts?: DirectoryContact[];
   securitySettings?: SecuritySettings;
+  planningGroups?: PlanningGroupRow[];
+  allPlannings?: Array<{ id: string; name: string }>;
 }
 
-export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = DEFAULT_PERMISSIONS, activityEntries = [], connLogs = [], directoryContacts = [], securitySettings = { enabled: true, trustedCountries: ["FR"] } }: ParametresTabsProps) {
+export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = DEFAULT_PERMISSIONS, activityEntries = [], connLogs = [], directoryContacts = [], securitySettings = { enabled: true, trustedCountries: ["FR"] }, planningGroups = [], allPlannings = [] }: ParametresTabsProps) {
   const router = useRouter();
   const visibleTabs = buildVisibleTabs(userRole, permissions);
   const [active, setActive] = useState<Tab>(() => visibleTabs[0]?.id ?? "general");
@@ -283,6 +286,13 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
               </p>
             </div>
           </form>
+
+          {/* ── Plannings liés ───────────────────────────────────────── */}
+          <SyncSection
+            currentPlanningId={planning.id}
+            planningGroups={planningGroups}
+            allPlannings={allPlannings}
+          />
         </div>
       )}
 

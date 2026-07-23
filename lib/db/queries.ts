@@ -4,8 +4,9 @@ import {
   planningMembers, users, phaseAssignees,
   phaseTypes, milestoneTypes, statuses, planningSettings,
   activityLog, closurePeriods, connectionLogs, shareTokens, baselines,
+  planningGroups, planningGroupMembers, phaseSyncGroups, milestoneSyncGroups,
 } from "./schema";
-import { eq, asc, desc, inArray, and, isNull, isNotNull, sql } from "drizzle-orm";
+import { eq, asc, desc, inArray, and, isNull, isNotNull, sql, ne } from "drizzle-orm";
 
 export type DomainRow = typeof domains.$inferSelect;
 export type LotRow = typeof lots.$inferSelect;
@@ -507,5 +508,59 @@ export async function listAllDirectoryContacts(): Promise<DirectoryContact[]> {
       });
     }
   }
+  return Array.from(map.values());
+}
+
+// ---------------------------------------------------------------------------
+// Planning sync groups (linked plannings)
+// ---------------------------------------------------------------------------
+
+export type LinkedPlanningInfo = {
+  planningId: string;
+  name: string;
+};
+
+export type PlanningGroupRow = {
+  groupId: string;
+  groupName: string;
+  linkedPlannings: LinkedPlanningInfo[];
+};
+
+export async function getPlanningGroupsForPlanning(planningId: string): Promise<PlanningGroupRow[]> {
+  const myGroups = await db
+    .select({ groupId: planningGroupMembers.groupId })
+    .from(planningGroupMembers)
+    .where(eq(planningGroupMembers.planningId, planningId));
+
+  if (myGroups.length === 0) return [];
+
+  const groupIds = myGroups.map((g) => g.groupId);
+
+  const rows = await db
+    .select({
+      groupId: planningGroups.id,
+      groupName: planningGroups.name,
+      linkedPlanningId: planningGroupMembers.planningId,
+      linkedPlanningName: plannings.name,
+    })
+    .from(planningGroups)
+    .innerJoin(planningGroupMembers, eq(planningGroupMembers.groupId, planningGroups.id))
+    .innerJoin(plannings, eq(plannings.id, planningGroupMembers.planningId))
+    .where(and(
+      inArray(planningGroups.id, groupIds),
+      ne(planningGroupMembers.planningId, planningId),
+    ));
+
+  const map = new Map<string, PlanningGroupRow>();
+  for (const row of rows) {
+    if (!map.has(row.groupId)) {
+      map.set(row.groupId, { groupId: row.groupId, groupName: row.groupName, linkedPlannings: [] });
+    }
+    map.get(row.groupId)!.linkedPlannings.push({
+      planningId: row.linkedPlanningId,
+      name: row.linkedPlanningName,
+    });
+  }
+
   return Array.from(map.values());
 }

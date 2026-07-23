@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { listPlannings, listPlanningsForUser, getGanttData, listUsersNotInPlanning, getActivityLog, listConnectionLogs, listAllDirectoryContacts } from "@/lib/db/queries";
+import { listPlannings, listPlanningsForUser, getGanttData, listUsersNotInPlanning, getActivityLog, listConnectionLogs, listAllDirectoryContacts, getPlanningGroupsForPlanning } from "@/lib/db/queries";
 import { getAppSettings, getPermissions, getSecuritySettings } from "@/lib/actions/appSettings";
 import type { ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact, UserRole } from "@/lib/db/queries";
 import { ParametresTabs } from "./ParametresTabs";
@@ -39,12 +39,13 @@ export default async function ParametresPage({ searchParams }: Props) {
     notFound();
   }
 
-  const [data, existingUsers, activityEntries, connLogs, directoryContacts] = await Promise.all([
+  const [data, existingUsers, activityEntries, connLogs, directoryContacts, syncGroups] = await Promise.all([
     getGanttData(activePlanningId),
     listUsersNotInPlanning(activePlanningId),
     getActivityLog(activePlanningId, 200),
     isAdmin ? listConnectionLogs(200) : Promise.resolve([]),
     isAdmin ? listAllDirectoryContacts() : Promise.resolve([]),
+    getPlanningGroupsForPlanning(activePlanningId),
   ]);
   if (!data) return <div className={styles.empty}>Données introuvables.</div>;
 
@@ -67,6 +68,8 @@ export default async function ParametresPage({ searchParams }: Props) {
         activityEntries={activityEntries as ActivityEntry[]}
         connLogs={connLogs as ConnectionLogRow[]}
         directoryContacts={directoryContacts as DirectoryContact[]}
+        planningGroups={syncGroups}
+        allPlannings={planningList}
       />
     </div>
   );
