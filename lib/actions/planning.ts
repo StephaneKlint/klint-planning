@@ -9,7 +9,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { phases, lots, domains, milestones, activityLog, planningMembers, users, phaseAssignees } from "@/lib/db/schema";
-import { eq, inArray, gte, and } from "drizzle-orm";
+import { eq, inArray, gte, and, sql } from "drizzle-orm";
+import { propagatePhaseSyncGroup, propagateMilestoneSyncGroup } from "./planning-sync";
 import { getGanttData } from "@/lib/db/queries";
 import type { GanttData } from "@/lib/db/queries";
 import { auth } from "@/auth";
@@ -72,12 +73,15 @@ export async function updatePhaseStatus(input: z.infer<typeof UpdatePhaseStatusS
 
   const [updated] = await db
     .update(phases)
-    .set({ status: data.status })
+    .set({ status: data.status, version: sql<number>`${phases.version} + 1` })
     .where(eq(phases.id, data.phaseId))
     .returning({ id: phases.id, status: phases.status });
 
   await logActivity(data.planningId, "status_changed", "phase", data.phaseId,
     `Statut mis à jour → ${data.status ?? "auto"}`);
+
+  const affected = await propagatePhaseSyncGroup(data.phaseId, { status: data.status });
+  for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
@@ -95,12 +99,15 @@ export async function updatePhaseProgress(input: z.infer<typeof UpdatePhaseProgr
 
   const [updated] = await db
     .update(phases)
-    .set({ progress: data.progress })
+    .set({ progress: data.progress, version: sql<number>`${phases.version} + 1` })
     .where(eq(phases.id, data.phaseId))
     .returning({ id: phases.id, progress: phases.progress });
 
   await logActivity(data.planningId, "progress_updated", "phase", data.phaseId,
     `Avancement → ${data.progress}%`, { progress: data.progress });
+
+  const affected = await propagatePhaseSyncGroup(data.phaseId, { progress: data.progress });
+  for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
@@ -123,12 +130,18 @@ export async function updatePhaseDates(input: z.infer<typeof UpdatePhaseDatesSch
 
   const [updated] = await db
     .update(phases)
-    .set({ startDate: data.startDate, endDate: data.endDate })
+    .set({ startDate: data.startDate, endDate: data.endDate, version: sql<number>`${phases.version} + 1` })
     .where(eq(phases.id, data.phaseId))
     .returning({ id: phases.id, startDate: phases.startDate, endDate: phases.endDate });
 
   await logActivity(data.planningId, "moved", "phase", data.phaseId,
     `Déplacé : ${data.startDate} → ${data.endDate}`);
+
+  const affected = await propagatePhaseSyncGroup(data.phaseId, {
+    startDate: data.startDate,
+    endDate: data.endDate,
+  });
+  for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
@@ -166,9 +179,12 @@ export async function updatePhaseLabel(input: z.infer<typeof UpdatePhaseLabelSch
 
   const [updated] = await db
     .update(phases)
-    .set({ label: data.label })
+    .set({ label: data.label, version: sql<number>`${phases.version} + 1` })
     .where(eq(phases.id, data.phaseId))
     .returning({ id: phases.id, label: phases.label });
+
+  const affected = await propagatePhaseSyncGroup(data.phaseId, { label: data.label });
+  for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
@@ -186,9 +202,12 @@ export async function updatePhaseNote(input: z.infer<typeof UpdatePhaseNoteSchem
 
   const [updated] = await db
     .update(phases)
-    .set({ note: data.note })
+    .set({ note: data.note, version: sql<number>`${phases.version} + 1` })
     .where(eq(phases.id, data.phaseId))
     .returning({ id: phases.id, note: phases.note });
+
+  const affected = await propagatePhaseSyncGroup(data.phaseId, { note: data.note });
+  for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
@@ -206,9 +225,12 @@ export async function updatePhaseColor(input: z.infer<typeof UpdatePhaseColorSch
 
   const [updated] = await db
     .update(phases)
-    .set({ color: data.color })
+    .set({ color: data.color, version: sql<number>`${phases.version} + 1` })
     .where(eq(phases.id, data.phaseId))
     .returning({ id: phases.id, color: phases.color });
+
+  const affected = await propagatePhaseSyncGroup(data.phaseId, { color: data.color });
+  for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
@@ -297,14 +319,21 @@ export async function bulkMovePhases(
 ): Promise<void> {
   await assertCanEdit(planningId);
   if (moves.length === 0) return;
+  const allAffected = new Set<string>();
   for (const m of moves) {
     await db.update(phases)
-      .set({ startDate: m.startDate, endDate: m.endDate, lotId: m.lotId })
+      .set({ startDate: m.startDate, endDate: m.endDate, lotId: m.lotId, version: sql<number>`${phases.version} + 1` })
       .where(eq(phases.id, m.phaseId));
+    const affected = await propagatePhaseSyncGroup(m.phaseId, {
+      startDate: m.startDate,
+      endDate: m.endDate,
+    });
+    for (const pid of affected) allAffected.add(pid);
   }
   await logActivity(planningId, "bulk_moved", "phase", moves[0].phaseId,
     `${moves.length} phase${moves.length > 1 ? "s" : ""} déplacée${moves.length > 1 ? "s" : ""}`,
     { count: moves.length });
+  for (const pid of allAffected) revalidatePath(`/p/${pid}`);
   revalidatePath(`/p/${planningId}`);
 }
 
@@ -314,14 +343,18 @@ export async function bulkMoveMilestones(
 ): Promise<void> {
   await assertCanEdit(planningId);
   if (moves.length === 0) return;
+  const allAffected = new Set<string>();
   for (const m of moves) {
     await db.update(milestones)
-      .set({ date: m.date, lotId: m.lotId })
+      .set({ date: m.date, lotId: m.lotId, version: sql<number>`${milestones.version} + 1` })
       .where(eq(milestones.id, m.milestoneId));
+    const affected = await propagateMilestoneSyncGroup(m.milestoneId, { date: m.date });
+    for (const pid of affected) allAffected.add(pid);
   }
   await logActivity(planningId, "bulk_moved", "milestone", moves[0].milestoneId,
     `${moves.length} jalon${moves.length > 1 ? "s" : ""} déplacé${moves.length > 1 ? "s" : ""}`,
     { count: moves.length });
+  for (const pid of allAffected) revalidatePath(`/p/${pid}`);
   revalidatePath(`/p/${planningId}`);
 }
 
@@ -673,7 +706,7 @@ export async function updateMilestone(input: z.infer<typeof UpdateMilestoneSchem
 
   const [updated] = await db
     .update(milestones)
-    .set(updates)
+    .set({ ...updates, version: sql<number>`${milestones.version} + 1` })
     .where(eq(milestones.id, data.milestoneId))
     .returning({ id: milestones.id, date: milestones.date, label: milestones.label });
 
@@ -681,6 +714,14 @@ export async function updateMilestone(input: z.infer<typeof UpdateMilestoneSchem
     ? `Jalon déplacé au ${data.date}`
     : `Jalon modifié : ${data.label ?? ""}`;
   await logActivity(data.planningId, "updated", "milestone", data.milestoneId, desc);
+
+  const syncUpdates: Parameters<typeof propagateMilestoneSyncGroup>[1] = {};
+  if (data.date  !== undefined) syncUpdates.date  = data.date;
+  if (data.label !== undefined) syncUpdates.label = data.label;
+  if (data.note  !== undefined) syncUpdates.note  = data.note;
+  if (data.color !== undefined) syncUpdates.color = data.color;
+  const affected = await propagateMilestoneSyncGroup(data.milestoneId, syncUpdates);
+  for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
