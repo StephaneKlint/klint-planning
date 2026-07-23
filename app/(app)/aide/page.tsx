@@ -1336,29 +1336,54 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
     <section style={S.section}>
       <h2 style={S.h2}><span style={S.pill}>21</span> Plannings liés (synchronisation)</h2>
       <p style={{ fontSize: 14, color: "#374151", marginBottom: 20 }}>
-        Deux plannings liés partagent automatiquement leurs phases et jalons marqués <UI>⇄</UI>.
-        Toute modification d&apos;une phase ou d&apos;un jalon lié se propage instantanément à tous les plannings du groupe.
+        Des plannings liés partagent automatiquement leurs phases et jalons marqués <UI>⇄</UI>.
+        Toute modification d&apos;une phase ou d&apos;un jalon lié se propage instantanément à <strong>tous les plannings du groupe</strong> — pas seulement entre deux, mais à N plannings simultanément.
       </p>
-      <How title="Lier deux plannings">
+
+      <How title="Étape 1 — Lier deux plannings entre eux">
         <Step n={1}>Allez dans <UI>Paramètres → onglet Général</UI>.</Step>
         <Step n={2}>Dans la section <UI>Plannings liés</UI>, cliquez sur <UI>+ Lier un planning</UI>.</Step>
-        <Step n={3}>Sélectionnez le planning cible dans la liste, saisissez un nom de groupe (ex. : <em>Projet Atlantique</em>), puis cliquez sur <UI>Créer le lien</UI>.</Step>
-        <Step n={4}>Le groupe apparaît dans la liste. Vous pouvez lier plusieurs plannings au même groupe.</Step>
+        <Step n={3}>Sélectionnez le planning cible, saisissez un nom de groupe (ex. : <em>Projet Atlantique</em>), puis cliquez sur <UI>Créer le lien</UI>.</Step>
+        <Step n={4}>Le groupe apparaît dans la liste. Vous pouvez lier plusieurs plannings au même groupe pour une synchronisation multi-planning.</Step>
       </How>
+
+      <How title="Étape 2a — Lier une phase ou un jalon individuellement">
+        <Step n={1}>Dans le Gantt, cliquez sur une phase ou un jalon pour ouvrir le panneau d&apos;édition.</Step>
+        <Step n={2}>Faites défiler vers le bas jusqu&apos;à la section <UI>Synchronisation</UI>.</Step>
+        <Step n={3}>Cliquez sur <UI>⇄ Lier à un planning</UI>. La liste des phases (ou jalons) disponibles dans les plannings liés s&apos;affiche. Les éléments de même libellé sont mis en avant avec ⭐.</Step>
+        <Step n={4}>Sélectionnez la phase sœur et cliquez sur <UI>Lier</UI>. L&apos;icône ⇄ apparaît immédiatement sur les deux éléments.</Step>
+      </How>
+
+      <How title="Étape 2b — Lier plusieurs projets d'un coup (bulk)">
+        <Step n={1}>Dans <UI>Paramètres → Général → Plannings liés</UI>, cliquez sur <UI>⇄ Synchroniser un lot</UI> en regard d&apos;un groupe.</Step>
+        <Step n={2}>Cochez un ou plusieurs projets (sous-projets) dans la liste. Utilisez <UI>Tout sélectionner</UI> pour cocher tous les projets en une fois.</Step>
+        <Step n={3}>Cliquez sur <UI>Synchroniser</UI>. Toutes les phases et tous les jalons de même libellé sont liés automatiquement entre les plannings du groupe.</Step>
+        <Step n={4}>Un message confirme le nombre de phases et jalons synchronisés.</Step>
+      </How>
+
       <How title="Identifier une phase ou un jalon lié">
         <Step n={1}>Les phases liées affichent une icône <strong>⇄</strong> à droite de leur barre dans le Gantt.</Step>
         <Step n={2}>Les jalons liés affichent <strong>⇄</strong> dans leur chip de label.</Step>
         <Step n={3}>Lorsqu&apos;une modification est propagée, une bannière verte confirme : <em>« Modification propagée à X planning(s) lié(s). »</em></Step>
       </How>
+
       <How title="Champs synchronisés par défaut">
         <Step n={1}><strong>Phases</strong> : dates de début et fin, avancement, couleur, note, libellé.</Step>
         <Step n={2}><strong>Jalons</strong> : date, couleur, note, libellé.</Step>
-        <Step n={3}>Le statut des phases n&apos;est <strong>pas</strong> synchronisé par défaut (chaque planning conserve son propre statut métier).</Step>
+        <Step n={3}>Le statut des phases n&apos;est <strong>pas</strong> synchronisé (chaque planning conserve son propre statut métier).</Step>
       </How>
-      <How title="Supprimer un lien">
+
+      <How title="Délier une phase ou un jalon">
+        <Step n={1}>Cliquez sur la phase ou le jalon dans le Gantt pour ouvrir le panneau d&apos;édition.</Step>
+        <Step n={2}>Dans la section <UI>Synchronisation</UI>, cliquez sur <UI>Délier</UI>. L&apos;élément conserve ses données mais n&apos;est plus synchronisé.</Step>
+      </How>
+
+      <How title="Supprimer un groupe de plannings liés">
         <Step n={1}>Dans <UI>Paramètres → Général → Plannings liés</UI>, cliquez sur <UI>Supprimer le lien</UI> en regard du groupe.</Step>
-        <Step n={2}>Les phases et jalons du planning conservent leurs données mais ne sont plus synchronisés.</Step>
+        <Step n={2}>Toutes les phases et jalons du planning sont déliés. Les données sont conservées.</Step>
       </How>
+
+      <Tip>La synchronisation est N-way : si trois plannings sont dans le même groupe, une modification dans le planning A se propage à B et C. Modifier dans B propage à A et C.</Tip>
       <Warn>Seul le propriétaire du planning source (ou un Admin) peut créer ou supprimer un lien. Vous devez également être membre du planning cible.</Warn>
     </section>
   ),

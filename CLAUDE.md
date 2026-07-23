@@ -108,9 +108,9 @@ drizzle/          # fichiers SQL de migration générés
 | `project_roles` | Rôles personnalisés par planning |
 | `domains` | Domaines fonctionnels |
 | `lots` | Lots de travail |
-| `phases` | Phases (barres Gantt) |
+| `phases` | Phases (barres Gantt) — colonnes sync : `syncGroupId`, `version` |
 | `phase_assignees` | Assignation phases ↔ ressources |
-| `milestones` | Jalons |
+| `milestones` | Jalons — colonnes sync : `syncGroupId`, `version` |
 | `phase_types` / `milestone_types` | Types personnalisables |
 | `statuses` | Statuts personnalisables |
 | `planning_settings` | Paramètres par planning |
@@ -122,6 +122,10 @@ drizzle/          # fichiers SQL de migration générés
 | `connection_logs` | Logs de connexion par IP/pays |
 | `app_errors` | Erreurs applicatives — consultable en admin |
 | `app_settings` | Paramètres globaux (JSON) |
+| `planning_groups` | Groupes de synchronisation entre plannings |
+| `planning_group_members` | Membres (plannings) d'un groupe de sync |
+| `phase_sync_groups` | Groupes de sync par paire de phases (1 entrée = 1 paire liée) |
+| `milestone_sync_groups` | Groupes de sync par paire de jalons |
 
 ## Journalisation des erreurs
 
@@ -134,6 +138,30 @@ logError({ source: "action:createPlanning", message: err.message, details: { ...
 ```
 
 Les erreurs sont consultables dans **Paramètres → Logs erreurs** (admin uniquement).
+
+## Synchronisation entre plannings liés
+
+Architecture `sync_group_id` (N-way, non O(n²)) :
+
+- **`planning_groups`** → **`planning_group_members`** : N plannings forment un groupe.
+- **`phase_sync_groups`** / **`milestone_sync_groups`** : 1 entrée = 1 paire (ou tuple) de phases/jalons synchronisés. Chaque entrée a un `planningGroupId`.
+- **`phases.syncGroupId`** / **`milestones.syncGroupId`** : toutes les phases partageant le même `syncGroupId` se synchronisent, quel que soit leur planning.
+- **`phases.version`** / **`milestones.version`** : verrou optimiste — `WHERE id = X AND version = N`. Si 0 lignes → conflit, skip silencieux.
+
+Propagation : `propagatePhaseSyncGroup` / `propagateMilestoneSyncGroup` dans `lib/actions/planning.ts` — écrit directement en DB, jamais d'appel récursif aux server actions → impossible de boucler.
+
+Actions dans `lib/actions/planning-groups.ts` :
+- `linkPhases` / `linkMilestones` : crée 1 `phase_sync_groups` par paire (ou réutilise le `syncGroupId` source si déjà lié → ajout N-way).
+- `unlinkPhase` / `unlinkMilestone` : met `syncGroupId = null` sur la phase/jalon.
+- `bulkLinkLot` : lie en masse toutes les phases/jalons d'un lot par correspondance de libellé identique.
+- `getSyncCandidates` / `getMilestoneSyncCandidates` : retourne les phases/jalons non liés des plannings du groupe (pour le picker EditPanel). Trie les candidates de même libellé en premier (⭐).
+- `createPlanningLink` / `removePlanningFromSyncGroup` : gestion des groupes (Paramètres).
+
+UI : section **Synchronisation** en bas de l'EditPanel (phase et jalon). Bulk-link multi-sélection dans **Paramètres → Général → Plannings liés → ⇄ Synchroniser un lot**.
+
+Statut **non synchronisé** par défaut (champ `status` exclu des champs propagés).
+
+Migration idempotente : `lib/db/migrate-planning-sync.ts` — déjà appliquée en prod Neon.
 
 ## Points d'attention
 
