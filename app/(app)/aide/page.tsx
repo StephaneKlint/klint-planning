@@ -382,6 +382,7 @@ const SECTIONS: SectionDef[] = [
   { id: "historique",   num: "18", emoji: "📜", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log",                                                                                                                             minRole: "admin" },
   { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt",                                                                                                                                   minRole: "admin" },
   { id: "droits",       num: "20", emoji: "🛡️", title: "Rôles & droits d'accès",               keywords: "rôles droits admin utilisateur contact propriétaire éditeur lecteur permissions crud accès matrice onglets plateforme planning membres inviter lien invitation ajouter gantt toolbar",                                                        minRole: "admin" },
+  { id: "sync",         num: "21", emoji: "⇄",  title: "Plannings liés (synchronisation)",      keywords: "sync synchronisation plannings liés lier délier lien groupe phases jalons propagation bidirectionnelle icône chaîne dates dates avancement couleur note label automatique" },
 ];
 
 /* ── Section bodies (module scope — purely static JSX) ──────────────────── */
@@ -1328,6 +1329,37 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
 
       <Tip>Les droits de la matrice sont appliqués en plus des rôles planning. Un Contributeur ne peut accéder à un onglet Paramètres désactivé pour les Utilisateurs que si l&apos;admin l&apos;active explicitement.</Tip>
       <Warn>Seul un Admin peut modifier la matrice de droits. Si vous ne voyez pas l&apos;onglet <UI>Rôles &amp; droits</UI>, demandez à votre administrateur.</Warn>
+    </section>
+  ),
+
+  sync: (
+    <section style={S.section}>
+      <h2 style={S.h2}><span style={S.pill}>21</span> Plannings liés (synchronisation)</h2>
+      <p style={{ fontSize: 14, color: "#374151", marginBottom: 20 }}>
+        Deux plannings liés partagent automatiquement leurs phases et jalons marqués <UI>⇄</UI>.
+        Toute modification d&apos;une phase ou d&apos;un jalon lié se propage instantanément à tous les plannings du groupe.
+      </p>
+      <How title="Lier deux plannings">
+        <Step n={1}>Allez dans <UI>Paramètres → onglet Général</UI>.</Step>
+        <Step n={2}>Dans la section <UI>Plannings liés</UI>, cliquez sur <UI>+ Lier un planning</UI>.</Step>
+        <Step n={3}>Sélectionnez le planning cible dans la liste, saisissez un nom de groupe (ex. : <em>Projet Atlantique</em>), puis cliquez sur <UI>Créer le lien</UI>.</Step>
+        <Step n={4}>Le groupe apparaît dans la liste. Vous pouvez lier plusieurs plannings au même groupe.</Step>
+      </How>
+      <How title="Identifier une phase ou un jalon lié">
+        <Step n={1}>Les phases liées affichent une icône <strong>⇄</strong> à droite de leur barre dans le Gantt.</Step>
+        <Step n={2}>Les jalons liés affichent <strong>⇄</strong> dans leur chip de label.</Step>
+        <Step n={3}>Lorsqu&apos;une modification est propagée, une bannière verte confirme : <em>« Modification propagée à X planning(s) lié(s). »</em></Step>
+      </How>
+      <How title="Champs synchronisés par défaut">
+        <Step n={1}><strong>Phases</strong> : dates de début et fin, avancement, couleur, note, libellé.</Step>
+        <Step n={2}><strong>Jalons</strong> : date, couleur, note, libellé.</Step>
+        <Step n={3}>Le statut des phases n&apos;est <strong>pas</strong> synchronisé par défaut (chaque planning conserve son propre statut métier).</Step>
+      </How>
+      <How title="Supprimer un lien">
+        <Step n={1}>Dans <UI>Paramètres → Général → Plannings liés</UI>, cliquez sur <UI>Supprimer le lien</UI> en regard du groupe.</Step>
+        <Step n={2}>Les phases et jalons du planning conservent leurs données mais ne sont plus synchronisés.</Step>
+      </How>
+      <Warn>Seul le propriétaire du planning source (ou un Admin) peut créer ou supprimer un lien. Vous devez également être membre du planning cible.</Warn>
     </section>
   ),
 

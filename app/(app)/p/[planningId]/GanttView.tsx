@@ -130,9 +130,11 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await updatePhaseStatus({ phaseId: entry.phaseId, planningId: entry.planningId, status: entry.prev as any });
           break;
-        case "phase-dates":
-          await updatePhaseDates({ phaseId: entry.phaseId, planningId: entry.planningId, startDate: entry.prevStart, endDate: entry.prevEnd });
+        case "phase-dates": {
+          const r = await updatePhaseDates({ phaseId: entry.phaseId, planningId: entry.planningId, startDate: entry.prevStart, endDate: entry.prevEnd });
+          if (r?.propagatedCount > 0) setSyncInfo(`Modification propagée à ${r.propagatedCount} planning(s) lié(s).`);
           break;
+        }
         case "phase-move":
           await movePhaseToLot({ phaseId: entry.phaseId, planningId: entry.planningId, targetLotId: entry.prevLotId, newStartDate: entry.prevStart, newEndDate: entry.prevEnd });
           break;
@@ -148,9 +150,11 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
         case "phase-progress":
           await updatePhaseProgress({ phaseId: entry.phaseId, planningId: entry.planningId, progress: entry.prev });
           break;
-        case "milestone-update":
-          await updateMilestone({ milestoneId: entry.milestoneId, planningId: entry.planningId, ...entry.prev });
+        case "milestone-update": {
+          const rm = await updateMilestone({ milestoneId: entry.milestoneId, planningId: entry.planningId, ...entry.prev });
+          if (rm?.propagatedCount > 0) setSyncInfo(`Modification propagée à ${rm.propagatedCount} planning(s) lié(s).`);
           break;
+        }
         case "milestone-move":
           await moveMilestoneToLot({ milestoneId: entry.milestoneId, planningId: entry.planningId, targetLotId: entry.prevLotId, newDate: entry.prevDate });
           break;

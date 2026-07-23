@@ -60,7 +60,7 @@ interface EditPanelProps {
 }
 
 export function EditPanel({ planningId, data }: EditPanelProps) {
-  const { editTarget, closeEdit, pushUndo, openEdit, setActionError } = useGanttStore();
+  const { editTarget, closeEdit, pushUndo, openEdit, setActionError, setSyncInfo } = useGanttStore();
   const [isPending, startTransitionRaw] = useTransition();
   // Safe wrapper: prevents uncaught async errors from propagating to the error.tsx boundary
   const startTransition = (fn: () => Promise<void>) => {
@@ -196,7 +196,10 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
 
     const save = <T,>(fn: () => Promise<T>) => {
       startTransition(async () => {
-        await fn();
+        const result = await fn() as { propagatedCount?: number } | undefined;
+        if (result?.propagatedCount && result.propagatedCount > 0) {
+          setSyncInfo(`Modification propagée à ${result.propagatedCount} planning(s) lié(s).`);
+        }
         qc.invalidateQueries({ queryKey: planningQueryKey(planningId) });
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);

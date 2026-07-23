@@ -54,6 +54,21 @@ export async function createPlanningLink(input: z.infer<typeof CreatePlanningLin
 
   const actorId = await assertIsOwnerOrAdmin(data.sourcePlanningId);
 
+  // Check actor has at least view access to the target planning (unless admin)
+  const session = await auth();
+  if (session?.user?.role !== "admin") {
+    const [targetAccess] = await db
+      .select({ permission: planningMembers.permission })
+      .from(planningMembers)
+      .where(and(
+        eq(planningMembers.planningId, data.targetPlanningId),
+        eq(planningMembers.userId, actorId),
+      ))
+      .limit(1);
+    if (!targetAccess)
+      throw new Error("Vous n'avez pas accès au planning cible.");
+  }
+
   // Check if a group already links these two plannings
   const existingMemberships = await db
     .select({ groupId: planningGroupMembers.groupId })
