@@ -30,7 +30,7 @@ import { restoreMember, getContactsForPlanning, assignExistingContactToPlanning 
 import { getOrCreateShareToken, revokeShareToken } from "@/lib/actions/share";
 import { importLegacyPlanningJSON, updatePlanningFromJSON } from "@/lib/actions/plannings";
 import { createBaseline, deleteBaselineById, getBaselineById } from "@/lib/actions/baseline";
-import type { BaselineRow, BaselineMeta } from "@/lib/db/queries";
+import type { BaselineRow, BaselineMeta, PlanningGroupRow } from "@/lib/db/queries";
 import type { GanttProps } from "@/components/gantt/types";
 import type { GanttData } from "@/lib/db/queries";
 import type { UndoEntry } from "@/store/ganttStore";
@@ -43,9 +43,11 @@ interface GanttViewProps extends GanttProps {
   initialBaseline?: BaselineRow | null;
   /** Liste des baselines (metadata seule, sans snapshot) */
   initialBaselines?: BaselineMeta[];
+  /** Groupes de synchronisation entre plannings liés */
+  planningGroups?: PlanningGroupRow[];
 }
 
-export function GanttView({ initialData, demoMemberId, initialBaseline, initialBaselines, ...props }: GanttViewProps) {
+export function GanttView({ initialData, demoMemberId, initialBaseline, initialBaselines, planningGroups, ...props }: GanttViewProps) {
   const ganttRef = useRef<HTMLDivElement>(null);
   const importJsonRef = useRef<HTMLInputElement>(null);
   const [importPending, setImportPending] = useState(false);
@@ -852,7 +854,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
           aria-hidden="true"
         />
       )}
-      <EditPanel planningId={props.planningId} data={liveData} />
+      <EditPanel planningId={props.planningId} data={liveData} planningGroups={planningGroups} />
       <BulkBar planningId={props.planningId} lots={liveData.lots} />
       <CommandPalette data={liveData} planningId={props.planningId} />
 

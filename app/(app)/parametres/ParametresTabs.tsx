@@ -292,6 +292,7 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
             currentPlanningId={planning.id}
             planningGroups={planningGroups}
             allPlannings={allPlannings}
+            currentLots={data.lots.map((l) => ({ id: l.id, name: l.name }))}
           />
         </div>
       )}

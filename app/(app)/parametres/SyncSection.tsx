@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createPlanningLink, removePlanningFromSyncGroup } from "@/lib/actions/planning-groups";
+import { createPlanningLink, removePlanningFromSyncGroup, bulkLinkLot } from "@/lib/actions/planning-groups";
 import type { PlanningGroupRow } from "@/lib/db/queries";
 import styles from "./Parametres.module.css";
 
@@ -10,15 +10,22 @@ interface SyncSectionProps {
   currentPlanningId: string;
   planningGroups: PlanningGroupRow[];
   allPlannings: Array<{ id: string; name: string }>;
+  currentLots?: Array<{ id: string; name: string }>;
 }
 
-export function SyncSection({ currentPlanningId, planningGroups, allPlannings }: SyncSectionProps) {
+export function SyncSection({ currentPlanningId, planningGroups, allPlannings, currentLots = [] }: SyncSectionProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
   const [targetId, setTargetId] = useState("");
   const [groupName, setGroupName] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Bulk link state — one picker per group (keyed by groupId)
+  const [bulkGroupId, setBulkGroupId] = useState<string | null>(null);
+  const [bulkSourceLotId, setBulkSourceLotId] = useState("");
+  const [bulkResult, setBulkResult] = useState<{ linkedPhases: number; linkedMilestones: number } | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   // Plannings not yet linked to this one
   const linkedIds = new Set(
@@ -60,6 +67,34 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings }:
     });
   }
 
+  function handleOpenBulkPicker(groupId: string) {
+    setBulkGroupId(groupId);
+    setBulkSourceLotId("");
+    setBulkResult(null);
+    setBulkError(null);
+  }
+
+  async function handleBulkLink(groupId: string) {
+    if (!bulkSourceLotId) return;
+    setBulkError(null);
+    setBulkResult(null);
+    startTransition(async () => {
+      try {
+        const result = await bulkLinkLot({
+          sourceLotId: bulkSourceLotId,
+          planningGroupId: groupId,
+          planningId: currentPlanningId,
+        });
+        setBulkResult(result);
+        if (result.linkedPhases > 0 || result.linkedMilestones > 0) {
+          router.refresh();
+        }
+      } catch (e: unknown) {
+        setBulkError(e instanceof Error ? e.message : "Erreur lors de la synchronisation.");
+      }
+    });
+  }
+
   return (
     <div className={styles.settingsBlock} style={{ marginTop: 16 }}>
       <p className={styles.blockTitle} style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
@@ -87,26 +122,91 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings }:
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--klint-navy)" }}>
               {group.groupName}
             </span>
-            <button
-              type="button"
-              onClick={() => handleRemove(group.groupId)}
-              disabled={isPending}
-              style={{
-                fontSize: 12,
-                color: "#DC2626",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "2px 6px",
-                borderRadius: 4,
-              }}
-            >
-              Supprimer le lien
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {currentLots.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => bulkGroupId === group.groupId ? setBulkGroupId(null) : handleOpenBulkPicker(group.groupId)}
+                  disabled={isPending}
+                  style={{
+                    fontSize: 11, color: "#2563EB", background: "none",
+                    border: "1px solid #BFDBFE", cursor: "pointer",
+                    padding: "2px 8px", borderRadius: 4,
+                  }}
+                >
+                  ⇄ Synchroniser un lot
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleRemove(group.groupId)}
+                disabled={isPending}
+                style={{
+                  fontSize: 12, color: "#DC2626", background: "none",
+                  border: "none", cursor: "pointer", padding: "2px 6px", borderRadius: 4,
+                }}
+              >
+                Supprimer le lien
+              </button>
+            </div>
           </div>
           <div style={{ fontSize: 12, color: "#64748B" }}>
-            {group.linkedPlannings.map((lp) => lp.name).join(", ")}
+            ⇄ {group.linkedPlannings.map((lp) => lp.name).join(", ")}
           </div>
+
+          {/* Bulk link picker */}
+          {bulkGroupId === group.groupId && (
+            <div style={{ background: "#F0F7FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: 10, width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+              <p style={{ fontSize: 12, color: "#1E40AF", margin: 0, fontWeight: 600 }}>
+                Synchroniser par libellé identique
+              </p>
+              <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>
+                Choisissez un projet source — toutes ses phases et jalons seront liés automatiquement aux éléments de même libellé dans {group.linkedPlannings.map((lp) => lp.name).join(", ")}.
+              </p>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <label style={{ fontSize: 12, whiteSpace: "nowrap" }}>Projet source :</label>
+                <select
+                  value={bulkSourceLotId}
+                  onChange={(e) => { setBulkSourceLotId(e.target.value); setBulkResult(null); }}
+                  style={{ flex: 1, fontSize: 12, padding: "4px 8px", borderRadius: 4, border: "1px solid #BFDBFE" }}
+                >
+                  <option value="">— Choisir un projet —</option>
+                  {currentLots.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+              </div>
+              {bulkError && <p style={{ fontSize: 11, color: "#DC2626", margin: 0 }}>{bulkError}</p>}
+              {bulkResult && (
+                <p style={{ fontSize: 11, color: "#16A34A", margin: 0 }}>
+                  ✓ {bulkResult.linkedPhases} phase{bulkResult.linkedPhases !== 1 ? "s" : ""} et {bulkResult.linkedMilestones} jalon{bulkResult.linkedMilestones !== 1 ? "s" : ""} synchronisé{bulkResult.linkedMilestones !== 1 ? "s" : ""}.
+                  {bulkResult.linkedPhases === 0 && bulkResult.linkedMilestones === 0 && " Aucune correspondance de libellé trouvée."}
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => handleBulkLink(group.groupId)}
+                  disabled={isPending || !bulkSourceLotId}
+                  style={{
+                    fontSize: 12, padding: "5px 14px",
+                    background: !bulkSourceLotId ? "#E5E7EB" : "#2563EB",
+                    color: !bulkSourceLotId ? "#9CA3AF" : "#fff",
+                    border: "none", borderRadius: 5, cursor: !bulkSourceLotId ? "default" : "pointer",
+                  }}
+                >
+                  {isPending ? "Synchronisation…" : "Synchroniser"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setBulkGroupId(null); setBulkResult(null); setBulkError(null); }}
+                  style={{ fontSize: 12, padding: "5px 10px", background: "none", border: "1px solid #E5E7EB", borderRadius: 5, cursor: "pointer" }}
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ))}
 

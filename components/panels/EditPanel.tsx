@@ -10,7 +10,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import type { StatusCode } from "@/components/ui/StatusPill";
-import type { GanttData } from "@/lib/db/queries";
+import type { GanttData, PlanningGroupRow } from "@/lib/db/queries";
+import type { PhaseSyncCandidate, MilestoneSyncCandidate } from "@/lib/actions/planning-groups";
+import { getSyncCandidates, getMilestoneSyncCandidates, linkPhases, linkMilestones, unlinkPhase, unlinkMilestone } from "@/lib/actions/planning-groups";
 import { PhaseItemsSection } from "@/components/panels/PhaseItemsSection";
 import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
@@ -57,9 +59,10 @@ const DOMAIN_PRESETS: [string, string, string, string][] = [
 interface EditPanelProps {
   planningId: string;
   data: GanttData;
+  planningGroups?: PlanningGroupRow[];
 }
 
-export function EditPanel({ planningId, data }: EditPanelProps) {
+export function EditPanel({ planningId, data, planningGroups }: EditPanelProps) {
   const { editTarget, closeEdit, pushUndo, openEdit, setActionError, setSyncInfo } = useGanttStore();
   const [isPending, startTransitionRaw] = useTransition();
   // Safe wrapper: prevents uncaught async errors from propagating to the error.tsx boundary
@@ -117,6 +120,22 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
   const [editingMilestoneDates, setEditingMilestoneDates] = useState(false);
   const [milestoneDateDrafts, setMilestoneDateDrafts] = useState<Record<string, string>>({});
 
+  // Sync picker — phase
+  const [showSyncPicker, setShowSyncPicker] = useState(false);
+  const [syncCandidates, setSyncCandidates] = useState<PhaseSyncCandidate[] | null>(null);
+  const [syncPickerLoading, setSyncPickerLoading] = useState(false);
+  const [selectedSyncPhaseId, setSelectedSyncPhaseId] = useState("");
+  const [selectedSyncGroupId, setSelectedSyncGroupId] = useState("");
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Sync picker — milestone
+  const [showMsSyncPicker, setShowMsSyncPicker] = useState(false);
+  const [msSyncCandidates, setMsSyncCandidates] = useState<MilestoneSyncCandidate[] | null>(null);
+  const [msSyncPickerLoading, setMsSyncPickerLoading] = useState(false);
+  const [selectedSyncMsId, setSelectedSyncMsId] = useState("");
+  const [selectedSyncMsGroupId, setSelectedSyncMsGroupId] = useState("");
+  const [msSyncError, setMsSyncError] = useState<string | null>(null);
+
   // Close dropdown on click outside
   useEffect(() => {
     if (!showAssigneeDropdown) return;
@@ -151,6 +170,19 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
     setPhaseDateDrafts({});
     setEditingMilestoneDates(false);
     setMilestoneDateDrafts({});
+    // Sync pickers
+    setShowSyncPicker(false);
+    setSyncCandidates(null);
+    setSyncPickerLoading(false);
+    setSelectedSyncPhaseId("");
+    setSelectedSyncGroupId("");
+    setSyncError(null);
+    setShowMsSyncPicker(false);
+    setMsSyncCandidates(null);
+    setMsSyncPickerLoading(false);
+    setSelectedSyncMsId("");
+    setSelectedSyncMsGroupId("");
+    setMsSyncError(null);
     // Seed lot edit form from current data
     if (editTarget?.kind === "lot" || editTarget?.kind === "edit-lot") {
       const lotId = editTarget.kind === "lot" ? editTarget.id : editTarget.lotId;
@@ -569,6 +601,138 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               }}
             />
           </div>
+
+          {/* ── Synchronisation ── */}
+          {planningGroups && planningGroups.length > 0 && (() => {
+            const hasSyncPicker = showSyncPicker && syncCandidates !== null;
+            const handleOpenSyncPicker = async () => {
+              setSyncPickerLoading(true);
+              setShowSyncPicker(true);
+              setSyncCandidates(null);
+              setSelectedSyncPhaseId("");
+              setSyncError(null);
+              try {
+                const candidates = await getSyncCandidates(phase.id, planningId);
+                setSyncCandidates(candidates);
+              } catch {
+                setSyncCandidates([]);
+              } finally {
+                setSyncPickerLoading(false);
+              }
+            };
+            const handleConfirmLinkPhase = () => {
+              if (!selectedSyncPhaseId || !selectedSyncGroupId) return;
+              startTransition(async () => {
+                try {
+                  await linkPhases({
+                    sourcePhaseId: phase.id,
+                    targetPhaseId: selectedSyncPhaseId,
+                    planningGroupId: selectedSyncGroupId,
+                    planningId,
+                  });
+                  setSyncInfo("Phase liée avec succès.");
+                  setShowSyncPicker(false);
+                  setSyncCandidates(null);
+                  setSelectedSyncPhaseId("");
+                  qc.invalidateQueries({ queryKey: planningQueryKey(planningId) });
+                  setSaved(true);
+                  setTimeout(() => setSaved(false), 2000);
+                } catch (err) {
+                  setSyncError(err instanceof Error ? err.message : "Erreur lors de la liaison.");
+                }
+              });
+            };
+            const handleUnlinkPhase = () => {
+              startTransition(async () => {
+                await unlinkPhase(phase.id, planningId);
+                qc.invalidateQueries({ queryKey: planningQueryKey(planningId) });
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2000);
+              });
+            };
+            return (
+              <div style={{ borderTop: "1px solid var(--klint-line)", paddingTop: 10, marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className={styles.fieldLabel} style={{ marginBottom: 0 }}>Synchronisation</span>
+                  {phase.syncGroupId ? (
+                    <>
+                      <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 600, display: "flex", alignItems: "center", gap: 3 }}>
+                        ⇄ Synchronisée
+                      </span>
+                      <button
+                        style={{ marginLeft: "auto", fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}
+                        onClick={handleUnlinkPhase}
+                        disabled={isPending}
+                      >
+                        Délier
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      style={{ marginLeft: "auto", fontSize: 11, color: "#2563EB", background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}
+                      onClick={handleOpenSyncPicker}
+                      disabled={syncPickerLoading || isPending}
+                    >
+                      {syncPickerLoading ? "Chargement…" : "⇄ Lier à un planning"}
+                    </button>
+                  )}
+                </div>
+                {hasSyncPicker && (
+                  <div style={{ background: "#F0F7FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {syncCandidates!.length === 0 ? (
+                      <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
+                        Aucune phase disponible dans les plannings liés (déjà synchronisées ou aucun lot trouvé).
+                      </p>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>Sélectionner la phase sœur :</p>
+                        <div style={{ maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 3 }}>
+                          {syncCandidates!.map((c) => {
+                            const label = c.phaseLabel ?? c.phaseType;
+                            const isSelected = selectedSyncPhaseId === c.phaseId;
+                            const isSameLabel = c.phaseLabel !== null && c.phaseLabel === phase.label;
+                            return (
+                              <button
+                                key={c.phaseId}
+                                style={{
+                                  textAlign: "left", fontSize: 12, padding: "5px 8px", borderRadius: 6,
+                                  border: isSelected ? "1.5px solid #2563EB" : "1px solid #E5E7EB",
+                                  background: isSelected ? "#EFF6FF" : isSameLabel ? "#F0FDF4" : "#fff",
+                                  cursor: "pointer", lineHeight: 1.4,
+                                }}
+                                onClick={() => { setSelectedSyncPhaseId(c.phaseId); setSelectedSyncGroupId(c.groupId); }}
+                              >
+                                <span style={{ color: "#94A3B8", fontSize: 10, display: "block" }}>{c.planningName} / {c.lotName}</span>
+                                <span style={{ fontWeight: isSameLabel ? 600 : 400 }}>
+                                  {isSameLabel ? "⭐ " : ""}{label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                    {syncError && <p style={{ fontSize: 11, color: "#DC2626", margin: 0 }}>{syncError}</p>}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        style={{ flex: 1, fontSize: 12, padding: "5px", background: "#2563EB", color: "#fff", border: "none", borderRadius: 5, cursor: "pointer", opacity: !selectedSyncPhaseId || isPending ? 0.5 : 1 }}
+                        disabled={!selectedSyncPhaseId || isPending}
+                        onClick={handleConfirmLinkPhase}
+                      >
+                        {isPending ? "Liaison…" : "Lier"}
+                      </button>
+                      <button
+                        style={{ fontSize: 12, padding: "5px 10px", background: "none", border: "1px solid #E5E7EB", borderRadius: 5, cursor: "pointer" }}
+                        onClick={() => { setShowSyncPicker(false); setSyncCandidates(null); setSelectedSyncPhaseId(""); setSyncError(null); }}
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <PhaseItemsSection
             phaseId={phase.id}
@@ -1362,6 +1526,135 @@ export function EditPanel({ planningId, data }: EditPanelProps) {
               }}
             />
           </div>
+
+          {/* ── Synchronisation jalon ── */}
+          {planningGroups && planningGroups.length > 0 && (() => {
+            const hasMsPicker = showMsSyncPicker && msSyncCandidates !== null;
+            const handleOpenMsSyncPicker = async () => {
+              setMsSyncPickerLoading(true);
+              setShowMsSyncPicker(true);
+              setMsSyncCandidates(null);
+              setSelectedSyncMsId("");
+              setMsSyncError(null);
+              try {
+                const candidates = await getMilestoneSyncCandidates(ms.id, planningId);
+                setMsSyncCandidates(candidates);
+              } catch {
+                setMsSyncCandidates([]);
+              } finally {
+                setMsSyncPickerLoading(false);
+              }
+            };
+            const handleConfirmLinkMs = () => {
+              if (!selectedSyncMsId || !selectedSyncMsGroupId) return;
+              startTransition(async () => {
+                try {
+                  await linkMilestones({
+                    sourceMilestoneId: ms.id,
+                    targetMilestoneId: selectedSyncMsId,
+                    planningGroupId: selectedSyncMsGroupId,
+                    planningId,
+                  });
+                  setSyncInfo("Jalon lié avec succès.");
+                  setShowMsSyncPicker(false);
+                  setMsSyncCandidates(null);
+                  setSelectedSyncMsId("");
+                  qc.invalidateQueries({ queryKey: planningQueryKey(planningId) });
+                  setSaved(true);
+                  setTimeout(() => setSaved(false), 2000);
+                } catch (err) {
+                  setMsSyncError(err instanceof Error ? err.message : "Erreur lors de la liaison.");
+                }
+              });
+            };
+            const handleUnlinkMs = () => {
+              startTransition(async () => {
+                await unlinkMilestone(ms.id, planningId);
+                qc.invalidateQueries({ queryKey: planningQueryKey(planningId) });
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2000);
+              });
+            };
+            return (
+              <div style={{ borderTop: "1px solid var(--klint-line)", paddingTop: 10, marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className={styles.fieldLabel} style={{ marginBottom: 0 }}>Synchronisation</span>
+                  {ms.syncGroupId ? (
+                    <>
+                      <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 600 }}>⇄ Synchronisé</span>
+                      <button
+                        style={{ marginLeft: "auto", fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}
+                        onClick={handleUnlinkMs}
+                        disabled={isPending}
+                      >
+                        Délier
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      style={{ marginLeft: "auto", fontSize: 11, color: "#2563EB", background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}
+                      onClick={handleOpenMsSyncPicker}
+                      disabled={msSyncPickerLoading || isPending}
+                    >
+                      {msSyncPickerLoading ? "Chargement…" : "⇄ Lier à un planning"}
+                    </button>
+                  )}
+                </div>
+                {hasMsPicker && (
+                  <div style={{ background: "#F0F7FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {msSyncCandidates!.length === 0 ? (
+                      <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
+                        Aucun jalon disponible dans les plannings liés.
+                      </p>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>Sélectionner le jalon sœur :</p>
+                        <div style={{ maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 3 }}>
+                          {msSyncCandidates!.map((c) => {
+                            const isSelected = selectedSyncMsId === c.milestoneId;
+                            const isSameLabel = c.milestoneLabel === ms.label;
+                            return (
+                              <button
+                                key={c.milestoneId}
+                                style={{
+                                  textAlign: "left", fontSize: 12, padding: "5px 8px", borderRadius: 6,
+                                  border: isSelected ? "1.5px solid #2563EB" : "1px solid #E5E7EB",
+                                  background: isSelected ? "#EFF6FF" : isSameLabel ? "#F0FDF4" : "#fff",
+                                  cursor: "pointer", lineHeight: 1.4,
+                                }}
+                                onClick={() => { setSelectedSyncMsId(c.milestoneId); setSelectedSyncMsGroupId(c.groupId); }}
+                              >
+                                <span style={{ color: "#94A3B8", fontSize: 10, display: "block" }}>{c.planningName} / {c.lotName}</span>
+                                <span style={{ fontWeight: isSameLabel ? 600 : 400 }}>
+                                  {isSameLabel ? "⭐ " : ""}{c.milestoneLabel}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                    {msSyncError && <p style={{ fontSize: 11, color: "#DC2626", margin: 0 }}>{msSyncError}</p>}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        style={{ flex: 1, fontSize: 12, padding: "5px", background: "#2563EB", color: "#fff", border: "none", borderRadius: 5, cursor: "pointer", opacity: !selectedSyncMsId || isPending ? 0.5 : 1 }}
+                        disabled={!selectedSyncMsId || isPending}
+                        onClick={handleConfirmLinkMs}
+                      >
+                        {isPending ? "Liaison…" : "Lier"}
+                      </button>
+                      <button
+                        style={{ fontSize: 12, padding: "5px 10px", background: "none", border: "1px solid #E5E7EB", borderRadius: 5, cursor: "pointer" }}
+                        onClick={() => { setShowMsSyncPicker(false); setMsSyncCandidates(null); setSelectedSyncMsId(""); setMsSyncError(null); }}
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         <div className={styles.footer}>

@@ -8,9 +8,9 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import {
   planningGroups, planningGroupMembers, phaseSyncGroups,
-  milestoneSyncGroups, phases, milestones, lots, planningMembers,
+  milestoneSyncGroups, phases, milestones, lots, planningMembers, plannings,
 } from "@/lib/db/schema";
-import { eq, and, inArray, ne } from "drizzle-orm";
+import { eq, and, inArray, ne, isNull, asc } from "drizzle-orm";
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------
@@ -207,17 +207,17 @@ export async function linkPhases(input: z.infer<typeof LinkPhasesSchema>) {
   const data = LinkPhasesSchema.parse(input);
   await assertIsOwnerOrAdmin(data.planningId);
 
-  // Find or create a phase_sync_group for this planning group
-  const [existingGroup] = await db
-    .select({ id: phaseSyncGroups.id })
-    .from(phaseSyncGroups)
-    .where(eq(phaseSyncGroups.planningGroupId, data.planningGroupId))
+  // If source phase already has a syncGroupId, reuse it (N-way add)
+  const [sourcePhase] = await db
+    .select({ syncGroupId: phases.syncGroupId })
+    .from(phases)
+    .where(eq(phases.id, data.sourcePhaseId))
     .limit(1);
 
   let syncGroupId: string;
 
-  if (existingGroup) {
-    syncGroupId = existingGroup.id;
+  if (sourcePhase?.syncGroupId) {
+    syncGroupId = sourcePhase.syncGroupId;
   } else {
     const [newSyncGroup] = await db
       .insert(phaseSyncGroups)
@@ -232,6 +232,8 @@ export async function linkPhases(input: z.infer<typeof LinkPhasesSchema>) {
     .where(inArray(phases.id, [data.sourcePhaseId, data.targetPhaseId]));
 
   revalidatePath(`/parametres`);
+  revalidatePath(`/p/${data.planningId}`);
+  return syncGroupId;
 }
 
 // ---------------------------------------------------------------------------
@@ -259,16 +261,17 @@ export async function linkMilestones(input: z.infer<typeof LinkMilestonesSchema>
   const data = LinkMilestonesSchema.parse(input);
   await assertIsOwnerOrAdmin(data.planningId);
 
-  const [existingGroup] = await db
-    .select({ id: milestoneSyncGroups.id })
-    .from(milestoneSyncGroups)
-    .where(eq(milestoneSyncGroups.planningGroupId, data.planningGroupId))
+  // If source milestone already has a syncGroupId, reuse it (N-way add)
+  const [sourceMilestone] = await db
+    .select({ syncGroupId: milestones.syncGroupId })
+    .from(milestones)
+    .where(eq(milestones.id, data.sourceMilestoneId))
     .limit(1);
 
   let syncGroupId: string;
 
-  if (existingGroup) {
-    syncGroupId = existingGroup.id;
+  if (sourceMilestone?.syncGroupId) {
+    syncGroupId = sourceMilestone.syncGroupId;
   } else {
     const [newSyncGroup] = await db
       .insert(milestoneSyncGroups)
@@ -282,6 +285,8 @@ export async function linkMilestones(input: z.infer<typeof LinkMilestonesSchema>
     .where(inArray(milestones.id, [data.sourceMilestoneId, data.targetMilestoneId]));
 
   revalidatePath(`/parametres`);
+  revalidatePath(`/p/${data.planningId}`);
+  return syncGroupId;
 }
 
 // ---------------------------------------------------------------------------
@@ -328,4 +333,286 @@ export async function addPlanningToSyncGroup(input: z.infer<typeof AddPlanningTo
   });
 
   revalidatePath(`/parametres`);
+}
+
+// ---------------------------------------------------------------------------
+// Types for sync candidate pickers
+// ---------------------------------------------------------------------------
+
+export type PhaseSyncCandidate = {
+  phaseId: string;
+  phaseLabel: string | null;
+  phaseType: string;
+  lotName: string;
+  planningId: string;
+  planningName: string;
+  groupId: string;
+};
+
+export type MilestoneSyncCandidate = {
+  milestoneId: string;
+  milestoneLabel: string;
+  milestoneType: string;
+  lotName: string;
+  planningId: string;
+  planningName: string;
+  groupId: string;
+};
+
+// ---------------------------------------------------------------------------
+// Get unsynced phases from linked plannings (for the EditPanel link picker)
+// ---------------------------------------------------------------------------
+
+export async function getSyncCandidates(phaseId: string, planningId: string): Promise<PhaseSyncCandidate[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  const memberships = await db
+    .select({ groupId: planningGroupMembers.groupId })
+    .from(planningGroupMembers)
+    .where(eq(planningGroupMembers.planningId, planningId));
+
+  if (!memberships.length) return [];
+  const groupIds = memberships.map((m) => m.groupId);
+
+  const otherMembers = await db
+    .select({ planningId: planningGroupMembers.planningId, groupId: planningGroupMembers.groupId })
+    .from(planningGroupMembers)
+    .where(and(
+      inArray(planningGroupMembers.groupId, groupIds),
+      ne(planningGroupMembers.planningId, planningId),
+    ));
+
+  if (!otherMembers.length) return [];
+
+  const otherPlanningIds = [...new Set(otherMembers.map((m) => m.planningId))];
+
+  const [planningsRows, otherLots, currentPhaseRows] = await Promise.all([
+    db.select({ id: plannings.id, name: plannings.name })
+      .from(plannings)
+      .where(inArray(plannings.id, otherPlanningIds)),
+    db.select({ id: lots.id, name: lots.name, planningId: lots.planningId })
+      .from(lots)
+      .where(inArray(lots.planningId, otherPlanningIds)),
+    db.select({ label: phases.label, type: phases.type })
+      .from(phases)
+      .where(eq(phases.id, phaseId))
+      .limit(1),
+  ]);
+
+  if (!otherLots.length) return [];
+
+  const planningNameMap = Object.fromEntries(planningsRows.map((p) => [p.id, p.name]));
+  const lotMap = Object.fromEntries(otherLots.map((l) => [l.id, l]));
+  const otherLotIds = otherLots.map((l) => l.id);
+  const currentLabel = currentPhaseRows[0]?.label ?? null;
+  const currentType = currentPhaseRows[0]?.type ?? "";
+
+  const candidatePhases = await db
+    .select({ id: phases.id, label: phases.label, type: phases.type, lotId: phases.lotId })
+    .from(phases)
+    .where(and(inArray(phases.lotId, otherLotIds), isNull(phases.syncGroupId)));
+
+  return candidatePhases
+    .map((p) => {
+      const lot = lotMap[p.lotId];
+      const linkedPlanningId = lot.planningId;
+      const groupId = otherMembers.find((m) => m.planningId === linkedPlanningId)?.groupId ?? groupIds[0];
+      return {
+        phaseId: p.id,
+        phaseLabel: p.label,
+        phaseType: p.type,
+        lotName: lot.name,
+        planningId: linkedPlanningId,
+        planningName: planningNameMap[linkedPlanningId] ?? "Inconnu",
+        groupId,
+      };
+    })
+    .sort((a, b) => {
+      const aMatch = a.phaseLabel === currentLabel && currentLabel !== null || (!a.phaseLabel && a.phaseType === currentType);
+      const bMatch = b.phaseLabel === currentLabel && currentLabel !== null || (!b.phaseLabel && b.phaseType === currentType);
+      if (aMatch && !bMatch) return -1;
+      if (!aMatch && bMatch) return 1;
+      return (a.phaseLabel ?? a.phaseType).localeCompare(b.phaseLabel ?? b.phaseType);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Get unsynced milestones from linked plannings (for the EditPanel link picker)
+// ---------------------------------------------------------------------------
+
+export async function getMilestoneSyncCandidates(milestoneId: string, planningId: string): Promise<MilestoneSyncCandidate[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  const memberships = await db
+    .select({ groupId: planningGroupMembers.groupId })
+    .from(planningGroupMembers)
+    .where(eq(planningGroupMembers.planningId, planningId));
+
+  if (!memberships.length) return [];
+  const groupIds = memberships.map((m) => m.groupId);
+
+  const otherMembers = await db
+    .select({ planningId: planningGroupMembers.planningId, groupId: planningGroupMembers.groupId })
+    .from(planningGroupMembers)
+    .where(and(
+      inArray(planningGroupMembers.groupId, groupIds),
+      ne(planningGroupMembers.planningId, planningId),
+    ));
+
+  if (!otherMembers.length) return [];
+
+  const otherPlanningIds = [...new Set(otherMembers.map((m) => m.planningId))];
+
+  const [planningsRows, otherLots, currentMsRows] = await Promise.all([
+    db.select({ id: plannings.id, name: plannings.name })
+      .from(plannings)
+      .where(inArray(plannings.id, otherPlanningIds)),
+    db.select({ id: lots.id, name: lots.name, planningId: lots.planningId })
+      .from(lots)
+      .where(inArray(lots.planningId, otherPlanningIds)),
+    db.select({ label: milestones.label })
+      .from(milestones)
+      .where(eq(milestones.id, milestoneId))
+      .limit(1),
+  ]);
+
+  if (!otherLots.length) return [];
+
+  const planningNameMap = Object.fromEntries(planningsRows.map((p) => [p.id, p.name]));
+  const lotMap = Object.fromEntries(otherLots.map((l) => [l.id, l]));
+  const otherLotIds = otherLots.map((l) => l.id);
+  const currentLabel = currentMsRows[0]?.label ?? "";
+
+  const candidateMilestones = await db
+    .select({ id: milestones.id, label: milestones.label, type: milestones.type, lotId: milestones.lotId })
+    .from(milestones)
+    .where(and(inArray(milestones.lotId, otherLotIds), isNull(milestones.syncGroupId)));
+
+  return candidateMilestones
+    .map((m) => {
+      const lot = lotMap[m.lotId];
+      const linkedPlanningId = lot.planningId;
+      const groupId = otherMembers.find((om) => om.planningId === linkedPlanningId)?.groupId ?? groupIds[0];
+      return {
+        milestoneId: m.id,
+        milestoneLabel: m.label,
+        milestoneType: m.type,
+        lotName: lot.name,
+        planningId: linkedPlanningId,
+        planningName: planningNameMap[linkedPlanningId] ?? "Inconnu",
+        groupId,
+      };
+    })
+    .sort((a, b) => {
+      if (a.milestoneLabel === currentLabel && b.milestoneLabel !== currentLabel) return -1;
+      if (b.milestoneLabel === currentLabel && a.milestoneLabel !== currentLabel) return 1;
+      return a.milestoneLabel.localeCompare(b.milestoneLabel);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Bulk-link all phases/milestones of a lot by matching label across linked plannings
+// ---------------------------------------------------------------------------
+
+const BulkLinkLotSchema = z.object({
+  sourceLotId: z.string().uuid(),
+  planningGroupId: z.string().uuid(),
+  planningId: z.string().uuid(),
+});
+
+export async function bulkLinkLot(
+  input: z.infer<typeof BulkLinkLotSchema>,
+): Promise<{ linkedPhases: number; linkedMilestones: number }> {
+  const data = BulkLinkLotSchema.parse(input);
+  await assertIsOwnerOrAdmin(data.planningId);
+
+  // Get other plannings in this group
+  const otherMembers = await db
+    .select({ planningId: planningGroupMembers.planningId })
+    .from(planningGroupMembers)
+    .where(and(
+      eq(planningGroupMembers.groupId, data.planningGroupId),
+      ne(planningGroupMembers.planningId, data.planningId),
+    ));
+
+  if (!otherMembers.length) return { linkedPhases: 0, linkedMilestones: 0 };
+
+  const otherPlanningIds = otherMembers.map((m) => m.planningId);
+
+  // Get lots from other plannings
+  const targetLots = await db
+    .select({ id: lots.id })
+    .from(lots)
+    .where(inArray(lots.planningId, otherPlanningIds));
+
+  if (!targetLots.length) return { linkedPhases: 0, linkedMilestones: 0 };
+  const targetLotIds = targetLots.map((l) => l.id);
+
+  // Fetch unsynced source phases and target phases in parallel
+  const [sourcePhases, targetPhases, sourceMilestones, targetMilestones] = await Promise.all([
+    db.select({ id: phases.id, label: phases.label, type: phases.type })
+      .from(phases)
+      .where(and(eq(phases.lotId, data.sourceLotId), isNull(phases.syncGroupId))),
+    db.select({ id: phases.id, label: phases.label, type: phases.type })
+      .from(phases)
+      .where(and(inArray(phases.lotId, targetLotIds), isNull(phases.syncGroupId))),
+    db.select({ id: milestones.id, label: milestones.label })
+      .from(milestones)
+      .where(and(eq(milestones.lotId, data.sourceLotId), isNull(milestones.syncGroupId))),
+    db.select({ id: milestones.id, label: milestones.label })
+      .from(milestones)
+      .where(and(inArray(milestones.lotId, targetLotIds), isNull(milestones.syncGroupId))),
+  ]);
+
+  const usedTargetPhaseIds = new Set<string>();
+  let linkedPhases = 0;
+
+  for (const sp of sourcePhases) {
+    const labelKey = sp.label ?? sp.type;
+    const match = targetPhases.find(
+      (tp) => !usedTargetPhaseIds.has(tp.id) && (tp.label === sp.label || (!sp.label && !tp.label && tp.type === sp.type)),
+    );
+    if (!match) continue;
+
+    const [newSyncGroup] = await db
+      .insert(phaseSyncGroups)
+      .values({ planningGroupId: data.planningGroupId })
+      .returning({ id: phaseSyncGroups.id });
+
+    await db.update(phases)
+      .set({ syncGroupId: newSyncGroup.id, version: 0 })
+      .where(inArray(phases.id, [sp.id, match.id]));
+
+    usedTargetPhaseIds.add(match.id);
+    linkedPhases++;
+    void labelKey; // suppress unused warning
+  }
+
+  const usedTargetMsIds = new Set<string>();
+  let linkedMilestones = 0;
+
+  for (const sm of sourceMilestones) {
+    const match = targetMilestones.find(
+      (tm) => !usedTargetMsIds.has(tm.id) && tm.label === sm.label,
+    );
+    if (!match) continue;
+
+    const [newSyncGroup] = await db
+      .insert(milestoneSyncGroups)
+      .values({ planningGroupId: data.planningGroupId })
+      .returning({ id: milestoneSyncGroups.id });
+
+    await db.update(milestones)
+      .set({ syncGroupId: newSyncGroup.id, version: 0 })
+      .where(inArray(milestones.id, [sm.id, match.id]));
+
+    usedTargetMsIds.add(match.id);
+    linkedMilestones++;
+  }
+
+  revalidatePath(`/parametres`);
+  revalidatePath(`/p/${data.planningId}`);
+  return { linkedPhases, linkedMilestones };
 }
