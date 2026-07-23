@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import {
   planningGroups, planningGroupMembers, phaseSyncGroups,
   milestoneSyncGroups, phases, milestones, lots, planningMembers, plannings,
+  domains, phaseItems, phaseAssignees,
 } from "@/lib/db/schema";
 import { eq, and, inArray, ne, isNull, asc } from "drizzle-orm";
 import { z } from "zod";
@@ -615,4 +616,552 @@ export async function bulkLinkLot(
   revalidatePath(`/parametres`);
   revalidatePath(`/p/${data.planningId}`);
   return { linkedPhases, linkedMilestones };
+}
+
+// ---------------------------------------------------------------------------
+// Types for structural diff/sync
+// ---------------------------------------------------------------------------
+
+export type PhaseDiffItem = {
+  sourcePhaseId: string;
+  label: string | null;
+  type: string;
+};
+
+export type MilestoneDiffItem = {
+  sourceMilestoneId: string;
+  label: string;
+};
+
+export type LotDiffEntry = {
+  sourceLotId: string;
+  lotName: string;
+  domainName: string;
+  isNewLot: boolean;
+  sourcePlanningId: string;
+  sourcePlanningName: string;
+  phases: PhaseDiffItem[];
+  milestones: MilestoneDiffItem[];
+};
+
+export type StructureDiff = {
+  targetPlanningId: string;
+  targetPlanningName: string;
+  lotDiffs: LotDiffEntry[];
+  totalLotsToCreate: number;
+  totalPhasesToCreate: number;
+  totalMilestonesToCreate: number;
+};
+
+export type PlanningGroupStructureDiff = {
+  groupId: string;
+  groupName: string;
+  diffs: StructureDiff[];
+  grandTotal: number;
+};
+
+// ---------------------------------------------------------------------------
+// Helper: load full structure of a planning (domains → lots → phases → milestones)
+// ---------------------------------------------------------------------------
+
+type LoadedPhase = {
+  id: string; label: string | null; type: string; startDate: string; endDate: string;
+  status: string | null; progress: number; color: string | null; note: string | null;
+  sortOrder: number; syncGroupId: string | null; version: number; lotId: string;
+};
+type LoadedMilestone = {
+  id: string; label: string; type: string; date: string; color: string | null;
+  labelPos: string; note: string | null; syncGroupId: string | null; version: number; lotId: string;
+};
+type LoadedLot = {
+  id: string; name: string; subtitle: string | null; icon: string | null; sortOrder: number;
+  domainId: string; planningId: string; hidden: boolean; isPostponed: boolean;
+  postponedNote: string | null; postponedLabelColor: string | null;
+  postponedLabelFont: string | null; postponedLabelSize: number | null;
+  phases: LoadedPhase[]; milestones: LoadedMilestone[];
+};
+type LoadedDomain = {
+  id: string; name: string; code: string; planningId: string;
+  bg: string; bgAlt: string; strong: string; phaseColor: string;
+  sortOrder: number; collapsed: boolean;
+  cadence: { livraison: number; pmep: number; cab: number; mep: number };
+  lots: LoadedLot[];
+};
+
+async function loadFullPlanningStructure(planningId: string): Promise<LoadedDomain[]> {
+  const planningDomains = await db
+    .select()
+    .from(domains)
+    .where(eq(domains.planningId, planningId))
+    .orderBy(asc(domains.sortOrder));
+
+  if (!planningDomains.length) return [];
+
+  const domainIds = planningDomains.map((d) => d.id);
+  const planningLots = await db
+    .select()
+    .from(lots)
+    .where(inArray(lots.domainId, domainIds))
+    .orderBy(asc(lots.sortOrder));
+
+  if (!planningLots.length) {
+    return planningDomains.map((d) => ({ ...d, lots: [] }));
+  }
+
+  const lotIds = planningLots.map((l) => l.id);
+  const [allPhases, allMilestones] = await Promise.all([
+    db.select().from(phases).where(inArray(phases.lotId, lotIds)).orderBy(asc(phases.sortOrder)),
+    db.select().from(milestones).where(inArray(milestones.lotId, lotIds)),
+  ]);
+
+  const phasesByLot = new Map<string, LoadedPhase[]>();
+  for (const ph of allPhases) {
+    const arr = phasesByLot.get(ph.lotId) ?? [];
+    arr.push(ph as LoadedPhase);
+    phasesByLot.set(ph.lotId, arr);
+  }
+  const milestonesByLot = new Map<string, LoadedMilestone[]>();
+  for (const ms of allMilestones) {
+    const arr = milestonesByLot.get(ms.lotId) ?? [];
+    arr.push(ms as LoadedMilestone);
+    milestonesByLot.set(ms.lotId, arr);
+  }
+  const lotsByDomain = new Map<string, typeof planningLots>();
+  for (const lot of planningLots) {
+    const arr = lotsByDomain.get(lot.domainId) ?? [];
+    arr.push(lot);
+    lotsByDomain.set(lot.domainId, arr);
+  }
+
+  return planningDomains.map((d) => ({
+    ...d,
+    lots: (lotsByDomain.get(d.id) ?? []).map((l) => ({
+      ...l,
+      phases: phasesByLot.get(l.id) ?? [],
+      milestones: milestonesByLot.get(l.id) ?? [],
+    })),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// diffPlanningGroupStructure — compute what each planning is missing (bidirectional)
+// ---------------------------------------------------------------------------
+
+const SyncStructureSchema = z.object({
+  groupId: z.string().uuid(),
+  planningId: z.string().uuid(),
+});
+
+export async function diffPlanningGroupStructure(
+  input: z.infer<typeof SyncStructureSchema>,
+): Promise<PlanningGroupStructureDiff> {
+  const data = SyncStructureSchema.parse(input);
+  await assertIsOwnerOrAdmin(data.planningId);
+
+  const [groupRow] = await db
+    .select({ id: planningGroups.id, name: planningGroups.name })
+    .from(planningGroups)
+    .where(eq(planningGroups.id, data.groupId))
+    .limit(1);
+  if (!groupRow) throw new Error("Groupe introuvable.");
+
+  const members = await db
+    .select({ planningId: planningGroupMembers.planningId })
+    .from(planningGroupMembers)
+    .where(eq(planningGroupMembers.groupId, data.groupId));
+
+  const memberIds = members.map((m) => m.planningId);
+  if (memberIds.length < 2) return { groupId: data.groupId, groupName: groupRow.name, diffs: [], grandTotal: 0 };
+
+  const planningRows = await db
+    .select({ id: plannings.id, name: plannings.name })
+    .from(plannings)
+    .where(inArray(plannings.id, memberIds));
+
+  const planningNameMap = Object.fromEntries(planningRows.map((p) => [p.id, p.name]));
+
+  // Load full structure for all plannings in parallel
+  const structureMap = new Map<string, LoadedDomain[]>();
+  await Promise.all(
+    memberIds.map(async (pid) => {
+      structureMap.set(pid, await loadFullPlanningStructure(pid));
+    }),
+  );
+
+  const diffs: StructureDiff[] = [];
+
+  for (const targetPlanningId of memberIds) {
+    const targetStructure = structureMap.get(targetPlanningId)!;
+
+    // Build lookup sets for what target already has
+    const targetLotKeys = new Set<string>();
+    const targetPhaseKeys = new Set<string>();
+    const targetMsKeys = new Set<string>();
+
+    for (const domain of targetStructure) {
+      for (const lot of domain.lots) {
+        const lotKey = `${domain.name}::${lot.name}`;
+        targetLotKeys.add(lotKey);
+        for (const ph of lot.phases) {
+          targetPhaseKeys.add(`${lotKey}::${ph.label ?? ph.type}`);
+        }
+        for (const ms of lot.milestones) {
+          targetMsKeys.add(`${lotKey}::${ms.label}`);
+        }
+      }
+    }
+
+    // Track what we've already counted (de-dup across multiple source plannings)
+    const processedLotKeys = new Set<string>();
+    const processedPhaseKeys = new Set<string>();
+    const processedMsKeys = new Set<string>();
+
+    // lotDiffs keyed by lotKey for merging missing phases from different sources
+    const lotDiffMap = new Map<string, LotDiffEntry>();
+
+    for (const sourcePlanningId of memberIds) {
+      if (sourcePlanningId === targetPlanningId) continue;
+      const sourceStructure = structureMap.get(sourcePlanningId)!;
+
+      for (const sourceDomain of sourceStructure) {
+        for (const sourceLot of sourceDomain.lots) {
+          const lotKey = `${sourceDomain.name}::${sourceLot.name}`;
+
+          if (!targetLotKeys.has(lotKey) && !processedLotKeys.has(lotKey)) {
+            // Entire lot is missing
+            processedLotKeys.add(lotKey);
+            for (const ph of sourceLot.phases) processedPhaseKeys.add(`${lotKey}::${ph.label ?? ph.type}`);
+            for (const ms of sourceLot.milestones) processedMsKeys.add(`${lotKey}::${ms.label}`);
+
+            lotDiffMap.set(lotKey, {
+              sourceLotId: sourceLot.id,
+              lotName: sourceLot.name,
+              domainName: sourceDomain.name,
+              isNewLot: true,
+              sourcePlanningId,
+              sourcePlanningName: planningNameMap[sourcePlanningId] ?? "Inconnu",
+              phases: sourceLot.phases.map((ph) => ({ sourcePhaseId: ph.id, label: ph.label, type: ph.type })),
+              milestones: sourceLot.milestones.map((ms) => ({ sourceMilestoneId: ms.id, label: ms.label })),
+            });
+          } else if (targetLotKeys.has(lotKey)) {
+            // Lot exists — check for missing phases/milestones
+            const missingPhases: PhaseDiffItem[] = [];
+            const missingMilestones: MilestoneDiffItem[] = [];
+
+            for (const ph of sourceLot.phases) {
+              const phKey = `${lotKey}::${ph.label ?? ph.type}`;
+              if (!targetPhaseKeys.has(phKey) && !processedPhaseKeys.has(phKey)) {
+                processedPhaseKeys.add(phKey);
+                missingPhases.push({ sourcePhaseId: ph.id, label: ph.label, type: ph.type });
+              }
+            }
+            for (const ms of sourceLot.milestones) {
+              const msKey = `${lotKey}::${ms.label}`;
+              if (!targetMsKeys.has(msKey) && !processedMsKeys.has(msKey)) {
+                processedMsKeys.add(msKey);
+                missingMilestones.push({ sourceMilestoneId: ms.id, label: ms.label });
+              }
+            }
+
+            if (missingPhases.length > 0 || missingMilestones.length > 0) {
+              const existing = lotDiffMap.get(lotKey);
+              if (existing) {
+                existing.phases.push(...missingPhases);
+                existing.milestones.push(...missingMilestones);
+              } else {
+                lotDiffMap.set(lotKey, {
+                  sourceLotId: sourceLot.id,
+                  lotName: sourceLot.name,
+                  domainName: sourceDomain.name,
+                  isNewLot: false,
+                  sourcePlanningId,
+                  sourcePlanningName: planningNameMap[sourcePlanningId] ?? "Inconnu",
+                  phases: missingPhases,
+                  milestones: missingMilestones,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const lotDiffs = [...lotDiffMap.values()];
+    const totalLotsToCreate = lotDiffs.filter((ld) => ld.isNewLot).length;
+    const totalPhasesToCreate = lotDiffs.reduce((acc, ld) => acc + ld.phases.length, 0);
+    const totalMilestonesToCreate = lotDiffs.reduce((acc, ld) => acc + ld.milestones.length, 0);
+
+    if (lotDiffs.length > 0) {
+      diffs.push({
+        targetPlanningId,
+        targetPlanningName: planningNameMap[targetPlanningId] ?? "Inconnu",
+        lotDiffs,
+        totalLotsToCreate,
+        totalPhasesToCreate,
+        totalMilestonesToCreate,
+      });
+    }
+  }
+
+  const grandTotal = diffs.reduce(
+    (acc, d) => acc + d.totalLotsToCreate + d.totalPhasesToCreate + d.totalMilestonesToCreate,
+    0,
+  );
+
+  return { groupId: data.groupId, groupName: groupRow.name, diffs, grandTotal };
+}
+
+// ---------------------------------------------------------------------------
+// syncPlanningGroupStructure — create missing elements bidirectionally + link them
+// ---------------------------------------------------------------------------
+
+export async function syncPlanningGroupStructure(
+  input: z.infer<typeof SyncStructureSchema>,
+): Promise<{ totalCreated: number }> {
+  const data = SyncStructureSchema.parse(input);
+  await assertIsOwnerOrAdmin(data.planningId);
+
+  const diff = await diffPlanningGroupStructure(input);
+  if (diff.grandTotal === 0) return { totalCreated: 0 };
+
+  let totalCreated = 0;
+
+  for (const structDiff of diff.diffs) {
+    const { targetPlanningId, lotDiffs } = structDiff;
+
+    // Load target planning context
+    const targetDomains = await db
+      .select()
+      .from(domains)
+      .where(eq(domains.planningId, targetPlanningId));
+
+    const targetDomainByName = new Map(targetDomains.map((d) => [d.name.toLowerCase(), d]));
+
+    const targetMembers = await db
+      .select({ id: planningMembers.id, userId: planningMembers.userId })
+      .from(planningMembers)
+      .where(eq(planningMembers.planningId, targetPlanningId));
+
+    const targetMemberByUserId = new Map(targetMembers.map((m) => [m.userId, m.id]));
+
+    const targetDomainIds = targetDomains.map((d) => d.id);
+    const targetLots = targetDomainIds.length > 0
+      ? await db.select().from(lots).where(inArray(lots.domainId, targetDomainIds))
+      : [];
+
+    const targetLotByKey = new Map<string, typeof targetLots[0]>();
+    for (const tl of targetLots) {
+      const dom = targetDomains.find((d) => d.id === tl.domainId);
+      if (dom) targetLotByKey.set(`${dom.name}::${tl.name}`, tl);
+    }
+
+    for (const lotDiff of lotDiffs) {
+      const { domainName, lotName, isNewLot, sourceLotId, sourcePlanningId } = lotDiff;
+
+      // Ensure domain exists in target
+      let targetDomain = targetDomainByName.get(domainName.toLowerCase());
+      if (!targetDomain) {
+        const [sourceDomainRow] = await db
+          .select()
+          .from(domains)
+          .where(and(eq(domains.planningId, sourcePlanningId), eq(domains.name, domainName)))
+          .limit(1);
+
+        if (!sourceDomainRow) continue;
+
+        const [newDomain] = await db
+          .insert(domains)
+          .values({
+            planningId: targetPlanningId,
+            code: sourceDomainRow.code,
+            name: sourceDomainRow.name,
+            bg: sourceDomainRow.bg,
+            bgAlt: sourceDomainRow.bgAlt,
+            strong: sourceDomainRow.strong,
+            phaseColor: sourceDomainRow.phaseColor,
+            sortOrder: targetDomains.length,
+            collapsed: false,
+            cadence: sourceDomainRow.cadence,
+          })
+          .returning();
+        targetDomain = newDomain;
+        targetDomainByName.set(domainName.toLowerCase(), newDomain);
+        targetDomains.push(newDomain);
+      }
+      if (!targetDomain) continue;
+
+      // Ensure lot exists in target
+      const lotKey = `${domainName}::${lotName}`;
+      let targetLot = isNewLot ? undefined : targetLotByKey.get(lotKey);
+
+      if (!targetLot) {
+        const [sourceLotRow] = await db
+          .select()
+          .from(lots)
+          .where(eq(lots.id, sourceLotId))
+          .limit(1);
+        if (!sourceLotRow) continue;
+
+        const [newLot] = await db
+          .insert(lots)
+          .values({
+            planningId: targetPlanningId,
+            domainId: targetDomain.id,
+            name: sourceLotRow.name,
+            subtitle: sourceLotRow.subtitle,
+            icon: sourceLotRow.icon,
+            sortOrder: targetLots.filter((l) => l.domainId === targetDomain!.id).length,
+            hidden: false,
+            isPostponed: false,
+            postponedNote: null,
+            postponedLabelColor: null,
+            postponedLabelFont: null,
+            postponedLabelSize: null,
+          })
+          .returning();
+        targetLot = newLot;
+        targetLotByKey.set(lotKey, newLot);
+        totalCreated++;
+      }
+      if (!targetLot) continue;
+
+      // Create missing phases
+      for (const phDiff of lotDiff.phases) {
+        const [sourcePhase] = await db
+          .select()
+          .from(phases)
+          .where(eq(phases.id, phDiff.sourcePhaseId))
+          .limit(1);
+        if (!sourcePhase) continue;
+
+        const [newPhase] = await db
+          .insert(phases)
+          .values({
+            lotId: targetLot.id,
+            type: sourcePhase.type,
+            label: sourcePhase.label,
+            startDate: sourcePhase.startDate,
+            endDate: sourcePhase.endDate,
+            status: sourcePhase.status,
+            progress: sourcePhase.progress,
+            color: sourcePhase.color,
+            note: sourcePhase.note,
+            sortOrder: sourcePhase.sortOrder,
+            version: 0,
+          })
+          .returning({ id: phases.id });
+
+        // Link via syncGroupId
+        if (sourcePhase.syncGroupId) {
+          await db.update(phases).set({ syncGroupId: sourcePhase.syncGroupId }).where(eq(phases.id, newPhase.id));
+        } else {
+          const [newSyncGroup] = await db
+            .insert(phaseSyncGroups)
+            .values({ planningGroupId: data.groupId })
+            .returning({ id: phaseSyncGroups.id });
+          await db.update(phases)
+            .set({ syncGroupId: newSyncGroup.id, version: 0 })
+            .where(inArray(phases.id, [sourcePhase.id, newPhase.id]));
+        }
+
+        // Copy assignees (only if user is member of target planning)
+        const sourceAssignees = await db
+          .select({ memberId: phaseAssignees.memberId })
+          .from(phaseAssignees)
+          .where(eq(phaseAssignees.phaseId, sourcePhase.id));
+
+        if (sourceAssignees.length > 0) {
+          const memberIds_local = sourceAssignees.map((a) => a.memberId);
+          const sourceMemberRows = await db
+            .select({ id: planningMembers.id, userId: planningMembers.userId })
+            .from(planningMembers)
+            .where(inArray(planningMembers.id, memberIds_local));
+
+          const assigneeValues = sourceMemberRows
+            .map((sm) => {
+              const targetMemberId = targetMemberByUserId.get(sm.userId);
+              return targetMemberId ? { phaseId: newPhase.id, memberId: targetMemberId } : null;
+            })
+            .filter((v): v is { phaseId: string; memberId: string } => v !== null);
+
+          if (assigneeValues.length > 0) {
+            await db.insert(phaseAssignees).values(assigneeValues).onConflictDoNothing();
+          }
+        }
+
+        // Copy phaseItems
+        const sourceItemRows = await db
+          .select()
+          .from(phaseItems)
+          .where(eq(phaseItems.phaseId, sourcePhase.id))
+          .orderBy(asc(phaseItems.sortOrder));
+
+        if (sourceItemRows.length > 0) {
+          await db.insert(phaseItems).values(
+            sourceItemRows.map((item) => ({
+              phaseId: newPhase.id,
+              title: item.title,
+              detail: item.detail,
+              date: item.date,
+              status: item.status,
+              sortOrder: item.sortOrder,
+            })),
+          );
+        }
+
+        totalCreated++;
+      }
+
+      // Create missing milestones
+      for (const msDiff of lotDiff.milestones) {
+        const [sourceMs] = await db
+          .select()
+          .from(milestones)
+          .where(eq(milestones.id, msDiff.sourceMilestoneId))
+          .limit(1);
+        if (!sourceMs) continue;
+
+        const [newMs] = await db
+          .insert(milestones)
+          .values({
+            lotId: targetLot.id,
+            type: sourceMs.type,
+            label: sourceMs.label,
+            date: sourceMs.date,
+            color: sourceMs.color,
+            labelPos: sourceMs.labelPos,
+            note: sourceMs.note,
+            version: 0,
+          })
+          .returning({ id: milestones.id });
+
+        if (sourceMs.syncGroupId) {
+          await db.update(milestones).set({ syncGroupId: sourceMs.syncGroupId }).where(eq(milestones.id, newMs.id));
+        } else {
+          const [newSyncGroup] = await db
+            .insert(milestoneSyncGroups)
+            .values({ planningGroupId: data.groupId })
+            .returning({ id: milestoneSyncGroups.id });
+          await db.update(milestones)
+            .set({ syncGroupId: newSyncGroup.id, version: 0 })
+            .where(inArray(milestones.id, [sourceMs.id, newMs.id]));
+        }
+
+        totalCreated++;
+      }
+    }
+  }
+
+  // Revalidate all plannings in the group
+  const allMembers = await db
+    .select({ planningId: planningGroupMembers.planningId })
+    .from(planningGroupMembers)
+    .where(eq(planningGroupMembers.groupId, data.groupId));
+
+  for (const { planningId } of allMembers) {
+    revalidatePath(`/p/${planningId}`);
+  }
+  revalidatePath(`/parametres`);
+
+  return { totalCreated };
 }

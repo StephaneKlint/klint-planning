@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createPlanningLink, removePlanningFromSyncGroup, bulkLinkLot } from "@/lib/actions/planning-groups";
 import type { PlanningGroupRow } from "@/lib/db/queries";
+import { SyncStructureModal } from "./SyncStructureModal";
 import styles from "./Parametres.module.css";
 
 interface SyncSectionProps {
@@ -20,6 +21,9 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
   const [targetId, setTargetId] = useState("");
   const [groupName, setGroupName] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Full structure sync modal
+  const [structureSyncGroupId, setStructureSyncGroupId] = useState<string | null>(null);
 
   // Bulk link state — one picker per group (keyed by groupId)
   const [bulkGroupId, setBulkGroupId] = useState<string | null>(null);
@@ -146,6 +150,19 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
               {group.groupName}
             </span>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => setStructureSyncGroupId(group.groupId)}
+                disabled={isPending}
+                style={{
+                  fontSize: 11, color: "#0F2746", background: "none",
+                  border: "1px solid #CBD5E1", cursor: "pointer",
+                  padding: "2px 8px", borderRadius: 4, fontWeight: 600,
+                }}
+                title="Créer les éléments manquants dans tous les plannings du groupe"
+              >
+                ⇄ Sync. structure
+              </button>
               {currentLots.length > 0 && (
                 <button
                   type="button"
@@ -266,6 +283,20 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
       ))}
 
       {/* Add link form */}
+      {/* Structure sync modal */}
+      {structureSyncGroupId && (() => {
+        const group = planningGroups.find((g) => g.groupId === structureSyncGroupId);
+        if (!group) return null;
+        return (
+          <SyncStructureModal
+            group={group}
+            currentPlanningId={currentPlanningId}
+            onClose={() => setStructureSyncGroupId(null)}
+            onSuccess={() => { setStructureSyncGroupId(null); router.refresh(); }}
+          />
+        );
+      })()}
+
       {showForm ? (
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
           <div className={styles.settingRow}>
