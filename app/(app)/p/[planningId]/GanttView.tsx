@@ -85,6 +85,7 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
     activeBaselineId, setActiveBaselineId,
     selectedPhaseIds, selectedMilestoneIds,
     actionError, setActionError,
+    syncInfo, setSyncInfo,
   } = useGanttStore();
 
   const patchPhase = useOptimisticPhase();
@@ -713,6 +714,23 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
           <button
             onClick={() => setActionError(null)}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#991B1B", padding: 0, lineHeight: 1 }}
+          >×</button>
+        </div>
+      )}
+      {syncInfo && (
+        <div style={{
+          position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)",
+          background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#166534",
+          borderRadius: 10, padding: "10px 16px 10px 14px",
+          display: "flex", alignItems: "center", gap: 10,
+          fontSize: 13, fontWeight: 500, zIndex: 9999, boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+          maxWidth: 480,
+        }}>
+          <span>⇄</span>
+          <span style={{ flex: 1 }}>{syncInfo}</span>
+          <button
+            onClick={() => setSyncInfo(null)}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#166534", padding: 0, lineHeight: 1 }}
           >×</button>
         </div>
       )}

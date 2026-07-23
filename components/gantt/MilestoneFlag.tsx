@@ -26,6 +26,7 @@ export interface MilestoneFlagProps {
   onDiamondMouseDown?: (e: React.MouseEvent) => void;
   opacity?: number;
   isSelected?: boolean;
+  isSynced?: boolean;
 }
 
 const DEFAULT_LANE_H = 18;
@@ -47,6 +48,7 @@ export function MilestoneFlag({
   onDiamondMouseDown,
   opacity = 1,
   isSelected = false,
+  isSynced = false,
 }: MilestoneFlagProps) {
   const halfDiamond = diamondSize / 2;
   const rowCenterY = rowY + rowH / 2;
@@ -146,6 +148,9 @@ export function MilestoneFlag({
         onMouseLeave={onClick ? (e) => { (e.currentTarget as HTMLElement).style.filter = ""; } : undefined}
       >
         {label}
+        {isSynced && (
+          <span style={{ marginLeft: 3, fontSize: 8, opacity: 0.8 }} aria-label="Synchronisé">⇄</span>
+        )}
       </div>
     </div>
   );

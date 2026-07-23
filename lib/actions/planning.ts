@@ -144,7 +144,7 @@ export async function updatePhaseDates(input: z.infer<typeof UpdatePhaseDatesSch
   for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
-  return updated;
+  return { ...updated, propagatedCount: affected.length };
 }
 
 const MovePhaseToLotSchema = z.object({
@@ -724,7 +724,7 @@ export async function updateMilestone(input: z.infer<typeof UpdateMilestoneSchem
   for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
-  return updated;
+  return { ...updated, propagatedCount: affected.length };
 }
 
 // ---------------------------------------------------------------------------

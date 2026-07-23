@@ -43,7 +43,7 @@ export function DraggableMilestone({
   centerX, rowY, rowH, side, level, color, onBulkMoveComplete,
 }: DraggableMilestoneProps) {
   const patchMilestone = useOptimisticMilestone();
-  const { openEdit, pushUndo, toggleMilestoneSelection, selectedMilestoneIds, selectedPhaseIds, bulkDragState, setBulkDragState } = useGanttStore();
+  const { openEdit, pushUndo, toggleMilestoneSelection, selectedMilestoneIds, selectedPhaseIds, bulkDragState, setBulkDragState, setSyncInfo } = useGanttStore();
 
   const isSelected = selectedMilestoneIds.has(milestone.id);
   const dimmed = selectedMilestoneIds.size > 0 && !isSelected;
@@ -176,6 +176,7 @@ export function DraggableMilestone({
           .catch(() => patchMilestone(planningId, milestone.id, { date: origDate, lotId: origLotId }));
       } else {
         updateMilestone({ milestoneId: milestone.id, planningId, date: lastDate })
+          .then((r) => { if (r?.propagatedCount > 0) setSyncInfo(`Modification propagée à ${r.propagatedCount} planning(s) lié(s).`); })
           .catch(() => patchMilestone(planningId, milestone.id, { date: origDate }));
       }
     };
@@ -219,6 +220,7 @@ export function DraggableMilestone({
         level={level}
         label={milestone.label}
         color={color}
+        isSynced={!!milestone.syncGroupId}
         onClick={isDragging ? undefined : (e) => {
           e.stopPropagation();
           if (e.metaKey || e.ctrlKey) {

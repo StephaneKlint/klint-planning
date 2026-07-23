@@ -127,6 +127,9 @@ interface GanttState {
   // Shared action error banner (set by EditPanel, BulkBar, GanttView; cleared on dismiss)
   actionError: string | null;
   setActionError: (err: string | null) => void;
+  // Sync propagation info toast (auto-cleared by GanttView after display)
+  syncInfo: string | null;
+  setSyncInfo: (msg: string | null) => void;
 }
 
 export const useGanttStore = create<GanttState>((set, get) => ({
@@ -154,6 +157,7 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   activeBaselineId: null,
   bulkDragState: null,
   actionError: null,
+  syncInfo: null,
 
   setZoom: (zoom) => set({ zoom }),
   setDensity: (density) => set({ density }),
@@ -213,6 +217,7 @@ export const useGanttStore = create<GanttState>((set, get) => ({
   setBulkDragState: (bulkDragState) => set({ bulkDragState }),
 
   setActionError: (actionError) => set({ actionError }),
+  setSyncInfo: (syncInfo) => set({ syncInfo }),
 
   pushUndo: (entry) => set((s) => ({
     undoStack: [entry, ...s.undoStack].slice(0, UNDO_MAX),

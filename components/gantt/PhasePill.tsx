@@ -36,6 +36,8 @@ interface PhasePillProps {
   onMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onMouseMove?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onMouseLeave_?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** true when this phase is part of a sync group (shows a link icon) */
+  isSynced?: boolean;
 }
 
 export function PhasePill({
@@ -44,6 +46,7 @@ export function PhasePill({
   hasNote = false, selected = false, editing = false, dimmed = false,
   status, onClick, style: pillStyle = "solid",
   dragging = false, cursor, onMouseDown, onMouseMove, onMouseLeave_,
+  isSynced = false,
 }: PhasePillProps) {
   if (width < 2) return null;
 
@@ -144,13 +147,16 @@ export function PhasePill({
         <span style={{
           position: "relative",
           paddingLeft: width >= 50 ? 10 : 4,
-          paddingRight: hasNote ? 20 : (width >= 50 ? 10 : 4),
+          paddingRight: (hasNote && isSynced) ? 30 : hasNote ? 20 : isSynced ? 18 : (width >= 50 ? 10 : 4),
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
           maxWidth: "100%",
         }}>
           {isDone ? `✓ ${displayLabel(label)}` : displayLabel(label)}
           {showProgress && width >= 110 && ` — ${progress}%`}
         </span>
+      )}
+      {isSynced && (
+        <span style={{ position: "absolute", right: hasNote ? 18 : 5, fontSize: 8, opacity: 0.75, letterSpacing: 0 }} aria-label="Synchronisé">⇄</span>
       )}
       {hasNote && (
         <span style={{ position: "absolute", right: 6, fontSize: 9, opacity: 0.7 }} aria-label="Note">✎</span>

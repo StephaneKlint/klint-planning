@@ -50,7 +50,7 @@ export function DraggablePhase({
   onPhaseClick, onBulkMoveComplete,
 }: DraggablePhaseProps) {
   const patchPhase = useOptimisticPhase();
-  const { pushUndo, selectedPhaseIds, selectedMilestoneIds, bulkDragState, setBulkDragState } = useGanttStore();
+  const { pushUndo, selectedPhaseIds, selectedMilestoneIds, bulkDragState, setBulkDragState, setSyncInfo } = useGanttStore();
 
   const [localDates, setLocalDates] = useState<{ start: string; end: string } | null>(null);
   const [hoverZone, setHoverZone] = useState<DragMode>("move");
@@ -249,6 +249,7 @@ export function DraggablePhase({
         // 3b. Undo intra-lot move / resize
         pushUndo({ type: "phase-dates", phaseId: phase.id, planningId, prevStart: origStart, prevEnd: origEnd });
         updatePhaseDates({ phaseId: phase.id, planningId, startDate: currentStart, endDate: currentEnd })
+          .then((r) => { if (r?.propagatedCount > 0) setSyncInfo(`Modification propagée à ${r.propagatedCount} planning(s) lié(s).`); })
           .catch(() => patchPhase(planningId, phase.id, { startDate: origStart, endDate: origEnd }));
       }
     };
@@ -304,6 +305,7 @@ export function DraggablePhase({
         onMouseMove={handleMouseMove_local}
         onMouseLeave_={() => { if (!isDragging && !isBulkDragging) setHoverZone("move"); }}
         onClick={(isDragging || isBulkDragging) ? undefined : onPhaseClick}
+        isSynced={!!phase.syncGroupId}
       />
     </>
   );
