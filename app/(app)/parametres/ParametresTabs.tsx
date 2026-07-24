@@ -1988,7 +1988,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: Toggler }) {
   );
 }
 
-function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
+export function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
   const [local, setLocal] = useState<PermissionMatrix>(permissions);
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -2209,7 +2209,7 @@ function DroitsTab({ permissions }: { permissions: PermissionMatrix }) {
   );
 }
 
-function LogsPanel() {
+export function LogsPanel() {
   const [errors, setErrors] = useState<AppErrorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);

@@ -31,6 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         avatarInitials={initials}
         logoDataUrl={appCfg.logoDataUrl}
         logoAlt={appCfg.logoAlt}
+        isAdmin={userRole === "admin"}
       />
       <div className={styles.content}>
         <TopbarWrapper plannings={plannings} />

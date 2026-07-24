@@ -815,7 +815,16 @@ export async function importLegacyPlanningJSON(planningId: string, jsonStr: stri
 // ---------------------------------------------------------------------------
 
 export async function setTemplateFlag(planningId: string, isTemplate: boolean): Promise<void> {
+  const session = await auth();
   await db.update(plannings).set({ isTemplate }).where(eq(plannings.id, planningId));
+  await db.insert(activityLog).values({
+    planningId,
+    actorId: session?.user?.id ?? null,
+    verb: "template_toggled",
+    targetType: "planning",
+    targetId: planningId,
+    summary: isTemplate ? "Marqué comme modèle" : "Retiré des modèles",
+  }).catch(() => {});
   revalidatePath("/plannings");
   revalidatePath("/plannings/nouveau");
 }

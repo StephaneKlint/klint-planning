@@ -35,9 +35,10 @@ interface RailProps {
   avatarColor?: string;
   logoDataUrl?: string | null;
   logoAlt?: string;
+  isAdmin?: boolean;
 }
 
-export function Rail({ avatarInitials = "?", avatarColor = "#001D63", logoDataUrl, logoAlt = "Klint" }: RailProps) {
+export function Rail({ avatarInitials = "?", avatarColor = "#001D63", logoDataUrl, logoAlt = "Klint", isAdmin = false }: RailProps) {
   const pathname = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -81,6 +82,17 @@ export function Rail({ avatarInitials = "?", avatarColor = "#001D63", logoDataUr
             <Icon name={item.icon} size={18} />
           </Link>
         ))}
+        {isAdmin && (
+          <Link
+            href="/administration"
+            prefetch={false}
+            className={`${styles.railBtn} ${isActive("/administration") ? styles.active : ""}`}
+            aria-label="Administration"
+            data-label="Administration"
+          >
+            <Icon name="shield" size={18} />
+          </Link>
+        )}
       </div>
 
       <div className={styles.spacer} />

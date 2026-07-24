@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import {
   planningGroups, planningGroupMembers, phaseSyncGroups,
   milestoneSyncGroups, phases, milestones, lots, planningMembers, plannings,
-  domains, phaseItems, phaseAssignees,
+  domains, phaseItems, phaseAssignees, activityLog,
 } from "@/lib/db/schema";
 import { eq, and, inArray, ne, isNull, asc } from "drizzle-orm";
 import { z } from "zod";
@@ -100,6 +100,15 @@ export async function createPlanningLink(input: z.infer<typeof CreatePlanningLin
     { groupId: newGroup.id, planningId: data.targetPlanningId, addedBy: actorId },
   ]);
 
+  await db.insert(activityLog).values({
+    planningId: data.sourcePlanningId,
+    actorId,
+    verb: "sync_group_created",
+    targetType: "planning_group",
+    targetId: newGroup.id,
+    summary: `Groupe de synchronisation "${data.groupName}" créé avec le planning cible`,
+  }).catch(() => {});
+
   revalidatePath(`/parametres`);
   return newGroup.id;
 }
@@ -189,6 +198,16 @@ export async function removePlanningFromSyncGroup(input: z.infer<typeof RemovePl
     await db.delete(planningGroupMembers).where(eq(planningGroupMembers.groupId, data.groupId));
     await db.delete(planningGroups).where(eq(planningGroups.id, data.groupId));
   }
+
+  const session = await auth();
+  await db.insert(activityLog).values({
+    planningId: data.planningId,
+    actorId: session?.user?.id ?? null,
+    verb: "sync_group_left",
+    targetType: "planning_group",
+    targetId: data.groupId,
+    summary: "Planning retiré du groupe de synchronisation",
+  }).catch(() => {});
 
   revalidatePath(`/parametres`);
 }
