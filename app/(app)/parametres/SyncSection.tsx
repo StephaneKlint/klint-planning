@@ -259,22 +259,8 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
                 Les lots manquants dans les plannings liés seront créés. Les phases et jalons de même libellé seront liés automatiquement.
               </p>
 
-              {/* Select all */}
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, cursor: "pointer", padding: "4px 0", borderBottom: "1px solid #BFDBFE", fontWeight: 600 }}>
-                <input
-                  type="checkbox"
-                  checked={bulkSelectedLotIds.size === currentLots.length && currentLots.length > 0}
-                  ref={(el) => {
-                    if (el) el.indeterminate = bulkSelectedLotIds.size > 0 && bulkSelectedLotIds.size < currentLots.length;
-                  }}
-                  onChange={toggleAllLots}
-                  style={{ width: 14, height: 14, accentColor: "#2563EB", cursor: "pointer" }}
-                />
-                Tout sélectionner ({currentLots.length} lot{currentLots.length !== 1 ? "s" : ""})
-              </label>
-
               {/* Lots grouped by domain */}
-              <div style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ maxHeight: 280, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
                 {domainOrder.map((domKey) => {
                   const domLots = lotsByDomain[domKey] ?? [];
                   const allChecked = domLots.every((l) => bulkSelectedLotIds.has(l.id));
@@ -289,9 +275,15 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
                         <button
                           type="button"
                           onClick={() => toggleDomainLots(domKey)}
-                          style={{ fontSize: 10, color: allChecked ? "#DC2626" : "#2563EB", background: "none", border: "none", cursor: "pointer", padding: "1px 4px" }}
+                          style={{
+                            fontSize: 10, cursor: "pointer", padding: "2px 7px", borderRadius: 4,
+                            background: allChecked ? "#FEE2E2" : someChecked ? "#EFF6FF" : "#EFF6FF",
+                            color: allChecked ? "#DC2626" : "#2563EB",
+                            border: `1px solid ${allChecked ? "#FECACA" : "#BFDBFE"}`,
+                            fontWeight: 600,
+                          }}
                         >
-                          {allChecked ? "Désélectionner" : someChecked ? "Tout sélectionner" : "Tout sélectionner"}
+                          {allChecked ? "Désélectionner" : "Tout le domaine"}
                         </button>
                       </div>
                       {/* Lots in this domain */}
@@ -321,11 +313,6 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
                 })}
               </div>
 
-              {bulkSelectedLotIds.size > 0 && (
-                <p style={{ fontSize: 11, color: "#2563EB", margin: 0 }}>
-                  {bulkSelectedLotIds.size} lot{bulkSelectedLotIds.size !== 1 ? "s" : ""} sélectionné{bulkSelectedLotIds.size !== 1 ? "s" : ""}
-                </p>
-              )}
               {bulkError && <p style={{ fontSize: 11, color: "#DC2626", margin: 0 }}>{bulkError}</p>}
               {bulkResult && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -347,7 +334,25 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: 6 }}>
+              {/* Action bar — tout sélectionner ici, à côté du bouton Synchroniser */}
+              <div style={{ display: "flex", gap: 6, alignItems: "center", borderTop: "1px solid #BFDBFE", paddingTop: 8, flexWrap: "wrap" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", userSelect: "none", marginRight: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={bulkSelectedLotIds.size === currentLots.length && currentLots.length > 0}
+                    ref={(el) => {
+                      if (el) el.indeterminate = bulkSelectedLotIds.size > 0 && bulkSelectedLotIds.size < currentLots.length;
+                    }}
+                    onChange={toggleAllLots}
+                    style={{ width: 14, height: 14, accentColor: "#2563EB", cursor: "pointer" }}
+                  />
+                  <span style={{ color: "#374151" }}>
+                    Tout{bulkSelectedLotIds.size > 0 ? ` (${bulkSelectedLotIds.size}/${currentLots.length})` : ` (${currentLots.length})`}
+                  </span>
+                </label>
+
+                <div style={{ flex: 1 }} />
+
                 <button
                   type="button"
                   onClick={() => handleBulkLink(group.groupId)}
@@ -358,6 +363,7 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
                     color: bulkSelectedLotIds.size === 0 ? "#9CA3AF" : "#fff",
                     border: "none", borderRadius: 5,
                     cursor: bulkSelectedLotIds.size === 0 ? "default" : "pointer",
+                    fontWeight: 600,
                   }}
                 >
                   {isPending ? "Synchronisation…" : `Synchroniser${bulkSelectedLotIds.size > 1 ? ` (${bulkSelectedLotIds.size})` : ""}`}

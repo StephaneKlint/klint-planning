@@ -676,6 +676,7 @@ export type LotDiffEntry = {
   lotName: string;
   domainName: string;
   isNewLot: boolean;
+  sourceLotSortOrder: number;
   sourcePlanningId: string;
   sourcePlanningName: string;
   phases: PhaseDiffItem[];
@@ -835,20 +836,21 @@ export async function diffPlanningGroupStructure(
   for (const targetPlanningId of memberIds) {
     const targetStructure = structureMap.get(targetPlanningId)!;
 
-    // Build lookup sets for what target already has
+    // Build lookup sets for what target already has (normalized: lowercase + trim)
+    const normKey = (a: string, b: string) => `${a.trim().toLowerCase()}::${b.trim().toLowerCase()}`;
     const targetLotKeys = new Set<string>();
     const targetPhaseKeys = new Set<string>();
     const targetMsKeys = new Set<string>();
 
     for (const domain of targetStructure) {
       for (const lot of domain.lots) {
-        const lotKey = `${domain.name}::${lot.name}`;
+        const lotKey = normKey(domain.name, lot.name);
         targetLotKeys.add(lotKey);
         for (const ph of lot.phases) {
-          targetPhaseKeys.add(`${lotKey}::${ph.label ?? ph.type}`);
+          targetPhaseKeys.add(`${lotKey}::${(ph.label ?? ph.type).trim().toLowerCase()}`);
         }
         for (const ms of lot.milestones) {
-          targetMsKeys.add(`${lotKey}::${ms.label}`);
+          targetMsKeys.add(`${lotKey}::${ms.label.trim().toLowerCase()}`);
         }
       }
     }
@@ -867,19 +869,20 @@ export async function diffPlanningGroupStructure(
 
       for (const sourceDomain of sourceStructure) {
         for (const sourceLot of sourceDomain.lots) {
-          const lotKey = `${sourceDomain.name}::${sourceLot.name}`;
+          const lotKey = normKey(sourceDomain.name, sourceLot.name);
 
           if (!targetLotKeys.has(lotKey) && !processedLotKeys.has(lotKey)) {
             // Entire lot is missing
             processedLotKeys.add(lotKey);
-            for (const ph of sourceLot.phases) processedPhaseKeys.add(`${lotKey}::${ph.label ?? ph.type}`);
-            for (const ms of sourceLot.milestones) processedMsKeys.add(`${lotKey}::${ms.label}`);
+            for (const ph of sourceLot.phases) processedPhaseKeys.add(`${lotKey}::${(ph.label ?? ph.type).trim().toLowerCase()}`);
+            for (const ms of sourceLot.milestones) processedMsKeys.add(`${lotKey}::${ms.label.trim().toLowerCase()}`);
 
             lotDiffMap.set(lotKey, {
               sourceLotId: sourceLot.id,
               lotName: sourceLot.name,
               domainName: sourceDomain.name,
               isNewLot: true,
+              sourceLotSortOrder: sourceLot.sortOrder,
               sourcePlanningId,
               sourcePlanningName: planningNameMap[sourcePlanningId] ?? "Inconnu",
               phases: sourceLot.phases.map((ph) => ({ sourcePhaseId: ph.id, label: ph.label, type: ph.type })),
@@ -891,14 +894,14 @@ export async function diffPlanningGroupStructure(
             const missingMilestones: MilestoneDiffItem[] = [];
 
             for (const ph of sourceLot.phases) {
-              const phKey = `${lotKey}::${ph.label ?? ph.type}`;
+              const phKey = `${lotKey}::${(ph.label ?? ph.type).trim().toLowerCase()}`;
               if (!targetPhaseKeys.has(phKey) && !processedPhaseKeys.has(phKey)) {
                 processedPhaseKeys.add(phKey);
                 missingPhases.push({ sourcePhaseId: ph.id, label: ph.label, type: ph.type });
               }
             }
             for (const ms of sourceLot.milestones) {
-              const msKey = `${lotKey}::${ms.label}`;
+              const msKey = `${lotKey}::${ms.label.trim().toLowerCase()}`;
               if (!targetMsKeys.has(msKey) && !processedMsKeys.has(msKey)) {
                 processedMsKeys.add(msKey);
                 missingMilestones.push({ sourceMilestoneId: ms.id, label: ms.label });
@@ -916,6 +919,7 @@ export async function diffPlanningGroupStructure(
                   lotName: sourceLot.name,
                   domainName: sourceDomain.name,
                   isNewLot: false,
+                  sourceLotSortOrder: sourceLot.sortOrder,
                   sourcePlanningId,
                   sourcePlanningName: planningNameMap[sourcePlanningId] ?? "Inconnu",
                   phases: missingPhases,
@@ -989,7 +993,7 @@ export async function syncPlanningGroupStructure(
       .from(domains)
       .where(eq(domains.planningId, targetPlanningId));
 
-    const targetDomainByName = new Map(targetDomains.map((d) => [d.name.toLowerCase(), d]));
+    const targetDomainByName = new Map(targetDomains.map((d) => [d.name.trim().toLowerCase(), d]));
 
     const targetMembers = await db
       .select({ id: planningMembers.id, userId: planningMembers.userId })
@@ -1003,17 +1007,32 @@ export async function syncPlanningGroupStructure(
       ? await db.select().from(lots).where(inArray(lots.domainId, targetDomainIds))
       : [];
 
+    // Normalized key (case-insensitive, trimmed) to prevent false "new lot" detection
+    const normalizeKey = (a: string, b: string) => `${a.trim().toLowerCase()}::${b.trim().toLowerCase()}`;
+
     const targetLotByKey = new Map<string, typeof targetLots[0]>();
     for (const tl of targetLots) {
       const dom = targetDomains.find((d) => d.id === tl.domainId);
-      if (dom) targetLotByKey.set(`${dom.name}::${tl.name}`, tl);
+      if (dom) targetLotByKey.set(normalizeKey(dom.name, tl.name), tl);
     }
 
-    for (const lotDiff of lotDiffs) {
-      const { domainName, lotName, isNewLot, sourceLotId, sourcePlanningId } = lotDiff;
+    // Per-domain sortOrder counter (avoids all new lots colliding on the same value)
+    const insertedPerDomain = new Map<string, number>();
+    const getNextSortOrder = (domainId: string) => {
+      const base = targetLots.filter((l) => l.domainId === domainId).length;
+      const offset = insertedPerDomain.get(domainId) ?? 0;
+      insertedPerDomain.set(domainId, offset + 1);
+      return base + offset;
+    };
+
+    // Process new lots in source sort-order so relative positions are preserved
+    const sortedLotDiffs = [...lotDiffs].sort((a, b) => a.sourceLotSortOrder - b.sourceLotSortOrder);
+
+    for (const lotDiff of sortedLotDiffs) {
+      const { domainName, lotName, sourceLotId, sourcePlanningId } = lotDiff;
 
       // Ensure domain exists in target
-      let targetDomain = targetDomainByName.get(domainName.toLowerCase());
+      let targetDomain = targetDomainByName.get(domainName.trim().toLowerCase());
       if (!targetDomain) {
         const [sourceDomainRow] = await db
           .select()
@@ -1039,14 +1058,15 @@ export async function syncPlanningGroupStructure(
           })
           .returning();
         targetDomain = newDomain;
-        targetDomainByName.set(domainName.toLowerCase(), newDomain);
+        targetDomainByName.set(domainName.trim().toLowerCase(), newDomain);
         targetDomains.push(newDomain);
       }
       if (!targetDomain) continue;
 
-      // Ensure lot exists in target
-      const lotKey = `${domainName}::${lotName}`;
-      let targetLot = isNewLot ? undefined : targetLotByKey.get(lotKey);
+      // Always check with normalized key — prevents duplicates even when diff marked isNewLot=true
+      // due to case differences between plannings
+      const lotKey = normalizeKey(domainName, lotName);
+      let targetLot = targetLotByKey.get(lotKey);
 
       if (!targetLot) {
         const [sourceLotRow] = await db
@@ -1064,7 +1084,7 @@ export async function syncPlanningGroupStructure(
             name: sourceLotRow.name,
             subtitle: sourceLotRow.subtitle,
             icon: sourceLotRow.icon,
-            sortOrder: targetLots.filter((l) => l.domainId === targetDomain!.id).length,
+            sortOrder: getNextSortOrder(targetDomain.id),
             hidden: false,
             isPostponed: false,
             postponedNote: null,
