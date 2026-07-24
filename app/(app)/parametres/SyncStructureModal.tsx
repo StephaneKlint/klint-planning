@@ -313,20 +313,22 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
         }}
       />
 
-      {/* Modal */}
+      {/* Modal — grid layout: header auto | body 1fr scrollable | footer auto */}
       <div style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         zIndex: 1001, width: "min(680px, 96vw)",
         background: "#fff", borderRadius: 12,
         boxShadow: "0 8px 40px rgba(15,39,70,0.18)",
-        display: "flex", flexDirection: "column",
+        display: "grid",
+        gridTemplateRows: "auto 1fr auto",
+        height: "88vh",
         maxHeight: "88vh",
+        overflow: "hidden",
       }}>
         {/* Header */}
         <div style={{
           padding: "16px 20px", borderBottom: "1px solid #E2E8F0",
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          flexShrink: 0,
         }}>
           <div>
             <p style={{ fontSize: 15, fontWeight: 700, color: "#0F2746", margin: 0 }}>
@@ -349,9 +351,9 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
           </button>
         </div>
 
-        {/* Body — scrollable. maxHeight via calc avoids the flex-basis-0 / no-explicit-height deadlock */}
+        {/* Body — 1fr row takes all remaining space; minHeight:0 allows overflow-y to engage */}
         <div style={{
-          maxHeight: "calc(88vh - 160px)",
+          minHeight: 0,
           overflowY: "auto",
           padding: "16px 20px",
           display: "flex",
@@ -445,7 +447,7 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
         {/* Footer */}
         <div style={{
           padding: "12px 20px", borderTop: "1px solid #E2E8F0",
-          display: "flex", flexDirection: "column", gap: 10, flexShrink: 0,
+          display: "flex", flexDirection: "column", gap: 10,
         }}>
           {state === "preview" && (
             <p style={{ fontSize: 11, color: "#94A3B8", margin: 0, fontStyle: "italic" }}>
