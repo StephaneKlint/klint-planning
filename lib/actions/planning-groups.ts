@@ -769,6 +769,10 @@ async function loadFullPlanningStructure(planningId: string): Promise<LoadedDoma
 const SyncStructureSchema = z.object({
   groupId: z.string().uuid(),
   planningId: z.string().uuid(),
+  lotFilter: z.array(z.object({
+    targetPlanningId: z.string().uuid(),
+    sourceLotId: z.string().uuid(),
+  })).optional(),
 });
 
 export async function diffPlanningGroupStructure(
@@ -945,8 +949,20 @@ export async function syncPlanningGroupStructure(
 
   let totalCreated = 0;
 
+  // Build filter set for fast lookup: "targetPlanningId::sourceLotId"
+  const filterSet = data.lotFilter
+    ? new Set(data.lotFilter.map((f) => `${f.targetPlanningId}::${f.sourceLotId}`))
+    : null;
+
   for (const structDiff of diff.diffs) {
-    const { targetPlanningId, lotDiffs } = structDiff;
+    const { targetPlanningId, lotDiffs: allLotDiffs } = structDiff;
+
+    // Apply lot filter if provided
+    const lotDiffs = filterSet
+      ? allLotDiffs.filter((ld) => filterSet.has(`${targetPlanningId}::${ld.sourceLotId}`))
+      : allLotDiffs;
+
+    if (lotDiffs.length === 0) continue;
 
     // Load target planning context
     const targetDomains = await db
