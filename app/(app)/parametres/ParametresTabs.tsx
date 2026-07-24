@@ -272,7 +272,7 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
                     onChange={(e) => {
                       const val = e.target.checked;
                       if (val && !window.confirm(
-                        "Convertir ce planning en modèle ?\n\nIl disparaîtra du sélecteur principal et ne sera plus accessible comme planning actif. Il restera disponible dans « Nouveau planning → Depuis un modèle »."
+                        "Marquer ce planning comme modèle ?\n\nIl restera actif et accessible normalement. Il sera également proposé dans « Nouveau planning → Depuis un modèle » pour créer de nouveaux plannings à partir de sa structure."
                       )) return;
                       setIsTemplateLocal(val);
                       startTransition(async () => {
@@ -285,7 +285,7 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
                 </label>
               </div>
               <p style={{ fontSize: 12, color: "#64748B", margin: "4px 0 0 22px" }}>
-                Les modèles apparaissent dans &quot;Nouveau planning → Depuis un modèle&quot; avec recalage automatique des dates.
+                Le planning reste actif et accessible. Il est également proposé dans &quot;Nouveau planning → Depuis un modèle&quot; pour servir de base à de nouveaux plannings.
               </p>
             </div>
           </form>

@@ -142,7 +142,6 @@ export async function listPlanningsForUser(userId: string) {
         notDeleted,
         eq(plannings.archived, false),
         eq(plannings.disabled, false),
-        eq(plannings.isTemplate, false),
         eq(planningMembers.userId, userId)
       )
     )
@@ -182,7 +181,7 @@ export async function listPlannings(filter: "active" | "archived" | "disabled" |
     })
     .from(plannings)
     .where(
-      filter === "active"    ? and(notDeleted, eq(plannings.archived, false), eq(plannings.disabled, false), eq(plannings.isTemplate, false)) :
+      filter === "active"    ? and(notDeleted, eq(plannings.archived, false), eq(plannings.disabled, false)) :
       filter === "templates" ? and(notDeleted, eq(plannings.archived, false), eq(plannings.disabled, false), eq(plannings.isTemplate, true)) :
       filter === "archived"  ? and(notDeleted, eq(plannings.archived, true)) :
       filter === "disabled"  ? and(notDeleted, eq(plannings.archived, false), eq(plannings.disabled, true)) :
