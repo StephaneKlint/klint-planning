@@ -39,7 +39,7 @@ export default async function PlanningsPage() {
           <h1 className={styles.title}>Mes plannings</h1>
           <p className={styles.subtitle}>{activeFiltered.length} planning{activeFiltered.length > 1 ? "s" : ""} actif{activeFiltered.length > 1 ? "s" : ""}</p>
         </div>
-        {role === "admin" && (
+        {(role === "admin" || role === "user") && (
           <Link href="/plannings/nouveau" className={styles.newBtn}>
             + Nouveau planning
           </Link>

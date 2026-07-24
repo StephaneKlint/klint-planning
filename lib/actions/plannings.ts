@@ -9,9 +9,10 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import {
   plannings, planningSettings, phaseTypes, milestoneTypes, statuses, domains,
-  lots, phases, milestones, activityLog, closurePeriods,
+  lots, phases, milestones, activityLog, closurePeriods, planningMembers,
 } from "@/lib/db/schema";
 import { eq, inArray, isNotNull } from "drizzle-orm";
+import { auth } from "@/auth";
 
 // ---------------------------------------------------------------------------
 // Create Planning
@@ -27,6 +28,11 @@ const CreatePlanningSchema = z.object({
 });
 
 export async function createPlanning(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Non authentifié.");
+  const userId = session.user.id;
+  const isAdmin = session.user.role === "admin";
+
   const raw = {
     name:        formData.get("name"),
     year:        formData.get("year"),
@@ -79,6 +85,15 @@ export async function createPlanning(formData: FormData) {
     { planningId: planning.id, code: "risk",        label: "À risque",   color: "#F59E0B", bg: "#FEF3C7", sortOrder: 4 },
     { planningId: planning.id, code: "late",        label: "En retard",  color: "#DC2626", bg: "#FEE2E2", sortOrder: 5 },
   ]);
+
+  // Non-admin creators are added as owner so they can access their own planning
+  if (!isAdmin) {
+    await db.insert(planningMembers).values({
+      planningId: planning.id,
+      userId,
+      permission: "owner",
+    });
+  }
 
   await db.insert(activityLog).values({ planningId: planning.id, verb: "created", targetType: "planning", targetId: planning.id, summary: "Planning créé" }).catch(() => {});
   revalidatePath("/p");
