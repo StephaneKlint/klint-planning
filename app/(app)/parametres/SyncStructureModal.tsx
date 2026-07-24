@@ -313,7 +313,7 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
         }}
       />
 
-      {/* Modal — overflow: hidden is the key fix for inner scroll */}
+      {/* Modal */}
       <div style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         zIndex: 1001, width: "min(680px, 96vw)",
@@ -321,7 +321,6 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
         boxShadow: "0 8px 40px rgba(15,39,70,0.18)",
         display: "flex", flexDirection: "column",
         maxHeight: "88vh",
-        overflow: "hidden",
       }}>
         {/* Header */}
         <div style={{
@@ -350,9 +349,9 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
           </button>
         </div>
 
-        {/* Body — scrollable */}
+        {/* Body — scrollable. maxHeight via calc avoids the flex-basis-0 / no-explicit-height deadlock */}
         <div style={{
-          flex: "1 1 0",
+          maxHeight: "calc(88vh - 160px)",
           overflowY: "auto",
           padding: "16px 20px",
           display: "flex",

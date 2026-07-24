@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createPlanningLink, removePlanningFromSyncGroup, bulkLinkLot } from "@/lib/actions/planning-groups";
+import { createPlanningLink, removePlanningFromSyncGroup, bulkLinkLot, syncPlanningGroupStructure } from "@/lib/actions/planning-groups";
 import type { PlanningGroupRow } from "@/lib/db/queries";
 import { SyncStructureModal } from "./SyncStructureModal";
 import styles from "./Parametres.module.css";
@@ -39,6 +39,7 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
     linkedPhases: number;
     linkedMilestones: number;
     lotsNoNameMatch: number;
+    createdElements: number;
   } | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
@@ -133,8 +134,26 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
     if (bulkSelectedLotIds.size === 0) return;
     setBulkError(null);
     setBulkResult(null);
+    const group = planningGroups.find((g) => g.groupId === groupId);
     startTransition(async () => {
       try {
+        let createdElements = 0;
+        // Step 1: create missing lots/phases/milestones in linked plannings
+        if (group && group.linkedPlannings.length > 0) {
+          const lotFilter = [];
+          for (const lotId of bulkSelectedLotIds) {
+            for (const lp of group.linkedPlannings) {
+              lotFilter.push({ targetPlanningId: lp.planningId, sourceLotId: lotId });
+            }
+          }
+          const structResult = await syncPlanningGroupStructure({
+            groupId,
+            planningId: currentPlanningId,
+            lotFilter,
+          });
+          createdElements = structResult.totalCreated;
+        }
+        // Step 2: link existing phases/milestones by matching label
         let totalPhases = 0;
         let totalMilestones = 0;
         let totalNoNameMatch = 0;
@@ -148,8 +167,8 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
           totalMilestones += result.linkedMilestones;
           totalNoNameMatch += result.lotNoNameMatch ?? 0;
         }
-        setBulkResult({ linkedPhases: totalPhases, linkedMilestones: totalMilestones, lotsNoNameMatch: totalNoNameMatch });
-        if (totalPhases > 0 || totalMilestones > 0) {
+        setBulkResult({ linkedPhases: totalPhases, linkedMilestones: totalMilestones, lotsNoNameMatch: totalNoNameMatch, createdElements });
+        if (totalPhases > 0 || totalMilestones > 0 || createdElements > 0) {
           router.refresh();
         }
       } catch (e: unknown) {
@@ -234,10 +253,10 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
           {bulkGroupId === group.groupId && (
             <div style={{ background: "#F0F7FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: 12, width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
               <p style={{ fontSize: 12, color: "#1E40AF", margin: 0, fontWeight: 600 }}>
-                Synchroniser par libellé identique
+                Synchroniser les lots sélectionnés
               </p>
               <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>
-                Phases et jalons de même libellé seront liés automatiquement. Les lots doivent porter le même nom dans les deux plannings — sinon utilisez <strong>⇄ Sync. structure</strong> pour créer les lots manquants.
+                Les lots manquants dans les plannings liés seront créés. Les phases et jalons de même libellé seront liés automatiquement.
               </p>
 
               {/* Select all */}
@@ -310,19 +329,19 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
               {bulkError && <p style={{ fontSize: 11, color: "#DC2626", margin: 0 }}>{bulkError}</p>}
               {bulkResult && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {bulkResult.createdElements > 0 && (
+                    <p style={{ fontSize: 11, color: "#2563EB", margin: 0 }}>
+                      ✓ {bulkResult.createdElements} élément{bulkResult.createdElements !== 1 ? "s" : ""} créé{bulkResult.createdElements !== 1 ? "s" : ""} dans les plannings liés.
+                    </p>
+                  )}
                   {(bulkResult.linkedPhases > 0 || bulkResult.linkedMilestones > 0) && (
                     <p style={{ fontSize: 11, color: "#16A34A", margin: 0 }}>
-                      ✓ {bulkResult.linkedPhases} phase{bulkResult.linkedPhases !== 1 ? "s" : ""} et {bulkResult.linkedMilestones} jalon{bulkResult.linkedMilestones !== 1 ? "s" : ""} synchronisé{bulkResult.linkedMilestones !== 1 ? "s" : ""}.
+                      ✓ {bulkResult.linkedPhases} phase{bulkResult.linkedPhases !== 1 ? "s" : ""} et {bulkResult.linkedMilestones} jalon{bulkResult.linkedMilestones !== 1 ? "s" : ""} lié{bulkResult.linkedMilestones !== 1 ? "s" : ""} par libellé.
                     </p>
                   )}
-                  {bulkResult.lotsNoNameMatch > 0 && (
-                    <p style={{ fontSize: 11, color: "#92400E", margin: 0 }}>
-                      ⚠ {bulkResult.lotsNoNameMatch} lot{bulkResult.lotsNoNameMatch !== 1 ? "s" : ""} sans correspondance de nom dans les plannings liés. Utilisez <strong>⇄ Sync. structure</strong> pour créer les lots manquants.
-                    </p>
-                  )}
-                  {bulkResult.linkedPhases === 0 && bulkResult.linkedMilestones === 0 && bulkResult.lotsNoNameMatch === 0 && (
+                  {bulkResult.createdElements === 0 && bulkResult.linkedPhases === 0 && bulkResult.linkedMilestones === 0 && (
                     <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>
-                      Toutes les phases de ces lots sont déjà synchronisées.
+                      Tous les éléments de ces lots sont déjà synchronisés.
                     </p>
                   )}
                 </div>
