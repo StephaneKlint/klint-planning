@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createPlanningLink, removePlanningFromSyncGroup, bulkLinkLot, syncPlanningGroupStructure } from "@/lib/actions/planning-groups";
+import { createPlanningLink, removePlanningFromSyncGroup } from "@/lib/actions/planning-groups";
 import type { PlanningGroupRow } from "@/lib/db/queries";
 import { SyncStructureModal } from "./SyncStructureModal";
+import { SyncLotModal } from "./SyncLotModal";
 import styles from "./Parametres.module.css";
 
 interface LotWithDomain {
@@ -32,27 +33,8 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
   // Full structure sync modal
   const [structureSyncGroupId, setStructureSyncGroupId] = useState<string | null>(null);
 
-  // Bulk link state — one picker per group (keyed by groupId)
-  const [bulkGroupId, setBulkGroupId] = useState<string | null>(null);
-  const [bulkSelectedLotIds, setBulkSelectedLotIds] = useState<Set<string>>(new Set());
-  const [bulkResult, setBulkResult] = useState<{
-    linkedPhases: number;
-    linkedMilestones: number;
-    lotsNoNameMatch: number;
-    createdElements: number;
-  } | null>(null);
-  const [bulkError, setBulkError] = useState<string | null>(null);
-
-  // Group lots by domain for the picker
-  const lotsByDomain = currentLots.reduce<Record<string, LotWithDomain[]>>((acc, l) => {
-    const key = l.domainId ?? "__none__";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(l);
-    return acc;
-  }, {});
-  const domainOrder = Array.from(new Set(currentLots.map((l) => l.domainId ?? "__none__")));
-  const domainNameFor = (key: string) =>
-    key === "__none__" ? "Sans domaine" : (currentLots.find((l) => l.domainId === key)?.domainName ?? key);
+  // Lot sync modal
+  const [syncLotModalGroupId, setSyncLotModalGroupId] = useState<string | null>(null);
 
   // Plannings not yet linked to this one
   const linkedIds = new Set(
@@ -90,89 +72,6 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
         router.refresh();
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Erreur lors de la suppression du lien.");
-      }
-    });
-  }
-
-  function handleOpenBulkPicker(groupId: string) {
-    setBulkGroupId(groupId);
-    setBulkSelectedLotIds(new Set());
-    setBulkResult(null);
-    setBulkError(null);
-  }
-
-  function toggleBulkLot(lotId: string) {
-    setBulkSelectedLotIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(lotId)) next.delete(lotId);
-      else next.add(lotId);
-      return next;
-    });
-    setBulkResult(null);
-  }
-
-  function toggleAllLots() {
-    setBulkSelectedLotIds((prev) =>
-      prev.size === currentLots.length ? new Set() : new Set(currentLots.map((l) => l.id)),
-    );
-    setBulkResult(null);
-  }
-
-  function toggleDomainLots(domainKey: string) {
-    const domainLotIds = (lotsByDomain[domainKey] ?? []).map((l) => l.id);
-    setBulkSelectedLotIds((prev) => {
-      const next = new Set(prev);
-      const allSelected = domainLotIds.every((id) => next.has(id));
-      if (allSelected) domainLotIds.forEach((id) => next.delete(id));
-      else domainLotIds.forEach((id) => next.add(id));
-      return next;
-    });
-    setBulkResult(null);
-  }
-
-  async function handleBulkLink(groupId: string) {
-    if (bulkSelectedLotIds.size === 0) return;
-    setBulkError(null);
-    setBulkResult(null);
-    const group = planningGroups.find((g) => g.groupId === groupId);
-    startTransition(async () => {
-      try {
-        let createdElements = 0;
-        // Step 1: create missing lots/phases/milestones in linked plannings
-        if (group && group.linkedPlannings.length > 0) {
-          const lotFilter = [];
-          for (const lotId of bulkSelectedLotIds) {
-            for (const lp of group.linkedPlannings) {
-              lotFilter.push({ targetPlanningId: lp.planningId, sourceLotId: lotId });
-            }
-          }
-          const structResult = await syncPlanningGroupStructure({
-            groupId,
-            planningId: currentPlanningId,
-            lotFilter,
-          });
-          createdElements = structResult.totalCreated;
-        }
-        // Step 2: link existing phases/milestones by matching label
-        let totalPhases = 0;
-        let totalMilestones = 0;
-        let totalNoNameMatch = 0;
-        for (const lotId of bulkSelectedLotIds) {
-          const result = await bulkLinkLot({
-            sourceLotId: lotId,
-            planningGroupId: groupId,
-            planningId: currentPlanningId,
-          });
-          totalPhases += result.linkedPhases;
-          totalMilestones += result.linkedMilestones;
-          totalNoNameMatch += result.lotNoNameMatch ?? 0;
-        }
-        setBulkResult({ linkedPhases: totalPhases, linkedMilestones: totalMilestones, lotsNoNameMatch: totalNoNameMatch, createdElements });
-        if (totalPhases > 0 || totalMilestones > 0 || createdElements > 0) {
-          router.refresh();
-        }
-      } catch (e: unknown) {
-        setBulkError(e instanceof Error ? e.message : "Erreur lors de la synchronisation.");
       }
     });
   }
@@ -221,7 +120,7 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
               {currentLots.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => bulkGroupId === group.groupId ? setBulkGroupId(null) : handleOpenBulkPicker(group.groupId)}
+                  onClick={() => setSyncLotModalGroupId(group.groupId)}
                   disabled={isPending}
                   style={{
                     fontSize: 11, color: "#2563EB", background: "none",
@@ -248,136 +147,6 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
           <div style={{ fontSize: 12, color: "#64748B" }}>
             ⇄ {group.linkedPlannings.map((lp) => lp.name).join(", ")}
           </div>
-
-          {/* Bulk link picker — grouped by domain */}
-          {bulkGroupId === group.groupId && (
-            <div style={{ background: "#F0F7FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: 12, width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-              <p style={{ fontSize: 12, color: "#1E40AF", margin: 0, fontWeight: 600 }}>
-                Synchroniser les lots sélectionnés
-              </p>
-              <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>
-                Les lots manquants dans les plannings liés seront créés. Les phases et jalons de même libellé seront liés automatiquement.
-              </p>
-
-              {/* Lots grouped by domain */}
-              <div style={{ maxHeight: 280, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-                {domainOrder.map((domKey) => {
-                  const domLots = lotsByDomain[domKey] ?? [];
-                  const allChecked = domLots.every((l) => bulkSelectedLotIds.has(l.id));
-                  const someChecked = domLots.some((l) => bulkSelectedLotIds.has(l.id));
-                  return (
-                    <div key={domKey}>
-                      {/* Domain header */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "3px 4px 3px 0", marginBottom: 2 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#334155", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          {domainNameFor(domKey)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => toggleDomainLots(domKey)}
-                          style={{
-                            fontSize: 10, cursor: "pointer", padding: "2px 7px", borderRadius: 4,
-                            background: allChecked ? "#FEE2E2" : someChecked ? "#EFF6FF" : "#EFF6FF",
-                            color: allChecked ? "#DC2626" : "#2563EB",
-                            border: `1px solid ${allChecked ? "#FECACA" : "#BFDBFE"}`,
-                            fontWeight: 600,
-                          }}
-                        >
-                          {allChecked ? "Désélectionner" : "Tout le domaine"}
-                        </button>
-                      </div>
-                      {/* Lots in this domain */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingLeft: 8 }}>
-                        {domLots.map((l) => (
-                          <label
-                            key={l.id}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 8, fontSize: 12,
-                              cursor: "pointer", padding: "4px 6px", borderRadius: 5,
-                              background: bulkSelectedLotIds.has(l.id) ? "#EFF6FF" : "transparent",
-                              border: bulkSelectedLotIds.has(l.id) ? "1px solid #BFDBFE" : "1px solid transparent",
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={bulkSelectedLotIds.has(l.id)}
-                              onChange={() => toggleBulkLot(l.id)}
-                              style={{ width: 14, height: 14, accentColor: "#2563EB", cursor: "pointer", flexShrink: 0 }}
-                            />
-                            {l.name}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {bulkError && <p style={{ fontSize: 11, color: "#DC2626", margin: 0 }}>{bulkError}</p>}
-              {bulkResult && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  {bulkResult.createdElements > 0 && (
-                    <p style={{ fontSize: 11, color: "#2563EB", margin: 0 }}>
-                      ✓ {bulkResult.createdElements} élément{bulkResult.createdElements !== 1 ? "s" : ""} créé{bulkResult.createdElements !== 1 ? "s" : ""} dans les plannings liés.
-                    </p>
-                  )}
-                  {(bulkResult.linkedPhases > 0 || bulkResult.linkedMilestones > 0) && (
-                    <p style={{ fontSize: 11, color: "#16A34A", margin: 0 }}>
-                      ✓ {bulkResult.linkedPhases} phase{bulkResult.linkedPhases !== 1 ? "s" : ""} et {bulkResult.linkedMilestones} jalon{bulkResult.linkedMilestones !== 1 ? "s" : ""} lié{bulkResult.linkedMilestones !== 1 ? "s" : ""} par libellé.
-                    </p>
-                  )}
-                  {bulkResult.createdElements === 0 && bulkResult.linkedPhases === 0 && bulkResult.linkedMilestones === 0 && (
-                    <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>
-                      Tous les éléments de ces lots sont déjà synchronisés.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Action bar — tout sélectionner ici, à côté du bouton Synchroniser */}
-              <div style={{ display: "flex", gap: 6, alignItems: "center", borderTop: "1px solid #BFDBFE", paddingTop: 8, flexWrap: "wrap" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", userSelect: "none", marginRight: 4 }}>
-                  <input
-                    type="checkbox"
-                    checked={bulkSelectedLotIds.size === currentLots.length && currentLots.length > 0}
-                    ref={(el) => {
-                      if (el) el.indeterminate = bulkSelectedLotIds.size > 0 && bulkSelectedLotIds.size < currentLots.length;
-                    }}
-                    onChange={toggleAllLots}
-                    style={{ width: 14, height: 14, accentColor: "#2563EB", cursor: "pointer" }}
-                  />
-                  <span style={{ color: "#374151" }}>
-                    Tout{bulkSelectedLotIds.size > 0 ? ` (${bulkSelectedLotIds.size}/${currentLots.length})` : ` (${currentLots.length})`}
-                  </span>
-                </label>
-
-                <div style={{ flex: 1 }} />
-
-                <button
-                  type="button"
-                  onClick={() => handleBulkLink(group.groupId)}
-                  disabled={isPending || bulkSelectedLotIds.size === 0}
-                  style={{
-                    fontSize: 12, padding: "5px 14px",
-                    background: bulkSelectedLotIds.size === 0 ? "#E5E7EB" : "#2563EB",
-                    color: bulkSelectedLotIds.size === 0 ? "#9CA3AF" : "#fff",
-                    border: "none", borderRadius: 5,
-                    cursor: bulkSelectedLotIds.size === 0 ? "default" : "pointer",
-                    fontWeight: 600,
-                  }}
-                >
-                  {isPending ? "Synchronisation…" : `Synchroniser${bulkSelectedLotIds.size > 1 ? ` (${bulkSelectedLotIds.size})` : ""}`}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setBulkGroupId(null); setBulkResult(null); setBulkError(null); setBulkSelectedLotIds(new Set()); }}
-                  style={{ fontSize: 12, padding: "5px 10px", background: "none", border: "1px solid #E5E7EB", borderRadius: 5, cursor: "pointer" }}
-                >
-                  Fermer
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       ))}
 
@@ -392,6 +161,21 @@ export function SyncSection({ currentPlanningId, planningGroups, allPlannings, c
             currentPlanningId={currentPlanningId}
             onClose={() => setStructureSyncGroupId(null)}
             onSuccess={() => { setStructureSyncGroupId(null); router.refresh(); }}
+          />
+        );
+      })()}
+
+      {/* Lot sync modal */}
+      {syncLotModalGroupId && (() => {
+        const group = planningGroups.find((g) => g.groupId === syncLotModalGroupId);
+        if (!group) return null;
+        return (
+          <SyncLotModal
+            group={group}
+            currentPlanningId={currentPlanningId}
+            currentLots={currentLots}
+            onClose={() => setSyncLotModalGroupId(null)}
+            onSuccess={() => setSyncLotModalGroupId(null)}
           />
         );
       })()}
