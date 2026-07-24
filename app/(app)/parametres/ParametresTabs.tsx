@@ -271,6 +271,9 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
                     checked={isTemplateLocal}
                     onChange={(e) => {
                       const val = e.target.checked;
+                      if (val && !window.confirm(
+                        "Convertir ce planning en modèle ?\n\nIl disparaîtra du sélecteur principal et ne sera plus accessible comme planning actif. Il restera disponible dans « Nouveau planning → Depuis un modèle »."
+                      )) return;
                       setIsTemplateLocal(val);
                       startTransition(async () => {
                         await setTemplateFlag(planning.id, val);
