@@ -192,7 +192,18 @@ function ConnexionsSection({ connLogs }: { connLogs: ConnectionLogRow[] }) {
   );
 }
 
-// ── Global admin panel ──────────────────────────────────────────────────────
+// ── Global admin panel (avec sous-onglets) ─────────────────────────────────
+
+type GlobalTab = "utilisateurs" | "apparence" | "securite" | "droits" | "logs" | "connexions";
+
+const GLOBAL_TABS: { id: GlobalTab; label: string; desc: string }[] = [
+  { id: "utilisateurs", label: "Utilisateurs & rôles", desc: "Accès à l'application" },
+  { id: "apparence",    label: "Apparence",            desc: "Logo et favicon" },
+  { id: "securite",     label: "Sécurité",             desc: "Restrictions géographiques" },
+  { id: "droits",       label: "Droits & rôles",       desc: "Permissions par rôle" },
+  { id: "logs",         label: "Logs erreurs",          desc: "Erreurs applicatives" },
+  { id: "connexions",   label: "Connexions",            desc: "Historique des connexions" },
+];
 
 function GlobalPanel({
   appCfg, permissions, securitySettings, connLogs, allUsers,
@@ -200,67 +211,96 @@ function GlobalPanel({
   appCfg: AppSettings; permissions: PermissionMatrix; securitySettings: SecuritySettings;
   connLogs: ConnectionLogRow[]; allUsers: AdminUser[];
 }) {
+  const [activeGlobal, setActiveGlobal] = useState<GlobalTab>("utilisateurs");
+  const current = GLOBAL_TABS.find((t) => t.id === activeGlobal)!;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Callout */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+
+      {/* Sub-tab bar */}
       <div style={{
-        background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10,
-        padding: "12px 18px", display: "flex", gap: 10, alignItems: "flex-start",
-        fontSize: 12, color: "#1E40AF",
+        display: "flex", gap: 0,
+        borderBottom: "1px solid var(--klint-line)",
+        marginBottom: 20,
       }}>
-        <span>ℹ</span>
-        <span>
-          Ces paramètres s&apos;appliquent à <strong>tous les plannings</strong>.
-          Les types définis ici sont proposés par défaut lors de la création d&apos;un nouveau planning — chaque planning peut ensuite les personnaliser.
-        </span>
+        {GLOBAL_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setActiveGlobal(t.id)}
+            style={{
+              padding: "8px 14px",
+              fontSize: 12,
+              fontWeight: activeGlobal === t.id ? 600 : 400,
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              borderBottom: activeGlobal === t.id ? "2px solid #2563EB" : "2px solid transparent",
+              color: activeGlobal === t.id ? "#2563EB" : "#374151",
+              marginBottom: -1,
+              transition: "color 0.15s",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Users */}
-      <SectionCard
-        title="Utilisateurs & rôles globaux"
-        subtitle="Accès à l'application"
-        action={
-          <span style={{ fontSize: 11, color: "#64748B" }}>
-            {allUsers.length} compte{allUsers.length !== 1 ? "s" : ""}
-          </span>
-        }
-      >
-        <UsersSection initialUsers={allUsers} />
-      </SectionCard>
+      {/* Panel content */}
+      {activeGlobal === "utilisateurs" && (
+        <SectionCard
+          title="Utilisateurs & rôles globaux"
+          subtitle="Accès à l'application"
+          action={
+            <span style={{ fontSize: 11, color: "#64748B" }}>
+              {allUsers.length} compte{allUsers.length !== 1 ? "s" : ""}
+            </span>
+          }
+        >
+          <UsersSection initialUsers={allUsers} />
+        </SectionCard>
+      )}
 
-      {/* Grid 2: Apparence + Sécurité */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-        <SectionCard title="Apparence" subtitle="Logo et favicon de l'application">
+      {activeGlobal === "apparence" && (
+        <SectionCard title="Apparence" subtitle={current.desc}>
           <div style={{ padding: "16px 20px" }}>
             <ApparenceSection appCfg={appCfg} />
           </div>
         </SectionCard>
-        <SectionCard title="Sécurité" subtitle="Restrictions géographiques">
+      )}
+
+      {activeGlobal === "securite" && (
+        <SectionCard title="Sécurité" subtitle={current.desc}>
           <div style={{ padding: "16px 20px" }}>
             <GeoSecuriteSection securitySettings={securitySettings} />
           </div>
         </SectionCard>
-      </div>
+      )}
 
-      {/* Droits */}
-      <SectionCard title="Droits & rôles" subtitle="Permissions par rôle sur toute la plateforme">
-        <DroitsTab permissions={permissions} />
-      </SectionCard>
+      {activeGlobal === "droits" && (
+        <SectionCard title="Droits & rôles" subtitle="Permissions par rôle sur toute la plateforme">
+          <DroitsTab permissions={permissions} />
+        </SectionCard>
+      )}
 
-      {/* Logs erreurs */}
-      <SectionCard title="Logs erreurs" subtitle="Erreurs applicatives récentes">
-        <div style={{ padding: "16px 20px" }}>
-          <LogsPanel />
-        </div>
-      </SectionCard>
+      {activeGlobal === "logs" && (
+        <SectionCard title="Logs erreurs" subtitle={current.desc}>
+          <div style={{ padding: "16px 20px" }}>
+            <LogsPanel />
+          </div>
+        </SectionCard>
+      )}
 
-      {/* Connexions */}
-      <SectionCard
-        title="Connexions"
-        subtitle={`Dernières ${connLogs.length} connexions à la plateforme`}
-      >
-        <ConnexionsSection connLogs={connLogs} />
-      </SectionCard>
+      {activeGlobal === "connexions" && (
+        <SectionCard
+          title="Connexions"
+          subtitle={`Dernières ${connLogs.length} connexions à la plateforme`}
+        >
+          <ConnexionsSection connLogs={connLogs} />
+        </SectionCard>
+      )}
+
     </div>
   );
 }
