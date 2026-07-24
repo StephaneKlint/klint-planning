@@ -313,22 +313,21 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
         }}
       />
 
-      {/* Modal — grid layout: header auto | body 1fr scrollable | footer auto */}
+      {/* Modal — outer scrolls; header and footer are sticky */}
       <div style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         zIndex: 1001, width: "min(680px, 96vw)",
         background: "#fff", borderRadius: 12,
         boxShadow: "0 8px 40px rgba(15,39,70,0.18)",
-        display: "grid",
-        gridTemplateRows: "auto 1fr auto",
-        height: "88vh",
         maxHeight: "88vh",
-        overflow: "hidden",
+        overflowY: "auto",
       }}>
-        {/* Header */}
+        {/* Header — sticky at top */}
         <div style={{
+          position: "sticky", top: 0, zIndex: 2,
           padding: "16px 20px", borderBottom: "1px solid #E2E8F0",
           display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: "#fff",
         }}>
           <div>
             <p style={{ fontSize: 15, fontWeight: 700, color: "#0F2746", margin: 0 }}>
@@ -351,10 +350,8 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
           </button>
         </div>
 
-        {/* Body — 1fr row takes all remaining space; minHeight:0 allows overflow-y to engage */}
+        {/* Body — natural height, scrolls with the outer container */}
         <div style={{
-          minHeight: 0,
-          overflowY: "auto",
           padding: "16px 20px",
           display: "flex",
           flexDirection: "column",
@@ -444,10 +441,12 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer — sticky at bottom */}
         <div style={{
+          position: "sticky", bottom: 0, zIndex: 2,
           padding: "12px 20px", borderTop: "1px solid #E2E8F0",
           display: "flex", flexDirection: "column", gap: 10,
+          background: "#fff",
         }}>
           {state === "preview" && (
             <p style={{ fontSize: 11, color: "#94A3B8", margin: 0, fontStyle: "italic" }}>
