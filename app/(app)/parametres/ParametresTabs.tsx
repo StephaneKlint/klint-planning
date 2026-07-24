@@ -44,13 +44,16 @@ const ALL_TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "logs",       label: "Logs erreurs",   adminOnly: true },
 ];
 
-function buildVisibleTabs(userRole: UserRole, permissions: PermissionMatrix) {
-  if (userRole === "admin") return ALL_TABS;
-  return ALL_TABS.filter((t) => {
-    if (t.adminOnly) return false;
-    const key = (t.id === "répertoire" ? "repertoire" : t.id) as keyof PermissionMatrix["tabs"];
-    return permissions.tabs[key] ?? false;
-  });
+function buildVisibleTabs(userRole: UserRole, permissions: PermissionMatrix, hideTabs?: Tab[]) {
+  const hideSet = new Set(hideTabs ?? []);
+  const base = userRole === "admin"
+    ? ALL_TABS
+    : ALL_TABS.filter((t) => {
+        if (t.adminOnly) return false;
+        const key = (t.id === "répertoire" ? "repertoire" : t.id) as keyof PermissionMatrix["tabs"];
+        return permissions.tabs[key] ?? false;
+      });
+  return hideSet.size ? base.filter((t) => !hideSet.has(t.id)) : base;
 }
 
 const VERB_LABELS: Record<string, string> = {
@@ -103,11 +106,12 @@ interface ParametresTabsProps {
   securitySettings?: SecuritySettings;
   planningGroups?: PlanningGroupRow[];
   allPlannings?: Array<{ id: string; name: string }>;
+  hideTabs?: Tab[];
 }
 
-export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = DEFAULT_PERMISSIONS, activityEntries = [], connLogs = [], directoryContacts = [], securitySettings = { enabled: true, trustedCountries: ["FR"] }, planningGroups = [], allPlannings = [] }: ParametresTabsProps) {
+export function ParametresTabs({ data, appCfg, userRole = "admin", permissions = DEFAULT_PERMISSIONS, activityEntries = [], connLogs = [], directoryContacts = [], securitySettings = { enabled: true, trustedCountries: ["FR"] }, planningGroups = [], allPlannings = [], hideTabs }: ParametresTabsProps) {
   const router = useRouter();
-  const visibleTabs = buildVisibleTabs(userRole, permissions);
+  const visibleTabs = buildVisibleTabs(userRole, permissions, hideTabs);
   const [active, setActive] = useState<Tab>(() => visibleTabs[0]?.id ?? "general");
   const [isPending, startTransition] = useTransition();
   const { planning, settings, domains, phaseTypes, milestoneTypes, statuses } = data;

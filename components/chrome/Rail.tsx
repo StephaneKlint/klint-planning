@@ -15,14 +15,13 @@ interface NavItem {
 }
 
 // Pages that should receive ?planningId= when navigating from a planning
-const PLANNING_AWARE = new Set(["/synthese", "/ressources", "/parametres"]);
+const PLANNING_AWARE = new Set(["/synthese", "/ressources", "/parametres", "/administration"]);
 
 const TOP_NAV: NavItem[] = [
   { href: "/plannings",    icon: "layers",    label: "Plannings"    },
   { href: "/portefeuille", icon: "grid",      label: "Portefeuille" },
   { href: "/p",            icon: "calendar",  label: "Gantt"        },
   { href: "/synthese",     icon: "chartLine", label: "Synthèse"     },
-  { href: "/parametres",   icon: "settings",  label: "Paramètres"   },
 ];
 
 const BOTTOM_NAV: NavItem[] = [
@@ -82,17 +81,23 @@ export function Rail({ avatarInitials = "?", avatarColor = "#001D63", logoDataUr
             <Icon name={item.icon} size={18} />
           </Link>
         ))}
-        {isAdmin && (
-          <Link
-            href="/administration"
-            prefetch={false}
-            className={`${styles.railBtn} ${isActive("/administration") ? styles.active : ""}`}
-            aria-label="Administration"
-            data-label="Administration"
-          >
-            <Icon name="shield" size={18} />
-          </Link>
-        )}
+        {/* Single settings/admin entry — shield for admins, settings gear for others */}
+        {(() => {
+          const href = isAdmin ? "/administration" : "/parametres";
+          const label = isAdmin ? "Administration" : "Paramètres";
+          const icon: IconName = isAdmin ? "shield" : "settings";
+          return (
+            <Link
+              href={resolveHref(href)}
+              prefetch={false}
+              className={`${styles.railBtn} ${isActive(href) ? styles.active : ""}`}
+              aria-label={label}
+              data-label={label}
+            >
+              <Icon name={icon} size={18} />
+            </Link>
+          );
+        })()}
       </div>
 
       <div className={styles.spacer} />
