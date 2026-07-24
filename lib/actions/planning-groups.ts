@@ -529,6 +529,18 @@ export async function bulkLinkLot(
   const data = BulkLinkLotSchema.parse(input);
   await assertIsOwnerOrAdmin(data.planningId);
 
+  // Normalize label for matching: use label if set, otherwise type; lowercase + trim
+  const phaseKey = (label: string | null, type: string) =>
+    (label ?? type).trim().toLowerCase();
+
+  // Get the source lot name to match by name in other plannings
+  const [sourceLot] = await db
+    .select({ name: lots.name })
+    .from(lots)
+    .where(eq(lots.id, data.sourceLotId));
+
+  if (!sourceLot) return { linkedPhases: 0, linkedMilestones: 0 };
+
   // Get other plannings in this group
   const otherMembers = await db
     .select({ planningId: planningGroupMembers.planningId })
@@ -542,11 +554,14 @@ export async function bulkLinkLot(
 
   const otherPlanningIds = otherMembers.map((m) => m.planningId);
 
-  // Get lots from other plannings
+  // Only match lots with the SAME NAME as the source lot
   const targetLots = await db
     .select({ id: lots.id })
     .from(lots)
-    .where(inArray(lots.planningId, otherPlanningIds));
+    .where(and(
+      inArray(lots.planningId, otherPlanningIds),
+      eq(lots.name, sourceLot.name),
+    ));
 
   if (!targetLots.length) return { linkedPhases: 0, linkedMilestones: 0 };
   const targetLotIds = targetLots.map((l) => l.id);
@@ -571,9 +586,9 @@ export async function bulkLinkLot(
   let linkedPhases = 0;
 
   for (const sp of sourcePhases) {
-    const labelKey = sp.label ?? sp.type;
     const match = targetPhases.find(
-      (tp) => !usedTargetPhaseIds.has(tp.id) && (tp.label === sp.label || (!sp.label && !tp.label && tp.type === sp.type)),
+      (tp) => !usedTargetPhaseIds.has(tp.id) &&
+        phaseKey(tp.label, tp.type) === phaseKey(sp.label, sp.type),
     );
     if (!match) continue;
 
@@ -588,7 +603,6 @@ export async function bulkLinkLot(
 
     usedTargetPhaseIds.add(match.id);
     linkedPhases++;
-    void labelKey; // suppress unused warning
   }
 
   const usedTargetMsIds = new Set<string>();
@@ -596,7 +610,8 @@ export async function bulkLinkLot(
 
   for (const sm of sourceMilestones) {
     const match = targetMilestones.find(
-      (tm) => !usedTargetMsIds.has(tm.id) && tm.label === sm.label,
+      (tm) => !usedTargetMsIds.has(tm.id) &&
+        (sm.label ?? "").trim().toLowerCase() === (tm.label ?? "").trim().toLowerCase(),
     );
     if (!match) continue;
 
@@ -613,6 +628,10 @@ export async function bulkLinkLot(
     linkedMilestones++;
   }
 
+  // Revalidate all plannings in the group, not just the current one
+  for (const m of otherMembers) {
+    revalidatePath(`/p/${m.planningId}`);
+  }
   revalidatePath(`/parametres`);
   revalidatePath(`/p/${data.planningId}`);
   return { linkedPhases, linkedMilestones };
