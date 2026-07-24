@@ -525,7 +525,7 @@ const BulkLinkLotSchema = z.object({
 
 export async function bulkLinkLot(
   input: z.infer<typeof BulkLinkLotSchema>,
-): Promise<{ linkedPhases: number; linkedMilestones: number }> {
+): Promise<{ linkedPhases: number; linkedMilestones: number; lotNoNameMatch: number }> {
   const data = BulkLinkLotSchema.parse(input);
   await assertIsOwnerOrAdmin(data.planningId);
 
@@ -539,7 +539,7 @@ export async function bulkLinkLot(
     .from(lots)
     .where(eq(lots.id, data.sourceLotId));
 
-  if (!sourceLot) return { linkedPhases: 0, linkedMilestones: 0 };
+  if (!sourceLot) return { linkedPhases: 0, linkedMilestones: 0, lotNoNameMatch: 0 };
 
   // Get other plannings in this group
   const otherMembers = await db
@@ -550,7 +550,7 @@ export async function bulkLinkLot(
       ne(planningGroupMembers.planningId, data.planningId),
     ));
 
-  if (!otherMembers.length) return { linkedPhases: 0, linkedMilestones: 0 };
+  if (!otherMembers.length) return { linkedPhases: 0, linkedMilestones: 0, lotNoNameMatch: 0 };
 
   const otherPlanningIds = otherMembers.map((m) => m.planningId);
 
@@ -563,7 +563,7 @@ export async function bulkLinkLot(
       eq(lots.name, sourceLot.name),
     ));
 
-  if (!targetLots.length) return { linkedPhases: 0, linkedMilestones: 0 };
+  if (!targetLots.length) return { linkedPhases: 0, linkedMilestones: 0, lotNoNameMatch: 1 };
   const targetLotIds = targetLots.map((l) => l.id);
 
   // Fetch unsynced source phases and target phases in parallel
@@ -634,7 +634,7 @@ export async function bulkLinkLot(
   }
   revalidatePath(`/parametres`);
   revalidatePath(`/p/${data.planningId}`);
-  return { linkedPhases, linkedMilestones };
+  return { linkedPhases, linkedMilestones, lotNoNameMatch: 0 };
 }
 
 // ---------------------------------------------------------------------------

@@ -191,7 +191,7 @@ export function SyncStructureModal({ group, currentPlanningId, onClose, onSucces
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
 
           {/* Loading */}
           {(state === "loading") && (

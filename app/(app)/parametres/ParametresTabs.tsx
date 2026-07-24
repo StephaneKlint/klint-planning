@@ -292,7 +292,10 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
             currentPlanningId={planning.id}
             planningGroups={planningGroups}
             allPlannings={allPlannings}
-            currentLots={data.lots.map((l) => ({ id: l.id, name: l.name }))}
+            currentLots={data.lots.map((l) => {
+              const dom = data.domains.find((d) => d.id === l.domainId);
+              return { id: l.id, name: l.name, domainId: l.domainId ?? null, domainName: dom?.name ?? "Sans domaine" };
+            })}
           />
         </div>
       )}
