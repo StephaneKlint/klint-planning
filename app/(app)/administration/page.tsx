@@ -19,12 +19,13 @@ export default async function AdministrationPage() {
     getSecuritySettings(),
     listConnectionLogs(200),
     db.select({
-      id:         users.id,
-      name:       users.name,
-      email:      users.email,
-      role:       users.role,
-      disabledAt: users.disabledAt,
-      createdAt:  users.createdAt,
+      id:                 users.id,
+      name:               users.name,
+      email:              users.email,
+      role:               users.role,
+      disabledAt:         users.disabledAt,
+      createdAt:          users.createdAt,
+      allowInternational: users.allowInternational,
     }).from(users).orderBy(asc(users.name)),
   ]);
 

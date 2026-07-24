@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { setUserAllowInternational } from "@/lib/actions/members";
 import { ApparenceSection } from "@/app/(app)/parametres/ApparenceSection";
 import { GeoSecuriteSection } from "@/app/(app)/parametres/GeoSecuriteSection";
 import { DroitsTab } from "@/app/(app)/parametres/ParametresTabs";
@@ -16,6 +17,7 @@ type AdminUser = {
   role: string;
   disabledAt: Date | null;
   createdAt: Date;
+  allowInternational: boolean;
 };
 
 type Tab = "utilisateurs" | "apparence" | "securite" | "droits" | "logs" | "connexions";
@@ -55,6 +57,82 @@ interface Props {
   securitySettings: SecuritySettings;
   connLogs:         ConnectionLogRow[];
   allUsers:         AdminUser[];
+}
+
+function UsersTab({ initialUsers }: { initialUsers: AdminUser[] }) {
+  const [users, setUsers] = useState(initialUsers);
+  const [, startTransition] = useTransition();
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  function toggleInternational(userId: string, current: boolean) {
+    setPendingId(userId);
+    setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, allowInternational: !current } : u));
+    startTransition(async () => {
+      await setUserAllowInternational(userId, !current);
+      setPendingId(null);
+    });
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
+        {users.length} compte(s) enregistré(s).
+        La colonne <strong>Étranger autorisé</strong> permet d&apos;exempter un compte du blocage géographique.
+      </p>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ borderBottom: "1.5px solid var(--klint-line)" }}>
+              <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Nom</th>
+              <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Email</th>
+              <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Rôle</th>
+              <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Statut</th>
+              <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Étranger autorisé</th>
+              <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Créé le</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} style={{ borderBottom: "1px solid var(--klint-line)" }}>
+                <td style={{ padding: "9px 12px" }}>{u.name || "—"}</td>
+                <td style={{ padding: "9px 12px", color: "#374151" }}>{u.email}</td>
+                <td style={{ padding: "9px 12px" }}>
+                  <span style={{
+                    display: "inline-block", fontSize: 11, fontWeight: 600,
+                    padding: "2px 8px", borderRadius: 20,
+                    background: u.role === "admin" ? "#EDE9FE" : u.role === "user" ? "#DBEAFE" : "#F3F4F6",
+                    color:      u.role === "admin" ? "#6D28D9" : u.role === "user" ? "#1D4ED8" : "#6B7280",
+                  }}>
+                    {ROLE_LABELS[u.role] ?? u.role}
+                  </span>
+                </td>
+                <td style={{ padding: "9px 12px" }}>
+                  {u.disabledAt
+                    ? <span style={{ color: "#DC2626", fontSize: 12 }}>Désactivé</span>
+                    : <span style={{ color: "#16A34A", fontSize: 12 }}>Actif</span>}
+                </td>
+                <td style={{ padding: "9px 12px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", userSelect: "none" }}>
+                    <input
+                      type="checkbox"
+                      checked={u.allowInternational}
+                      disabled={pendingId === u.id}
+                      onChange={() => toggleInternational(u.id, u.allowInternational)}
+                      style={{ width: 14, height: 14, accentColor: "#2563EB", cursor: "pointer" }}
+                    />
+                    <span style={{ fontSize: 12, color: u.allowInternational ? "#2563EB" : "#9CA3AF" }}>
+                      {u.allowInternational ? "Oui" : "Non"}
+                    </span>
+                  </label>
+                </td>
+                <td style={{ padding: "9px 12px", color: "#6B7280" }}>{fmtDatetime(u.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 export function AdministrationClient({ appCfg, permissions, securitySettings, connLogs, allUsers }: Props) {
@@ -98,50 +176,7 @@ export function AdministrationClient({ appCfg, permissions, securitySettings, co
 
         {/* ─── Utilisateurs & rôles ───────────────────────────────── */}
         {active === "utilisateurs" && (
-          <div>
-            <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
-              {allUsers.length} compte(s) enregistré(s). La modification des rôles est disponible dans une prochaine version.
-            </p>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: "1.5px solid var(--klint-line)" }}>
-                    <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Nom</th>
-                    <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Email</th>
-                    <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Rôle</th>
-                    <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Statut</th>
-                    <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "#374151" }}>Créé le</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allUsers.map((u) => (
-                    <tr key={u.id} style={{ borderBottom: "1px solid var(--klint-line)" }}>
-                      <td style={{ padding: "9px 12px" }}>{u.name || "—"}</td>
-                      <td style={{ padding: "9px 12px", color: "#374151" }}>{u.email}</td>
-                      <td style={{ padding: "9px 12px" }}>
-                        <span style={{
-                          display: "inline-block", fontSize: 11, fontWeight: 600,
-                          padding: "2px 8px", borderRadius: 20,
-                          background: u.role === "admin" ? "#EDE9FE" : u.role === "user" ? "#DBEAFE" : "#F3F4F6",
-                          color:      u.role === "admin" ? "#6D28D9" : u.role === "user" ? "#1D4ED8" : "#6B7280",
-                        }}>
-                          {ROLE_LABELS[u.role] ?? u.role}
-                        </span>
-                      </td>
-                      <td style={{ padding: "9px 12px" }}>
-                        {u.disabledAt ? (
-                          <span style={{ color: "#DC2626", fontSize: 12 }}>Désactivé</span>
-                        ) : (
-                          <span style={{ color: "#16A34A", fontSize: 12 }}>Actif</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "9px 12px", color: "#6B7280" }}>{fmtDatetime(u.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <UsersTab initialUsers={allUsers} />
         )}
 
         {/* ─── Apparence ──────────────────────────────────────────── */}
