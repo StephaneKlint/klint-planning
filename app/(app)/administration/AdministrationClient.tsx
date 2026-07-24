@@ -210,8 +210,8 @@ function GlobalPanel({
       }}>
         <span>ℹ</span>
         <span>
-          Ces paramètres s'appliquent à <strong>tous les plannings</strong>.
-          Les types définis ici sont proposés par défaut lors de la création d'un nouveau planning — chaque planning peut ensuite les personnaliser.
+          Ces paramètres s&apos;appliquent à <strong>tous les plannings</strong>.
+          Les types définis ici sont proposés par défaut lors de la création d&apos;un nouveau planning — chaque planning peut ensuite les personnaliser.
         </span>
       </div>
 
