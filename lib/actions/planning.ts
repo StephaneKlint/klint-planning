@@ -8,8 +8,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { phases, lots, domains, milestones, activityLog, planningMembers, users, phaseAssignees } from "@/lib/db/schema";
-import { eq, inArray, gte, and, sql } from "drizzle-orm";
+import { phases, lots, domains, milestones, activityLog, planningMembers, planningGroupMembers, users, phaseAssignees } from "@/lib/db/schema";
+import { eq, inArray, gte, and, ne, sql } from "drizzle-orm";
 import { propagatePhaseSyncGroup, propagateMilestoneSyncGroup } from "./planning-sync";
 import { getGanttData } from "@/lib/db/queries";
 import type { GanttData } from "@/lib/db/queries";
@@ -539,11 +539,77 @@ export async function updateLot(input: z.infer<typeof UpdateLotSchema>) {
   if (data.postponedLabelFont !== undefined) updates.postponedLabelFont = data.postponedLabelFont;
   if (data.postponedLabelSize !== undefined) updates.postponedLabelSize = data.postponedLabelSize;
 
+  // Capture lot + domain info before update for subtitle propagation
+  let lotNameForProp: string | null = null;
+  let domainNameForProp: string | null = null;
+  if (data.subtitle !== undefined) {
+    const [lotRow] = await db
+      .select({ name: lots.name, domainId: lots.domainId })
+      .from(lots)
+      .where(eq(lots.id, data.lotId))
+      .limit(1);
+    if (lotRow) {
+      lotNameForProp = lotRow.name;
+      const [domainRow] = await db
+        .select({ name: domains.name })
+        .from(domains)
+        .where(eq(domains.id, lotRow.domainId))
+        .limit(1);
+      if (domainRow) domainNameForProp = domainRow.name;
+    }
+  }
+
   const [updated] = await db
     .update(lots)
     .set(updates)
     .where(eq(lots.id, data.lotId))
     .returning({ id: lots.id, name: lots.name, subtitle: lots.subtitle, hidden: lots.hidden });
+
+  // Propagate subtitle change to the same lot in all linked plannings
+  if (data.subtitle !== undefined && lotNameForProp && domainNameForProp) {
+    const normDomain = domainNameForProp.trim().toLowerCase();
+    const normLot = lotNameForProp.trim().toLowerCase();
+
+    const groupLinks = await db
+      .select({ groupId: planningGroupMembers.groupId })
+      .from(planningGroupMembers)
+      .where(eq(planningGroupMembers.planningId, data.planningId));
+
+    if (groupLinks.length > 0) {
+      const groupIds = groupLinks.map((r) => r.groupId);
+      const linkedRows = await db
+        .select({ planningId: planningGroupMembers.planningId })
+        .from(planningGroupMembers)
+        .where(and(
+          inArray(planningGroupMembers.groupId, groupIds),
+          ne(planningGroupMembers.planningId, data.planningId),
+        ));
+
+      const linkedIds = [...new Set(linkedRows.map((r) => r.planningId))];
+      if (linkedIds.length > 0) {
+        const matchingLots = await db
+          .select({ id: lots.id, planningId: lots.planningId })
+          .from(lots)
+          .innerJoin(domains, eq(lots.domainId, domains.id))
+          .where(and(
+            inArray(lots.planningId, linkedIds),
+            sql`lower(trim(${domains.name})) = ${normDomain}`,
+            sql`lower(trim(${lots.name})) = ${normLot}`,
+          ));
+
+        if (matchingLots.length > 0) {
+          await db
+            .update(lots)
+            .set({ subtitle: data.subtitle })
+            .where(inArray(lots.id, matchingLots.map((r) => r.id)));
+
+          for (const pl of matchingLots) {
+            revalidatePath(`/p/${pl.planningId}`);
+          }
+        }
+      }
+    }
+  }
 
   revalidatePath(`/p/${data.planningId}`);
   return updated;
