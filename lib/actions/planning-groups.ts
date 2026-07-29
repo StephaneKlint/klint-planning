@@ -840,7 +840,9 @@ export async function diffPlanningGroupStructure(
     const normKey = (a: string, b: string) => `${a.trim().toLowerCase()}::${b.trim().toLowerCase()}`;
     const targetLotKeys = new Set<string>();
     const targetPhaseKeys = new Set<string>();
+    const targetPhaseSyncGroupIds = new Set<string>();
     const targetMsKeys = new Set<string>();
+    const targetMsSyncGroupIds = new Set<string>();
 
     for (const domain of targetStructure) {
       for (const lot of domain.lots) {
@@ -848,9 +850,11 @@ export async function diffPlanningGroupStructure(
         targetLotKeys.add(lotKey);
         for (const ph of lot.phases) {
           targetPhaseKeys.add(`${lotKey}::${(ph.label ?? ph.type).trim().toLowerCase()}`);
+          if (ph.syncGroupId) targetPhaseSyncGroupIds.add(ph.syncGroupId);
         }
         for (const ms of lot.milestones) {
           targetMsKeys.add(`${lotKey}::${ms.label.trim().toLowerCase()}`);
+          if (ms.syncGroupId) targetMsSyncGroupIds.add(ms.syncGroupId);
         }
       }
     }
@@ -894,6 +898,8 @@ export async function diffPlanningGroupStructure(
             const missingMilestones: MilestoneDiffItem[] = [];
 
             for (const ph of sourceLot.phases) {
+              // Skip if source phase is already linked and that sync group exists in target
+              if (ph.syncGroupId && targetPhaseSyncGroupIds.has(ph.syncGroupId)) continue;
               const phKey = `${lotKey}::${(ph.label ?? ph.type).trim().toLowerCase()}`;
               if (!targetPhaseKeys.has(phKey) && !processedPhaseKeys.has(phKey)) {
                 processedPhaseKeys.add(phKey);
@@ -901,6 +907,8 @@ export async function diffPlanningGroupStructure(
               }
             }
             for (const ms of sourceLot.milestones) {
+              // Skip if source milestone is already linked and that sync group exists in target
+              if (ms.syncGroupId && targetMsSyncGroupIds.has(ms.syncGroupId)) continue;
               const msKey = `${lotKey}::${ms.label.trim().toLowerCase()}`;
               if (!targetMsKeys.has(msKey) && !processedMsKeys.has(msKey)) {
                 processedMsKeys.add(msKey);
@@ -1108,6 +1116,16 @@ export async function syncPlanningGroupStructure(
           .limit(1);
         if (!sourcePhase) continue;
 
+        // Guard: if source is already in a sync group, don't create a duplicate in the target lot
+        if (sourcePhase.syncGroupId) {
+          const [alreadySynced] = await db
+            .select({ id: phases.id })
+            .from(phases)
+            .where(and(eq(phases.lotId, targetLot.id), eq(phases.syncGroupId, sourcePhase.syncGroupId)))
+            .limit(1);
+          if (alreadySynced) continue;
+        }
+
         const [newPhase] = await db
           .insert(phases)
           .values({
@@ -1194,6 +1212,16 @@ export async function syncPlanningGroupStructure(
           .where(eq(milestones.id, msDiff.sourceMilestoneId))
           .limit(1);
         if (!sourceMs) continue;
+
+        // Guard: if source is already in a sync group, don't create a duplicate in the target lot
+        if (sourceMs.syncGroupId) {
+          const [alreadySynced] = await db
+            .select({ id: milestones.id })
+            .from(milestones)
+            .where(and(eq(milestones.lotId, targetLot.id), eq(milestones.syncGroupId, sourceMs.syncGroupId)))
+            .limit(1);
+          if (alreadySynced) continue;
+        }
 
         const [newMs] = await db
           .insert(milestones)

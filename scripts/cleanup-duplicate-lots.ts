@@ -65,7 +65,7 @@ async function run() {
     lot_name:      r.lot_name as string,
     lot_id:        r.lot_id as string,
     phase_count:   r.phase_count as number,
-    action:        (r.rn as number) === 1 ? "KEEP" : "DELETE",
+    action:        Number(r.rn) === 1 ? "KEEP" : "DELETE",
   }));
 
   // 3. Rapport
