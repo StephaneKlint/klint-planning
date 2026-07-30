@@ -42,6 +42,12 @@ const DELETE_LOTS: Array<{ planningId: string; domNorm: string; lotNorm: string 
   { planningId: S2, domNorm: "e-facturation", lotNorm: "e-invoicing" },
 ];
 
+// ── Domaines exclus par planning en mode efact ────────────────────────────────
+// Ces domaines ne doivent jamais être créés ni mis à jour dans E-facturation,
+// même s'ils existent dans CCI 2026. Si des lots de ces domaines existent déjà
+// dans E-facturation, ils sont ignorés silencieusement.
+const EFACT_EXCLUDED_DOMAINS = new Set(["nse"]);
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Domain = {
   id: string; name: string; planningId: string;
@@ -407,6 +413,9 @@ async function syncTarget(targetId: string, targetName: string, efactMode: boole
   for (const [key, refLot] of refLotMap) {
     const [domNorm] = key.split("::");
     const tLot = tLotMap.get(key);
+
+    // E-facturation : domaines explicitement exclus (ni créés, ni mis à jour)
+    if (efactMode && EFACT_EXCLUDED_DOMAINS.has(domNorm)) continue;
 
     if (!tLot) {
       if (efactMode) continue; // E-facturation : pas de création de lots
