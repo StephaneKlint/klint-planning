@@ -235,8 +235,7 @@ export const phaseSyncGroups = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     planningGroupId: uuid("planning_group_id").notNull().references(() => planningGroups.id, { onDelete: "cascade" }),
-    // Decision 3 Option B: status excluded by default
-    syncFields: jsonb("sync_fields").$type<string[]>().notNull().default(["startDate", "endDate", "progress", "color", "note", "label"]),
+    syncFields: jsonb("sync_fields").$type<string[]>().notNull().default(["startDate", "endDate", "progress", "color", "note", "label", "status"]),
   },
   (t) => [index("psg_by_group").on(t.planningGroupId)]
 );
@@ -246,7 +245,7 @@ export const milestoneSyncGroups = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     planningGroupId: uuid("planning_group_id").notNull().references(() => planningGroups.id, { onDelete: "cascade" }),
-    syncFields: jsonb("sync_fields").$type<string[]>().notNull().default(["date", "color", "note", "label"]),
+    syncFields: jsonb("sync_fields").$type<string[]>().notNull().default(["date", "color", "note", "label", "labelPos"]),
   },
   (t) => [index("msg_by_group").on(t.planningGroupId)]
 );

@@ -184,14 +184,16 @@ async function syncPhases(
 
     matched.add(tp.id);
 
-    // Si ref.label est null, on ne force pas null sur la cible (on garde son label)
+    // Si ref.label/color/note est null, on ne force pas null sur la cible (on garde l'existant)
     const labelNeedsUpdate = rp.label !== null && tp.label !== rp.label;
     const effectiveLabel   = rp.label ?? tp.label;
+    const colorNeedsUpdate = rp.color !== null && tp.color !== rp.color;
+    const noteNeedsUpdate  = rp.note  !== null && tp.note  !== rp.note;
 
     const needsUpdate =
       labelNeedsUpdate || tp.startDate !== rp.startDate ||
       tp.endDate !== rp.endDate || tp.status !== rp.status ||
-      tp.progress !== rp.progress;
+      tp.progress !== rp.progress || colorNeedsUpdate || noteNeedsUpdate;
 
     if (needsUpdate) {
       result.updated++;
@@ -201,23 +203,21 @@ async function syncPhases(
       if (tp.endDate !== rp.endDate)     ch.push(`end ${tp.endDate}→${rp.endDate}`);
       if (tp.status !== rp.status)       ch.push(`status ${tp.status}→${rp.status}`);
       if (tp.progress !== rp.progress)   ch.push(`progress ${tp.progress}→${rp.progress}`);
+      if (colorNeedsUpdate)              ch.push(`color →${rp.color}`);
+      if (noteNeedsUpdate)               ch.push(`note mise à jour`);
       log(`       ✏️  Phase MàJ        : "${effectiveLabel}" — ${ch.join(", ")}`);
       if (EXECUTE) {
-        if (labelNeedsUpdate) {
-          await sql`
-            UPDATE phases SET
-              label = ${rp.label}, start_date = ${rp.startDate}, end_date = ${rp.endDate},
-              status = ${rp.status}, progress = ${rp.progress}
-            WHERE id = ${tp.id}
-          `;
-        } else {
-          await sql`
-            UPDATE phases SET
-              start_date = ${rp.startDate}, end_date = ${rp.endDate},
-              status = ${rp.status}, progress = ${rp.progress}
-            WHERE id = ${tp.id}
-          `;
-        }
+        await sql`
+          UPDATE phases SET
+            label      = COALESCE(${rp.label}::text,    label),
+            start_date = ${rp.startDate},
+            end_date   = ${rp.endDate},
+            status     = ${rp.status},
+            progress   = ${rp.progress},
+            color      = COALESCE(${rp.color}::varchar, color),
+            note       = COALESCE(${rp.note}::text,     note)
+          WHERE id = ${tp.id}
+        `;
       }
     }
   }
@@ -286,16 +286,31 @@ async function syncMilestones(
 
     matched.add(tm.id);
 
-    const needsUpdate = tm.label !== rm.label || tm.date !== rm.date;
+    const msColorNeedsUpdate = rm.color    !== null && tm.color    !== rm.color;
+    const msNoteNeedsUpdate  = rm.note     !== null && tm.note     !== rm.note;
+    const msPosNeedsUpdate   = rm.labelPos !== "auto" && tm.labelPos !== rm.labelPos;
+
+    const needsUpdate = tm.label !== rm.label || tm.date !== rm.date ||
+                        msColorNeedsUpdate || msNoteNeedsUpdate || msPosNeedsUpdate;
     if (needsUpdate) {
       result.updated++;
       const ch: string[] = [];
-      if (tm.label !== rm.label) ch.push(`label "${tm.label}"→"${rm.label}"`);
-      if (tm.date !== rm.date)   ch.push(`date ${tm.date}→${rm.date}`);
+      if (tm.label !== rm.label)    ch.push(`label "${tm.label}"→"${rm.label}"`);
+      if (tm.date !== rm.date)      ch.push(`date ${tm.date}→${rm.date}`);
+      if (msColorNeedsUpdate)       ch.push(`color →${rm.color}`);
+      if (msNoteNeedsUpdate)        ch.push(`note mise à jour`);
+      if (msPosNeedsUpdate)         ch.push(`labelPos ${tm.labelPos}→${rm.labelPos}`);
       log(`       ✏️  Jalon MàJ         : "${rm.label}" — ${ch.join(", ")}`);
       if (EXECUTE) {
         await sql`
-          UPDATE milestones SET label = ${rm.label}, date = ${rm.date}
+          UPDATE milestones SET
+            label     = ${rm.label},
+            date      = ${rm.date},
+            color     = COALESCE(${rm.color}::varchar, color),
+            note      = COALESCE(${rm.note}::text, note),
+            label_pos = CASE WHEN ${rm.labelPos}::text <> 'auto'
+                             THEN ${rm.labelPos}::label_pos
+                             ELSE label_pos END
           WHERE id = ${tm.id}
         `;
       }
@@ -406,9 +421,10 @@ async function syncTarget(targetId: string, targetName: string, efactMode: boole
     tLotMap.set(key, lot);
   }
 
-  let lotsCreated = 0, lotsUpdated = 0;
+  let lotsCreated = 0, lotsUpdated = 0, lotsRenamed = 0, domainsRenamed = 0;
   let phAdded = 0, phDeleted = 0, phUpdated = 0;
   let msAdded = 0, msDeleted = 0, msUpdated = 0;
+  const syncedDomainIds = new Set<string>(); // évite de renommer le même domaine plusieurs fois
 
   for (const [key, refLot] of refLotMap) {
     const [domNorm] = key.split("::");
@@ -416,6 +432,21 @@ async function syncTarget(targetId: string, targetName: string, efactMode: boole
 
     // E-facturation : domaines explicitement exclus (ni créés, ni mis à jour)
     if (efactMode && EFACT_EXCLUDED_DOMAINS.has(domNorm)) continue;
+
+    // ── Sync du nom de domaine ────────────────────────────────────────────
+    const refDomForName = refDomByNorm.get(domNorm);
+    const tDomForName   = tDomByNorm.get(domNorm);
+    if (refDomForName && tDomForName && !syncedDomainIds.has(tDomForName.id)) {
+      syncedDomainIds.add(tDomForName.id);
+      if (tDomForName.name !== refDomForName.name) {
+        domainsRenamed++;
+        console.log(`\n   📁 Domaine renommé : "${tDomForName.name}" → "${refDomForName.name}"`);
+        if (EXECUTE) {
+          await sql`UPDATE domains SET name = ${refDomForName.name} WHERE id = ${tDomForName.id}`;
+          tDomForName.name = refDomForName.name;
+        }
+      }
+    }
 
     if (!tLot) {
       if (efactMode) continue; // E-facturation : pas de création de lots
@@ -471,15 +502,29 @@ async function syncTarget(targetId: string, targetName: string, efactMode: boole
     const phRes = await syncPhases(refPh, tPh, tLot.id, key);
     const msRes = await syncMilestones(refMs, tMs, tLot.id, key);
 
-    const hasPhDiff      = refPh.length !== tPh.length;
-    const hasMsDiff      = refMs.length !== tMs.length;
+    const hasNameDiff     = tLot.name !== refLot.name;
     const hasSubtitleDiff = tLot.subtitle !== refLot.subtitle;
-    const hasUpdates     = phRes.added > 0 || phRes.deleted > 0 || phRes.updated > 0 ||
-                           msRes.added > 0 || msRes.deleted > 0 || msRes.updated > 0;
+    const hasPhDiff       = refPh.length !== tPh.length;
+    const hasMsDiff       = refMs.length !== tMs.length;
+    const hasUpdates      = phRes.added > 0 || phRes.deleted > 0 || phRes.updated > 0 ||
+                            msRes.added > 0 || msRes.deleted > 0 || msRes.updated > 0;
+    const hasMetaDiff     = hasNameDiff || hasSubtitleDiff;
 
-    // Sous-titre (header propre + exécution)
+    // Nom du lot
+    if (hasNameDiff) {
+      if (!hasSubtitleDiff) console.log(`\n   📝 [${key}]`);
+      console.log(`      name     : "${tLot.name}" → "${refLot.name}"`);
+      if (EXECUTE) {
+        await sql`UPDATE lots SET name = ${refLot.name} WHERE id = ${tLot.id}`;
+        lotsRenamed++;
+      } else {
+        lotsRenamed++;
+      }
+    }
+
+    // Sous-titre
     if (hasSubtitleDiff) {
-      console.log(`\n   📝 [${key}]`);
+      if (!hasNameDiff) console.log(`\n   📝 [${key}]`);
       console.log(`      subtitle : "${tLot.subtitle}" → "${refLot.subtitle}"`);
       if (EXECUTE) {
         await sql`UPDATE lots SET subtitle = ${refLot.subtitle} WHERE id = ${tLot.id}`;
@@ -487,7 +532,7 @@ async function syncTarget(targetId: string, targetName: string, efactMode: boole
     }
 
     // Header principal — toujours AVANT les logs de phases/jalons
-    if (hasPhDiff || hasMsDiff || hasSubtitleDiff) {
+    if (hasPhDiff || hasMsDiff || hasMetaDiff) {
       console.log(`\n   🔄 [${key}]  (${refPh.length} ph ref / ${tPh.length} ph cible | ${refMs.length} ms ref / ${tMs.length} ms cible)`);
     } else if (hasUpdates) {
       console.log(`\n   🔄 [${key}]  (mises à jour)`);
@@ -509,7 +554,8 @@ async function syncTarget(targetId: string, targetName: string, efactMode: boole
 
   console.log(`\n${"─".repeat(70)}`);
   console.log(`  Résumé "${targetName}" :`);
-  console.log(`     Lots    : ${lotsCreated} créés, ${lotsUpdated} parcourus`);
+  if (domainsRenamed) console.log(`     Domaines : ${domainsRenamed} renommé(s)`);
+  console.log(`     Lots    : ${lotsCreated} créés, ${lotsUpdated} parcourus${lotsRenamed ? `, ${lotsRenamed} renommé(s)` : ""}`);
   console.log(`     Phases  : ${phAdded} ajoutées, ${phDeleted} supprimées, ${phUpdated} mises à jour`);
   console.log(`     Jalons  : ${msAdded} ajoutés, ${msDeleted} supprimés, ${msUpdated} mis à jour`);
 }

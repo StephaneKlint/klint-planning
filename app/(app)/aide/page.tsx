@@ -382,7 +382,7 @@ const SECTIONS: SectionDef[] = [
   { id: "historique",   num: "18", emoji: "📜", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log",                                                                                                                             minRole: "admin" },
   { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt",                                                                                                                                   minRole: "admin" },
   { id: "droits",       num: "20", emoji: "🛡️", title: "Rôles & droits d'accès",               keywords: "rôles droits admin utilisateur contact propriétaire éditeur lecteur permissions crud accès matrice onglets plateforme planning membres inviter lien invitation ajouter gantt toolbar",                                                        minRole: "admin" },
-  { id: "sync",         num: "21", emoji: "⇄",  title: "Plannings liés (synchronisation)",      keywords: "sync synchronisation plannings liés lier délier lien groupe phases jalons propagation bidirectionnelle icône chaîne dates dates avancement couleur note label automatique" },
+  { id: "sync",         num: "21", emoji: "⇄",  title: "Plannings liés (synchronisation)",      keywords: "sync synchronisation plannings liés lier délier lien groupe phases jalons propagation bidirectionnelle icône chaîne dates avancement couleur note label statut status nom domaine lot sous-titre last write wins automatique" },
 ];
 
 /* ── Section bodies (module scope — purely static JSX) ──────────────────── */
@@ -1368,9 +1368,15 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       </How>
 
       <How title="Champs synchronisés par défaut">
-        <Step n={1}><strong>Phases</strong> : dates de début et fin, avancement, couleur, note, libellé.</Step>
-        <Step n={2}><strong>Jalons</strong> : date, couleur, note, libellé.</Step>
-        <Step n={3}>Le statut des phases n&apos;est <strong>pas</strong> synchronisé (chaque planning conserve son propre statut métier).</Step>
+        <Step n={1}><strong>Phases</strong> : dates de début et fin, avancement, statut, couleur, note, libellé.</Step>
+        <Step n={2}><strong>Jalons</strong> : date, couleur, note, libellé, position du libellé (au-dessus / en-dessous).</Step>
+        <Step n={3}><strong>Noms de projets et domaines</strong> : le nom et le sous-titre d&apos;un projet (lot), ainsi que le nom d&apos;un domaine, sont synchronisés automatiquement vers tous les plannings liés dès la modification. La <strong>dernière écriture fait foi</strong> — si vous modifiez le nom dans le planning A, puis dans le planning B quelques instants plus tard, c&apos;est la version B qui s&apos;applique à tous.</Step>
+      </How>
+
+      <How title="Synchronisation des noms (lots et domaines)">
+        <Step n={1}>Modifiez le nom ou le sous-titre d&apos;un projet dans n&apos;importe quel planning lié.</Step>
+        <Step n={2}>La modification se propage <strong>instantanément</strong> à tous les autres plannings du groupe qui possèdent ce même projet.</Step>
+        <Step n={3}>Si le même nom est modifié simultanément dans deux plannings, la dernière sauvegarde écrase les précédentes (<em>last write wins</em>).</Step>
       </How>
 
       <How title="Délier une phase ou un jalon">
@@ -1383,7 +1389,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={2}>Toutes les phases et jalons du planning sont déliés. Les données sont conservées.</Step>
       </How>
 
-      <Tip>La synchronisation est N-way : si trois plannings sont dans le même groupe, une modification dans le planning A se propage à B et C. Modifier dans B propage à A et C.</Tip>
+      <Tip>La synchronisation est N-way et bidirectionnelle : si trois plannings sont dans le même groupe, une modification dans le planning A se propage à B et C. Modifier dans B propage à A et C. Pour les noms, la dernière modification l&apos;emporte sur toutes les précédentes.</Tip>
       <Warn>Seul le propriétaire du planning source (ou un Admin) peut créer ou supprimer un lien. Vous devez également être membre du planning cible.</Warn>
     </section>
   ),

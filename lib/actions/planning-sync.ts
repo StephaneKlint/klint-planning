@@ -22,7 +22,7 @@ type PhaseUpdates = Partial<Pick<
 
 type MilestoneUpdates = Partial<Pick<
   typeof milestones.$inferInsert,
-  "date" | "color" | "note" | "label"
+  "date" | "color" | "note" | "label" | "labelPos"
 >>;
 
 // ---------------------------------------------------------------------------

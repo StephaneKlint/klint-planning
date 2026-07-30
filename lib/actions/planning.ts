@@ -248,7 +248,7 @@ export async function markLotDone(input: z.infer<typeof MarkLotDoneSchema>) {
 
   const updated = await db
     .update(phases)
-    .set({ progress: 100, status: "done" })
+    .set({ progress: 100, status: "done", version: sql<number>`${phases.version} + 1` })
     .where(eq(phases.lotId, data.lotId))
     .returning({ id: phases.id });
 
@@ -260,6 +260,12 @@ export async function markLotDone(input: z.infer<typeof MarkLotDoneSchema>) {
       data.lotId,
       `${updated.length} phase${updated.length > 1 ? "s" : ""} marquée${updated.length > 1 ? "s" : ""} à 100%`
     );
+    const allAffected = new Set<string>();
+    for (const { id } of updated) {
+      const affected = await propagatePhaseSyncGroup(id, { progress: 100, status: "done" });
+      for (const pid of affected) allAffected.add(pid);
+    }
+    for (const pid of allAffected) revalidatePath(`/p/${pid}`);
   }
 
   revalidatePath(`/p/${data.planningId}`);
@@ -279,12 +285,19 @@ export async function bulkUpdatePhaseStatus(input: z.infer<typeof BulkUpdateStat
 
   await db
     .update(phases)
-    .set({ status: data.status })
+    .set({ status: data.status, version: sql<number>`${phases.version} + 1` })
     .where(inArray(phases.id, data.phaseIds));
 
   await logActivity(data.planningId, "bulk_status_changed", "phase", data.phaseIds[0],
     `${data.phaseIds.length} phases → statut ${data.status}`,
     { phaseIds: data.phaseIds, status: data.status });
+
+  const allAffected = new Set<string>();
+  for (const phaseId of data.phaseIds) {
+    const affected = await propagatePhaseSyncGroup(phaseId, { status: data.status });
+    for (const pid of affected) allAffected.add(pid);
+  }
+  for (const pid of allAffected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
 }
@@ -417,6 +430,17 @@ export async function updateDomain(input: z.infer<typeof UpdateDomainSchema>) {
   const data = UpdateDomainSchema.parse(input);
   await assertCanEdit(data.planningId);
 
+  // Capture current name before update (used as match key for propagation)
+  let oldDomainName: string | null = null;
+  if (data.name !== undefined) {
+    const [domRow] = await db
+      .select({ name: domains.name })
+      .from(domains)
+      .where(eq(domains.id, data.domainId))
+      .limit(1);
+    if (domRow) oldDomainName = domRow.name;
+  }
+
   const updates: Partial<{
     name: string; code: string;
     bg: string; bgAlt: string; strong: string; phaseColor: string;
@@ -433,6 +457,49 @@ export async function updateDomain(input: z.infer<typeof UpdateDomainSchema>) {
     .set(updates)
     .where(eq(domains.id, data.domainId))
     .returning({ id: domains.id, name: domains.name });
+
+  // Propagate name change to all linked plannings (last write wins)
+  if (data.name !== undefined && oldDomainName) {
+    const normOldDomain = oldDomainName.trim().toLowerCase();
+
+    const groupLinks = await db
+      .select({ groupId: planningGroupMembers.groupId })
+      .from(planningGroupMembers)
+      .where(eq(planningGroupMembers.planningId, data.planningId));
+
+    if (groupLinks.length > 0) {
+      const groupIds = groupLinks.map((r) => r.groupId);
+      const linkedRows = await db
+        .select({ planningId: planningGroupMembers.planningId })
+        .from(planningGroupMembers)
+        .where(and(
+          inArray(planningGroupMembers.groupId, groupIds),
+          ne(planningGroupMembers.planningId, data.planningId),
+        ));
+
+      const linkedIds = [...new Set(linkedRows.map((r) => r.planningId))];
+      if (linkedIds.length > 0) {
+        const matchingDomains = await db
+          .select({ id: domains.id, planningId: domains.planningId })
+          .from(domains)
+          .where(and(
+            inArray(domains.planningId, linkedIds),
+            sql`lower(trim(${domains.name})) = ${normOldDomain}`,
+          ));
+
+        if (matchingDomains.length > 0) {
+          await db
+            .update(domains)
+            .set({ name: data.name })
+            .where(inArray(domains.id, matchingDomains.map((r) => r.id)));
+
+          for (const dom of matchingDomains) {
+            revalidatePath(`/p/${dom.planningId}`);
+          }
+        }
+      }
+    }
+  }
 
   await logActivity(data.planningId, "updated", "domain", data.domainId, `Domaine modifié : ${data.name ?? ""}`);
   revalidatePath(`/p/${data.planningId}`);
@@ -539,17 +606,17 @@ export async function updateLot(input: z.infer<typeof UpdateLotSchema>) {
   if (data.postponedLabelFont !== undefined) updates.postponedLabelFont = data.postponedLabelFont;
   if (data.postponedLabelSize !== undefined) updates.postponedLabelSize = data.postponedLabelSize;
 
-  // Capture lot + domain info before update for subtitle propagation
-  let lotNameForProp: string | null = null;
+  // Capture current lot name + domain name BEFORE update (used as match key for propagation)
+  let oldLotName: string | null = null;
   let domainNameForProp: string | null = null;
-  if (data.subtitle !== undefined) {
+  if (data.name !== undefined || data.subtitle !== undefined) {
     const [lotRow] = await db
       .select({ name: lots.name, domainId: lots.domainId })
       .from(lots)
       .where(eq(lots.id, data.lotId))
       .limit(1);
     if (lotRow) {
-      lotNameForProp = lotRow.name;
+      oldLotName = lotRow.name;
       const [domainRow] = await db
         .select({ name: domains.name })
         .from(domains)
@@ -565,10 +632,10 @@ export async function updateLot(input: z.infer<typeof UpdateLotSchema>) {
     .where(eq(lots.id, data.lotId))
     .returning({ id: lots.id, name: lots.name, subtitle: lots.subtitle, hidden: lots.hidden });
 
-  // Propagate subtitle change to the same lot in all linked plannings
-  if (data.subtitle !== undefined && lotNameForProp && domainNameForProp) {
+  // Propagate name and/or subtitle to all linked plannings (last write wins)
+  if ((data.name !== undefined || data.subtitle !== undefined) && oldLotName && domainNameForProp) {
     const normDomain = domainNameForProp.trim().toLowerCase();
-    const normLot = lotNameForProp.trim().toLowerCase();
+    const normOldLot = oldLotName.trim().toLowerCase();
 
     const groupLinks = await db
       .select({ groupId: planningGroupMembers.groupId })
@@ -594,13 +661,17 @@ export async function updateLot(input: z.infer<typeof UpdateLotSchema>) {
           .where(and(
             inArray(lots.planningId, linkedIds),
             sql`lower(trim(${domains.name})) = ${normDomain}`,
-            sql`lower(trim(${lots.name})) = ${normLot}`,
+            sql`lower(trim(${lots.name})) = ${normOldLot}`,
           ));
 
         if (matchingLots.length > 0) {
+          const lotPropUpdates: Partial<{ name: string; subtitle: string | null }> = {};
+          if (data.name !== undefined) lotPropUpdates.name = data.name;
+          if (data.subtitle !== undefined) lotPropUpdates.subtitle = data.subtitle;
+
           await db
             .update(lots)
-            .set({ subtitle: data.subtitle })
+            .set(lotPropUpdates)
             .where(inArray(lots.id, matchingLots.map((r) => r.id)));
 
           for (const pl of matchingLots) {
@@ -782,10 +853,11 @@ export async function updateMilestone(input: z.infer<typeof UpdateMilestoneSchem
   await logActivity(data.planningId, "updated", "milestone", data.milestoneId, desc);
 
   const syncUpdates: Parameters<typeof propagateMilestoneSyncGroup>[1] = {};
-  if (data.date  !== undefined) syncUpdates.date  = data.date;
-  if (data.label !== undefined) syncUpdates.label = data.label;
-  if (data.note  !== undefined) syncUpdates.note  = data.note;
-  if (data.color !== undefined) syncUpdates.color = data.color;
+  if (data.date     !== undefined) syncUpdates.date     = data.date;
+  if (data.label    !== undefined) syncUpdates.label    = data.label;
+  if (data.note     !== undefined) syncUpdates.note     = data.note;
+  if (data.color    !== undefined) syncUpdates.color    = data.color;
+  if (data.labelPos !== undefined) syncUpdates.labelPos = data.labelPos;
   const affected = await propagateMilestoneSyncGroup(data.milestoneId, syncUpdates);
   for (const pid of affected) revalidatePath(`/p/${pid}`);
 
