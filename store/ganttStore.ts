@@ -29,6 +29,7 @@ export type UndoEntry =
   | { type: "phase-dates";    phaseId: string; planningId: string; prevStart: string; prevEnd: string }
   | { type: "phase-move";     phaseId: string; planningId: string; prevStart: string; prevEnd: string; prevLotId: string }
   | { type: "phase-label";    phaseId: string; planningId: string; prev: string | null }
+  | { type: "phase-type";     phaseId: string; planningId: string; prev: string }
   | { type: "phase-note";     phaseId: string; planningId: string; prev: string | null }
   | { type: "phase-color";    phaseId: string; planningId: string; prev: string | null }
   | { type: "phase-progress"; phaseId: string; planningId: string; prev: number }

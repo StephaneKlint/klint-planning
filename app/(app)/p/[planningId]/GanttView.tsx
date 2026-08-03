@@ -20,7 +20,7 @@ import { planningQueryKey } from "@/lib/queries/usePlanning";
 import { addDays } from "@/components/gantt/ganttUtils";
 import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
-  updatePhaseDates, updatePhaseColor, updatePhaseLabel,
+  updatePhaseDates, updatePhaseColor, updatePhaseLabel, updatePhaseType,
   updateMilestone, moveMilestoneToLot, movePhaseToLot,
   restorePhase, restoreMilestone, restoreLot,
   markLotDone, reorderLots, reorderDomains,
@@ -142,6 +142,9 @@ export function GanttView({ initialData, demoMemberId, initialBaseline, initialB
           break;
         case "phase-label":
           await updatePhaseLabel({ phaseId: entry.phaseId, planningId: entry.planningId, label: entry.prev });
+          break;
+        case "phase-type":
+          await updatePhaseType({ phaseId: entry.phaseId, planningId: entry.planningId, type: entry.prev });
           break;
         case "phase-note":
           await updatePhaseNote({ phaseId: entry.phaseId, planningId: entry.planningId, note: entry.prev });

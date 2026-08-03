@@ -16,7 +16,7 @@ import { getSyncCandidates, getMilestoneSyncCandidates, linkPhases, linkMileston
 import { PhaseItemsSection } from "@/components/panels/PhaseItemsSection";
 import {
   updatePhaseStatus, updatePhaseProgress, updatePhaseNote,
-  updatePhaseDates, updatePhaseColor, updatePhaseLabel,
+  updatePhaseDates, updatePhaseColor, updatePhaseLabel, updatePhaseType,
   updateMilestone, togglePhaseAssignee,
   createLot, createPhase, createMilestone, createDomain, updateDomain, updateLot,
   deletePhase, deleteMilestone, deleteLot, deleteDomain,
@@ -38,6 +38,10 @@ const PHASE_TYPE_LABELS: Record<string, string> = {
   cadrage: "Cadrage", dev: "Développement", recette: "Recette",
   formation: "Formation", custom: "Personnalisé",
 };
+
+function phaseTypeLabel(code: string, types: GanttData["phaseTypes"]): string {
+  return types.find((t) => t.code === code)?.label ?? PHASE_TYPE_LABELS[code] ?? code;
+}
 
 const PALETTE = [
   "#E8568A", "#6B7280", "#3B82F6", "#F59E0B",
@@ -155,7 +159,7 @@ export function EditPanel({ planningId, data, planningGroups }: EditPanelProps) 
     setAssigneeSearch("");
     setCreateName("");
     setCreateSubtitle("");
-    setCreatePhaseType("cadrage");
+    setCreatePhaseType(data.phaseTypes[0]?.code ?? "cadrage");
     setCreatePhaseLabel("");
     setCreatePhaseStart("");
     setCreatePhaseEnd("");
@@ -263,7 +267,7 @@ export function EditPanel({ planningId, data, planningGroups }: EditPanelProps) 
         {/* ── Title ── */}
         <div className={styles.titleRow}>
           <h2 className={styles.title}>
-            {lot?.name} · {phase.label ?? PHASE_TYPE_LABELS[phase.type] ?? phase.type}
+            {lot?.name} · {phase.label ?? phaseTypeLabel(phase.type, data.phaseTypes)}
           </h2>
         </div>
 
@@ -274,10 +278,19 @@ export function EditPanel({ planningId, data, planningGroups }: EditPanelProps) 
             <span className={styles.fieldLabel}>Type</span>
             <select
               className={styles.select}
-              defaultValue={phase.type}
-              onChange={() => {}}
+              value={phase.type}
+              onChange={(e) => {
+                const val = e.target.value;
+                const prev = phase.type;
+                patchPhase(planningId, phase.id, { type: val });
+                save(() => updatePhaseType({ phaseId: phase.id, planningId, type: val }));
+                pushUndo({ type: "phase-type", phaseId: phase.id, planningId, prev });
+              }}
             >
-              {Object.entries(PHASE_TYPE_LABELS).map(([code, label]) => (
+              {(data.phaseTypes.length > 0
+                ? data.phaseTypes.map((pt) => [pt.code, pt.label] as [string, string])
+                : Object.entries(PHASE_TYPE_LABELS)
+              ).map(([code, label]) => (
                 <option key={code} value={code}>{label}</option>
               ))}
             </select>
@@ -290,7 +303,7 @@ export function EditPanel({ planningId, data, planningGroups }: EditPanelProps) 
               type="text"
               className={styles.input}
               key={phase.id + "-label"}
-              defaultValue={phase.label ?? PHASE_TYPE_LABELS[phase.type] ?? phase.type}
+              defaultValue={phase.label ?? phaseTypeLabel(phase.type, data.phaseTypes)}
               placeholder="Libellé de la phase…"
               autoFocus
               onBlur={(e) => {
@@ -881,7 +894,7 @@ export function EditPanel({ planningId, data, planningGroups }: EditPanelProps) 
             lotPhases.map((p) => {
               const d = phaseDateDrafts[p.id];
               if (!d) return Promise.resolve();
-              if (d.start > d.end) throw new Error(`Phase "${PHASE_TYPE_LABELS[p.type] ?? p.type}" : début > fin.`);
+              if (d.start > d.end) throw new Error(`Phase "${phaseTypeLabel(p.type, data.phaseTypes)}" : début > fin.`);
               return updatePhaseDates({ phaseId: p.id, planningId: lotPlanningId, startDate: d.start, endDate: d.end });
             })
           );
@@ -1102,7 +1115,7 @@ export function EditPanel({ planningId, data, planningGroups }: EditPanelProps) 
               <div className={styles.phaseList}>
                 {lotPhases.map((p) => (
                   <div key={p.id} className={styles.phaseListItem}>
-                    <span className={styles.phaseTypeBadge}>{PHASE_TYPE_LABELS[p.type] ?? p.type}</span>
+                    <span className={styles.phaseTypeBadge}>{phaseTypeLabel(p.type, data.phaseTypes)}</span>
                     {editingPhaseDates ? (
                       <span className={styles.phaseDateInputsRow}>
                         <input
@@ -2141,7 +2154,10 @@ export function EditPanel({ planningId, data, planningGroups }: EditPanelProps) 
               value={createPhaseType}
               onChange={(e) => setCreatePhaseType(e.target.value)}
             >
-              {Object.entries(PHASE_TYPE_LABELS).map(([code, label]) => (
+              {(data.phaseTypes.length > 0
+                ? data.phaseTypes.map((pt) => [pt.code, pt.label] as [string, string])
+                : Object.entries(PHASE_TYPE_LABELS)
+              ).map(([code, label]) => (
                 <option key={code} value={code}>{label}</option>
               ))}
             </select>

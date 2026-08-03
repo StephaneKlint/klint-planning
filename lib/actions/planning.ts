@@ -213,6 +213,26 @@ export async function updatePhaseNote(input: z.infer<typeof UpdatePhaseNoteSchem
   return updated;
 }
 
+const UpdatePhaseTypeSchema = z.object({
+  phaseId: z.string().uuid(),
+  planningId: z.string().uuid(),
+  type: z.string().min(1).max(40),
+});
+
+export async function updatePhaseType(input: z.infer<typeof UpdatePhaseTypeSchema>) {
+  const data = UpdatePhaseTypeSchema.parse(input);
+  await assertCanEdit(data.planningId);
+
+  const [updated] = await db
+    .update(phases)
+    .set({ type: data.type, version: sql<number>`${phases.version} + 1` })
+    .where(eq(phases.id, data.phaseId))
+    .returning({ id: phases.id, type: phases.type });
+
+  revalidatePath(`/p/${data.planningId}`);
+  return updated;
+}
+
 const UpdatePhaseColorSchema = z.object({
   phaseId: z.string().uuid(),
   planningId: z.string().uuid(),
