@@ -363,7 +363,7 @@ interface SectionDef {
 
 const SECTIONS: SectionDef[] = [
   { id: "plannings",    num: "1",  emoji: "📋", title: "Mes plannings",                       keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono modele vide renommer supprimer corbeille restaurer soft delete template bibliothèque projet dossier grouper regrouper portefeuille sections" },
-  { id: "structure",    num: "2",  emoji: "🏗️", title: "Structure d'un planning",             keywords: "domaine lot sous-projet phase jalon hiérarchie structure organisation créer ajouter type cadrage dev développement recette formation personnalisé ordre réordonner" },
+  { id: "structure",    num: "2",  emoji: "🏗️", title: "Structure d'un planning",             keywords: "domaine lot sous-projet phase jalon hiérarchie structure organisation créer ajouter type cadrage dev développement recette formation personnalisé ordre réordonner congés absences cp rtt arrêt" },
   { id: "gantt",        num: "3",  emoji: "📊", title: "Vue Gantt — navigation et affichage", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter membre toolbar barre outils filtres vide empty état domaine créer supprimer tooltip survol dates stacking pile track hauteur week-end fermeture bandes baseline" },
   { id: "drag",         num: "4",  emoji: "🖱️", title: "Glisser-déposer (drag & drop)",       keywords: "drag drop glisser déposer déplacer phase jalon inter-lot horizontale verticale date resize redimensionner bord gauche droit annuler undo ctrl z fantôme ghost" },
   { id: "edit",         num: "5",  emoji: "✏️", title: "Édition phases et jalons",            keywords: "éditer phase jalon dates statut avancement couleur note assigné responsable sélection multiple recherche palette commandes ctrl k fermer overlay dupliquer duplication copier éléments items ateliers livrables tickets cas recette importer import bridge claude fichier json md csv statut todo doing done fait annulé avancement automatique progress" },
@@ -640,7 +640,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <Mock label="Panneau d'édition phase — champs disponibles">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px", fontSize: 12 }}>
           {[
-            ["Type", "Cadrage / Dev / Recette / Formation / Personnalisé"],
+            ["Type", "Liste propre à ce planning (ex. Cadrage/Dev/Recette pour un projet ; CP/RTT/Formation pour un suivi de congés) — se configure dans Paramètres → Types de phases"],
             ["Libellé", "Nom libre (si vide, le type est affiché dans le Gantt)"],
             ["Dates début/fin", "Champs date ou via drag sur le Gantt"],
             ["Statut", "Planifiée / En cours / En revue / Terminée / À risque / En retard"],
@@ -656,6 +656,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
           ))}
         </div>
       </Mock>
+      <Tip>Le champ <strong>Type</strong> reste modifiable après la création de la phase, pas seulement au moment où on l&apos;ajoute.</Tip>
       <How title="Dupliquer une phase">
         <Step n={1}>Dans le footer du panneau, cliquez sur <UI>Dupliquer</UI>.</Step>
         <Step n={2}>Sélectionnez le <strong>projet cible</strong> dans la liste et confirmez.</Step>

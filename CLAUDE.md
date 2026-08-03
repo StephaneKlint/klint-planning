@@ -79,6 +79,7 @@ store/            # état global (Zustand ou Context)
 styles/           # CSS global
 types/            # types TypeScript partagés
 drizzle/          # fichiers SQL de migration générés
+scripts/          # scripts one-shot (création/import/correctif planning en DB directe)
 ```
 
 ## Conventions
@@ -95,6 +96,7 @@ drizzle/          # fichiers SQL de migration générés
   - `EMAIL_FROM` — expéditeur
   - `AUTH_SECRET` — secret next-auth
 - **pnpm** uniquement — ne pas utiliser npm ou yarn.
+- **Scripts one-shot** (`scripts/*.ts`) : pour créer/importer/corriger un planning directement en base sans passer par l'UI. Se connectent en direct via `@neondatabase/serverless` + Drizzle (URL Neon en dur ou via env), insèrent planning → settings/types/statuts → domaines → lots → phases/jalons, et **rollback** (suppression du planning) dans un `catch` si une étape échoue. Exécution : `npx tsx scripts/<nom>.ts`. Voir `scripts/create-b2b-edu-v2.ts` ou `scripts/create-conges-planning.ts` comme modèles.
 
 ## Tables DB principales
 
