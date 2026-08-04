@@ -54,7 +54,8 @@ middleware.ts     # protection des routes
 lib/
   actions/        # Server Actions Next.js (mutations, tout passe par ici)
     appSettings.ts
-    authActions.ts
+    authActions.ts      # changePassword (self-service), adminResetPassword (admin → Klint2026! + log)
+    adminUsers.ts       # CRUD plateforme : adminCreateUser, adminUpdateUser, adminDisableUser, adminEnableUser, adminDeleteUser — tous loggés dans platform_events
     baseline.ts
     closurePeriods.ts
     errors.ts           # getErrors(), resolveError() — admin
@@ -128,6 +129,7 @@ scripts/          # scripts one-shot (création/import/correctif planning en DB 
 | `planning_group_members` | Membres (plannings) d'un groupe de sync |
 | `phase_sync_groups` | Groupes de sync par paire de phases (1 entrée = 1 paire liée) |
 | `milestone_sync_groups` | Groupes de sync par paire de jalons |
+| `platform_events` | Audit trail admin plateforme : password_reset, user_created/updated/disabled/enabled/deleted |
 
 ## Journalisation des erreurs
 

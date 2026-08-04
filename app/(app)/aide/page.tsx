@@ -380,7 +380,7 @@ const SECTIONS: SectionDef[] = [
   { id: "presentation", num: "16", emoji: "🖥️", title: "Mode Présentation",                   keywords: "présentation plein écran fullscreen tout afficher fit-view zoom hauteur lignes capture export" },
   { id: "calendrier",   num: "17", emoji: "📅", title: "Fermetures & Jours fériés",           keywords: "fermetures jours fériés calendrier congés été hiver gel gel-code période custom bande colorée affichage toggle" },
   { id: "historique",   num: "18", emoji: "📜", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log",                                                                                                                             minRole: "admin" },
-  { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt",                                                                                                                                   minRole: "admin" },
+  { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt profil menu rail réinitialiser reset" },
   { id: "droits",       num: "20", emoji: "🛡️", title: "Rôles & droits d'accès",               keywords: "rôles droits admin utilisateur contact propriétaire éditeur lecteur permissions crud accès matrice onglets plateforme planning membres inviter lien invitation ajouter gantt toolbar",                                                        minRole: "admin" },
   { id: "sync",         num: "21", emoji: "⇄",  title: "Plannings liés (synchronisation)",      keywords: "sync synchronisation plannings liés lier délier lien groupe phases jalons propagation bidirectionnelle icône chaîne dates avancement couleur note label statut status nom domaine lot sous-titre last write wins automatique" },
 ];
@@ -1400,15 +1400,30 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <h2 style={S.h2}><span style={S.pill}>19</span> S&#233;curit&#233; &amp; Mot de passe</h2>
       <How title="Première connexion">
         <Step n={1}>Utilisez l&apos;email et le mot de passe temporaire communiqué par votre administrateur (<code>Klint2026!</code> par défaut).</Step>
-        <Step n={2}>Changez ce mot de passe <strong>dès la première connexion</strong>.</Step>
+        <Step n={2}>Changez ce mot de passe <strong>dès la première connexion</strong> via le menu profil (voir ci-dessous).</Step>
       </How>
-      <How title="Changer son mot de passe">
-        <Step n={1}>Allez dans <UI>Paramètres → onglet Sécurité</UI>.</Step>
-        <Step n={2}>Saisissez votre mot de passe actuel, puis le nouveau deux fois (minimum 8 caractères).</Step>
-        <Step n={3}>Cliquez sur <UI>Changer le mot de passe</UI>. Le changement est immédiat.</Step>
+      <How title="Changer son mot de passe (tous les utilisateurs)">
+        <Step n={1}>Cliquez sur votre <strong>avatar</strong> en bas à gauche du rail de navigation.</Step>
+        <Step n={2}>Dans le menu déroulant, cliquez sur <UI>Changer mon mot de passe</UI>.</Step>
+        <Step n={3}>Saisissez votre mot de passe actuel, puis le nouveau (minimum 8 caractères) et confirmez.</Step>
+        <Step n={4}>Cliquez sur <UI>Modifier</UI>. Le changement est immédiat.</Step>
       </How>
-      <How title="Mot de passe oublié">
-        <Step n={1}>Contactez votre administrateur Klint Planning. Il n&apos;existe pas de procédure automatique de réinitialisation par email.</Step>
+      <Mock label="Menu profil — Rail de navigation">
+        <div style={{ display: "inline-flex", flexDirection: "column" as const, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden", minWidth: 220, boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#001D63", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", margin: "12px auto 8px" }}>SD</div>
+          <div style={{ height: 1, background: "#E5E7EB", margin: "0 12px" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", fontSize: 13, color: "#374151" }}>
+            <span>🔒</span> Changer mon mot de passe
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", fontSize: 13, color: "#374151", borderTop: "1px solid #F3F4F6" }}>
+            <span>↪</span> Se déconnecter
+          </div>
+        </div>
+      </Mock>
+      <How title="Mot de passe oublié / réinitialisation par l'admin">
+        <Step n={1}>Contactez votre administrateur Klint Planning.</Step>
+        <Step n={2}>L&apos;administrateur peut réinitialiser votre mot de passe depuis <UI>Administration → Utilisateurs &amp; rôles</UI> → bouton 🔑 sur votre ligne.</Step>
+        <Step n={3}>Le mot de passe est remplacé par <code>Klint2026!</code>. L&apos;opération est tracée dans les logs admin.</Step>
       </How>
       <Warn>Ne réutilisez pas un mot de passe d&apos;un autre service. Changez le mot de passe temporaire dès la première connexion.</Warn>
     </section>
