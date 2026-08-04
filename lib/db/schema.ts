@@ -508,6 +508,23 @@ export const phaseItemImports = pgTable(
   (t) => [index("pii_status").on(t.status), index("pii_by_phase").on(t.phaseId)]
 );
 
+// ---- Événements plateforme (actions admin : reset MDP, créer/désactiver/supprimer user) --------
+
+export const platformEvents = pgTable(
+  "platform_events",
+  {
+    id:           uuid("id").defaultRandom().primaryKey(),
+    actorId:      uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+    actorEmail:   text("actor_email"),
+    targetId:     uuid("target_id").references(() => users.id, { onDelete: "set null" }),
+    targetEmail:  text("target_email"),
+    eventType:    varchar("event_type", { length: 80 }).notNull(),
+    summary:      text("summary").notNull(),
+    createdAt:    timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("pe_created").on(t.createdAt)]
+);
+
 // ---- Logs d'erreurs applicatifs ------------------------------------------
 
 export const appErrors = pgTable(

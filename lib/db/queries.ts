@@ -5,6 +5,7 @@ import {
   phaseTypes, milestoneTypes, statuses, planningSettings,
   activityLog, closurePeriods, connectionLogs, shareTokens, baselines,
   planningGroups, planningGroupMembers, phaseSyncGroups, milestoneSyncGroups,
+  platformEvents,
 } from "./schema";
 import { eq, asc, desc, inArray, and, isNull, isNotNull, sql, ne } from "drizzle-orm";
 
@@ -562,4 +563,30 @@ export async function getPlanningGroupsForPlanning(planningId: string): Promise<
   }
 
   return Array.from(map.values());
+}
+
+// ── Platform events (admin audit log) ────────────────────────────────────────
+
+export type PlatformEventRow = {
+  id: string;
+  actorEmail: string | null;
+  targetEmail: string | null;
+  eventType: string;
+  summary: string;
+  createdAt: Date;
+};
+
+export async function listPlatformEvents(limit = 200): Promise<PlatformEventRow[]> {
+  return db
+    .select({
+      id:          platformEvents.id,
+      actorEmail:  platformEvents.actorEmail,
+      targetEmail: platformEvents.targetEmail,
+      eventType:   platformEvents.eventType,
+      summary:     platformEvents.summary,
+      createdAt:   platformEvents.createdAt,
+    })
+    .from(platformEvents)
+    .orderBy(desc(platformEvents.createdAt))
+    .limit(limit);
 }

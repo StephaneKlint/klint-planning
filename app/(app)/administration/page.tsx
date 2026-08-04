@@ -4,9 +4,9 @@ import { getAppSettings, getPermissions, getSecuritySettings } from "@/lib/actio
 import {
   listConnectionLogs, listPlannings, getGanttData,
   listUsersNotInPlanning, getActivityLog, listAllDirectoryContacts,
-  getPlanningGroupsForPlanning,
+  getPlanningGroupsForPlanning, listPlatformEvents,
 } from "@/lib/db/queries";
-import type { ExistingUserRow, ActivityEntry, DirectoryContact } from "@/lib/db/queries";
+import type { ExistingUserRow, ActivityEntry, DirectoryContact, PlatformEventRow } from "@/lib/db/queries";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { asc } from "drizzle-orm";
@@ -24,7 +24,7 @@ export default async function AdministrationPage({ searchParams }: Props) {
 
   const { planningId: qPlanningId, tab: qTab } = await searchParams;
 
-  const [appCfg, permissions, securitySettings, connLogs, allUsers, planningList] = await Promise.all([
+  const [appCfg, permissions, securitySettings, connLogs, allUsers, planningList, platformEvts] = await Promise.all([
     getAppSettings(),
     getPermissions(),
     getSecuritySettings(),
@@ -39,6 +39,7 @@ export default async function AdministrationPage({ searchParams }: Props) {
       allowInternational: users.allowInternational,
     }).from(users).orderBy(asc(users.name)),
     listPlannings("all"),
+    listPlatformEvents(200),
   ]);
 
   const activePlanningId = qPlanningId ?? planningList[0]?.id ?? null;
@@ -60,6 +61,7 @@ export default async function AdministrationPage({ searchParams }: Props) {
       permissions={permissions}
       securitySettings={securitySettings}
       connLogs={connLogs}
+      platformEvents={platformEvts as PlatformEventRow[]}
       allUsers={allUsers}
       planningList={planningList}
       activePlanningId={activePlanningId}

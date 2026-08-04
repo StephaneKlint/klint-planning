@@ -17,7 +17,7 @@ import {
 } from "@/lib/actions/settings";
 import { saveAppLogo, saveAppFavicon } from "@/lib/actions/appSettings";
 import { seedHolidays, createClosurePeriod, updateClosurePeriod, deleteClosurePeriod } from "@/lib/actions/closurePeriods";
-import { changePassword } from "@/lib/actions/authActions";
+import { changePassword, adminResetPassword } from "@/lib/actions/authActions";
 import { setTemplateFlag } from "@/lib/actions/plannings";
 import type { ClosurePeriodRow, ExistingUserRow, ActivityEntry, ConnectionLogRow, DirectoryContact, PlanningGroupRow } from "@/lib/db/queries";
 import { SyncSection } from "./SyncSection";
@@ -1820,6 +1820,21 @@ function RépertoireTab({ contacts, planningId }: { contacts: DirectoryContact[]
                           }}
                         >
                           <Icon name="link" size={13} aria-hidden />
+                        </button>
+                      )}
+
+                      {/* Réinitialiser MDP (user/admin seulement) */}
+                      {(c.role === "user" || c.role === "admin") && (
+                        <button
+                          className={styles.dirIconBtn}
+                          disabled={isPending}
+                          title="Réinitialiser le mot de passe → Klint2026!"
+                          onClick={() => {
+                            if (!confirm(`Réinitialiser le mot de passe de ${c.name ?? c.email} ? Le nouveau mot de passe sera Klint2026!`)) return;
+                            startTransition(async () => { await adminResetPassword(c.userId); });
+                          }}
+                        >
+                          🔑
                         </button>
                       )}
 
