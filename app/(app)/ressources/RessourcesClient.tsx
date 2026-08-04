@@ -8,6 +8,7 @@ import { addMember, updateMember, removeMember } from "@/lib/actions/members";
 import { updateMemberPermission } from "@/lib/actions/settings";
 import { useGanttStore } from "@/store/ganttStore";
 import styles from "./Ressources.module.css";
+import { Icon } from "@/components/ui/Icon";
 
 interface Props {
   data: GanttData;
@@ -331,14 +332,14 @@ export function RessourcesClient({ data, existingUsers }: Props) {
                   onClick={() => handleOpenEdit(member)}
                   title="Modifier ce responsable"
                 >
-                  ✎
+                  <Icon name="edit" size={13} aria-hidden />
                 </button>
                 <button
                   className={styles.memberDeleteBtn}
                   onClick={() => handleDelete(member.id)}
                   title="Supprimer ce responsable"
                 >
-                  ×
+                  <Icon name="trash" size={13} aria-hidden />
                 </button>
               </div>
             </div>

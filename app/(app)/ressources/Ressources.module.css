@@ -619,22 +619,20 @@
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  border: 1px solid var(--klint-line);
-  background: var(--klint-paper);
-  color: #9ca3af;
-  font-size: 18px;
-  line-height: 1;
+  border: 1px solid #FECACA;
+  background: transparent;
+  color: #DC2626;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 100ms, color 100ms, border-color 100ms;
+  transition: background 100ms, border-color 100ms;
   flex-shrink: 0;
 }
 .memberDeleteBtn:hover {
   background: #FEE2E2;
-  color: #DC2626;
-  border-color: #FECACA;
+  border-color: #FCA5A5;
 }
 
 /* ── Empty state ── */
