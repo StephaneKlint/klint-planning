@@ -8,6 +8,8 @@ import { adminCreateUser, adminUpdateUser, adminDisableUser, adminEnableUser, ad
 import { ApparenceSection } from "@/app/(app)/parametres/ApparenceSection";
 import { GeoSecuriteSection } from "@/app/(app)/parametres/GeoSecuriteSection";
 import { DroitsTab, LogsPanel, ParametresTabs } from "@/app/(app)/parametres/ParametresTabs";
+import { Icon } from "@/components/ui/Icon";
+import styles from "@/app/(app)/parametres/Parametres.module.css";
 import type { AppSettings, SecuritySettings } from "@/lib/actions/appSettings";
 import type { PermissionMatrix } from "@/lib/permissions";
 import type { ConnectionLogRow, GanttData, ExistingUserRow, ActivityEntry, DirectoryContact, PlanningGroupRow, PlatformEventRow } from "@/lib/db/queries";
@@ -372,13 +374,23 @@ function UsersSection({ initialUsers }: { initialUsers: AdminUser[] }) {
                 <td style={{ padding: "10px 20px", color: "#6B7280", whiteSpace: "nowrap" }}>{fmtDatetime(u.createdAt)}</td>
                 <td style={{ padding: "10px 20px" }}>
                   <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
-                    <button type="button" style={BTN_GHOST} title="Modifier" onClick={() => setEditTarget(u)}>✎</button>
-                    <button type="button" style={BTN_WARN}  title="Réinitialiser MDP" onClick={() => setResetTarget(u)}>🔑</button>
+                    <button type="button" className={styles.dirIconBtn} title="Modifier" onClick={() => setEditTarget(u)}>
+                      <Icon name="edit" size={13} aria-hidden />
+                    </button>
+                    <button type="button" className={styles.dirIconBtn} title="Réinitialiser MDP" onClick={() => setResetTarget(u)}>
+                      <Icon name="key" size={13} aria-hidden />
+                    </button>
                     {u.disabledAt
-                      ? <button type="button" style={{ ...BTN_GHOST, color: "#16A34A", borderColor: "#86EFAC" }} title="Réactiver" onClick={() => setEnableTarget(u)}>✓ Réactiver</button>
-                      : <button type="button" style={BTN_WARN} title="Désactiver" onClick={() => setDisableTarget(u)}>⏸</button>
+                      ? <button type="button" className={styles.dirIconSuccessBtn} title="Réactiver le compte" onClick={() => setEnableTarget(u)}>
+                          <Icon name="eye" size={13} aria-hidden />
+                        </button>
+                      : <button type="button" className={styles.dirIconDangerBtn} title="Désactiver le compte" onClick={() => setDisableTarget(u)}>
+                          <Icon name="eyeOff" size={13} aria-hidden />
+                        </button>
                     }
-                    <button type="button" style={BTN_DANGER} title="Supprimer" onClick={() => setDeleteTarget(u)}>🗑</button>
+                    <button type="button" className={styles.dirIconDangerBtn} title="Supprimer définitivement" onClick={() => setDeleteTarget(u)}>
+                      <Icon name="trash" size={13} aria-hidden />
+                    </button>
                   </div>
                 </td>
               </tr>
