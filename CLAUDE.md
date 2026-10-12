@@ -46,6 +46,7 @@ app/
     favicon/      # génération favicon
     log-connection/ # enregistrement connexions
   invite/         # activation de compte (lien d'invitation)
+  reset-password/ # réinitialisation MDP autonome (route publique, token URL)
   login/          # page de connexion
   share/          # partage public (token)
 auth.ts           # config next-auth
@@ -54,7 +55,7 @@ middleware.ts     # protection des routes
 lib/
   actions/        # Server Actions Next.js (mutations, tout passe par ici)
     appSettings.ts
-    authActions.ts      # changePassword (self-service), adminResetPassword (admin → Klint2026! + log)
+    authActions.ts      # changePassword (self-service), adminResetPassword (admin → Klint2026! + log), requestPasswordReset (email token 1h), resetPasswordWithToken (public)
     adminUsers.ts       # CRUD plateforme : adminCreateUser, adminUpdateUser, adminDisableUser, adminEnableUser, adminDeleteUser — tous loggés dans platform_events
     baseline.ts
     closurePeriods.ts
@@ -130,6 +131,7 @@ scripts/          # scripts one-shot (création/import/correctif planning en DB 
 | `phase_sync_groups` | Groupes de sync par paire de phases (1 entrée = 1 paire liée) |
 | `milestone_sync_groups` | Groupes de sync par paire de jalons |
 | `platform_events` | Audit trail admin plateforme : password_reset, user_created/updated/disabled/enabled/deleted |
+| `password_reset_tokens` | Tokens de réinitialisation MDP (1h, single-use) — liés à `/reset-password` |
 
 ## Journalisation des erreurs
 

@@ -380,7 +380,7 @@ const SECTIONS: SectionDef[] = [
   { id: "presentation", num: "16", emoji: "🖥️", title: "Mode Présentation",                   keywords: "présentation plein écran fullscreen tout afficher fit-view zoom hauteur lignes capture export" },
   { id: "calendrier",   num: "17", emoji: "📅", title: "Fermetures & Jours fériés",           keywords: "fermetures jours fériés calendrier congés été hiver gel gel-code période custom bande colorée affichage toggle" },
   { id: "historique",   num: "18", emoji: "📜", title: "Historique & Surveillance connexions", keywords: "historique activité connexions surveillance sécurité alerte ip géolocalisation pays france email resend log",                                                                                                                             minRole: "admin" },
-  { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt profil menu rail réinitialiser reset" },
+  { id: "securite",     num: "19", emoji: "🔒", title: "Sécurité & Mot de passe",             keywords: "sécurité mot de passe connexion login credentials changer modifier oublié administrateur paramètres bcrypt profil menu rail réinitialiser reset email lien token autonome" },
   { id: "droits",       num: "20", emoji: "🛡️", title: "Rôles & droits d'accès",               keywords: "rôles droits admin utilisateur contact propriétaire éditeur lecteur permissions crud accès matrice onglets plateforme planning membres inviter lien invitation ajouter gantt toolbar",                                                        minRole: "admin" },
   { id: "sync",         num: "21", emoji: "⇄",  title: "Plannings liés (synchronisation)",      keywords: "sync synchronisation plannings liés lier délier lien groupe phases jalons propagation bidirectionnelle icône chaîne dates avancement couleur note label statut status nom domaine lot sous-titre last write wins automatique" },
 ];
@@ -1420,10 +1420,26 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
           </div>
         </div>
       </Mock>
-      <How title="Mot de passe oublié / réinitialisation par l'admin">
-        <Step n={1}>Contactez votre administrateur Klint Planning.</Step>
-        <Step n={2}>L&apos;administrateur peut réinitialiser votre mot de passe depuis <UI>Administration → Utilisateurs &amp; rôles</UI> → bouton 🔑 sur votre ligne.</Step>
-        <Step n={3}>Le mot de passe est remplacé par <code>Klint2026!</code>. L&apos;opération est tracée dans les logs admin.</Step>
+      <How title="Mot de passe oublié — réinitialisation autonome par email">
+        <Step n={1}>Sur la page de connexion, cliquez sur <UI>Mot de passe oublié ?</UI> (lien sous le bouton de connexion).</Step>
+        <Step n={2}>Saisissez votre adresse email et cliquez sur <UI>Envoyer le lien de réinitialisation</UI>.</Step>
+        <Step n={3}>Vous recevez un email Klint Planning avec un lien valable <strong>1 heure</strong>. Cliquez sur le bouton dans l'email.</Step>
+        <Step n={4}>Saisissez et confirmez votre nouveau mot de passe (minimum 8 caractères). Cliquez sur <UI>Définir le nouveau mot de passe</UI>.</Step>
+        <Step n={5}>Vous êtes redirigé vers la connexion avec vos nouveaux identifiants.</Step>
+      </How>
+      <Mock label="Page connexion — lien 'Mot de passe oublié ?'">
+        <div style={{ display: "inline-flex", flexDirection: "column" as const, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden", minWidth: 240, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", padding: "16px" }}>
+          <div style={{ height: 36, background: "#001036", borderRadius: 6, marginBottom: 10 }} />
+          <div style={{ height: 36, background: "#F3F4F6", borderRadius: 6, marginBottom: 10 }} />
+          <div style={{ height: 38, background: "#001036", borderRadius: 6, marginBottom: 10 }} />
+          <div style={{ textAlign: "center" as const, fontSize: 12, color: "#6B7280" }}>
+            <span style={{ textDecoration: "underline" }}>Mot de passe oublié ?</span>
+          </div>
+        </div>
+      </Mock>
+      <How title="Réinitialisation par un administrateur (option alternative)">
+        <Step n={1}>L&apos;administrateur peut réinitialiser le mot de passe d&apos;un utilisateur depuis <UI>Administration → Utilisateurs &amp; rôles</UI> → bouton <UI>🔑</UI> sur la ligne concernée.</Step>
+        <Step n={2}>Le mot de passe est remplacé par <code>Klint2026!</code>. L&apos;opération est tracée dans les événements admin.</Step>
       </How>
       <Warn>Ne réutilisez pas un mot de passe d&apos;un autre service. Changez le mot de passe temporaire dès la première connexion.</Warn>
     </section>
