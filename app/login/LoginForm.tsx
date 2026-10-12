@@ -87,7 +87,9 @@ export function LoginForm({ error }: { error?: boolean; verify?: boolean }) {
       </button>
 
       <p className={styles.hint}>
-        Mot de passe oublié ? Contactez votre administrateur Klint Planning.
+        <a href="/reset-password" style={{ color: "#6B7280", textDecoration: "underline" }}>
+          Mot de passe oublié ?
+        </a>
       </p>
     </form>
   );
