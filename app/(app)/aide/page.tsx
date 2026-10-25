@@ -1423,7 +1423,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <How title="Mot de passe oublié — réinitialisation autonome par email">
         <Step n={1}>Sur la page de connexion, cliquez sur <UI>Mot de passe oublié ?</UI> (lien sous le bouton de connexion).</Step>
         <Step n={2}>Saisissez votre adresse email et cliquez sur <UI>Envoyer le lien de réinitialisation</UI>.</Step>
-        <Step n={3}>Vous recevez un email Klint Planning avec un lien valable <strong>1 heure</strong>. Cliquez sur le bouton dans l'email.</Step>
+        <Step n={3}>Vous recevez un email Klint Planning avec un lien valable <strong>1 heure</strong>. Cliquez sur le bouton dans l&apos;email.</Step>
         <Step n={4}>Saisissez et confirmez votre nouveau mot de passe (minimum 8 caractères). Cliquez sur <UI>Définir le nouveau mot de passe</UI>.</Step>
         <Step n={5}>Vous êtes redirigé vers la connexion avec vos nouveaux identifiants.</Step>
       </How>
