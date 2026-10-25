@@ -21,7 +21,10 @@ import * as schema from "../lib/db/schema";
 
 const { domains, lots, phases, milestones } = schema;
 
-const DATABASE_URL = "postgresql://neondb_owner:npg_uDVIUF1n0Zje@ep-muddy-silence-a2o47z8h-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require";
+const DATABASE_URL = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL ?? "";
+if (!DATABASE_URL) {
+  throw new Error("DATABASE_URL (ou DATABASE_URL_UNPOOLED) doit être défini dans l'environnement : aucune adresse de base n'est stockée dans le code.");
+}
 const KICKOFF_ID = "6eecebca-2cba-4739-b635-b2370786e041";
 
 const sql = neon(DATABASE_URL);
