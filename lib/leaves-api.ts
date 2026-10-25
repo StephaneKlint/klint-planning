@@ -86,19 +86,60 @@ export function workingDays(start: string, end: string): number {
   return n;
 }
 
-// ── Forme de la réponse : AUCUN motif, note, libellé, couleur ni statut n'est jamais exposé ─────────────
-export interface LeaveRowInput { phaseId: string; memberId: string; type: string; start: string; end: string; email: string; name: string }
-export interface LeaveOut { id: string; memberRef: string; memberName: string; type: string; start: string; end: string; halfDayStart: boolean; halfDayEnd: boolean; days: number }
+// ── Forme de la réponse : AUCUN motif, note, libellé de phase, couleur ni statut n'est jamais exposé ────
+// Une ligne = une phase de type « congé » × une personne. La personne vient de l'affectation de la phase (membre du
+// planning, avec e-mail) ; à défaut (planning de suivi des congés où chaque LOT porte le prénom d'une personne et où les
+// phases ne sont pas affectées) elle vient du nom du lot, sans e-mail, avec le nom du domaine comme groupe.
+export interface LeaveRowInput {
+  phaseId: string; memberId: string | null; type: string; start: string; end: string;
+  email: string | null; name: string | null; lotName?: string | null; domainName?: string | null;
+}
+export interface LeaveOut {
+  id: string; memberRef: string; memberName: string; memberGroup?: string; type: string; start: string; end: string;
+  halfDayStart: boolean; halfDayEnd: boolean; days: number;
+}
+
+const clean = (v: string | null | undefined, max: number) => (v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
 
 export function toLeaves(rows: LeaveRowInput[]): LeaveOut[] {
-  return rows.slice(0, MAX_LEAVES).map((r) => ({
-    id: createHash("sha256").update(`${r.phaseId}:${r.memberId}`).digest("hex").slice(0, 24),
-    memberRef: r.email.trim().toLowerCase(),
-    memberName: (r.name || r.email.split("@")[0]).trim(),
-    type: r.type,
-    start: r.start, end: r.end,
-    // Klint Planning ne gère pas les demi-journées (les phases sont des jours entiers) : champs réservés.
-    halfDayStart: false, halfDayEnd: false,
-    days: workingDays(r.start, r.end),
-  })).sort((a, b) => a.start.localeCompare(b.start) || a.memberName.localeCompare(b.memberName, "fr"));
+  const out: LeaveOut[] = [];
+  for (const r of rows.slice(0, MAX_LEAVES)) {
+    const email = clean(r.email, 254).toLowerCase();
+    const fromMember = !!r.memberId && (email || clean(r.name, 80));
+    const name = fromMember ? (clean(r.name, 80) || email.split("@")[0]) : clean(r.lotName, 80);
+    if (!name) continue; // ni membre affecté ni nom de lot exploitable : rien à afficher
+    const group = fromMember ? "" : clean(r.domainName, 80);
+    out.push({
+      id: createHash("sha256").update(`${r.phaseId}:${fromMember ? r.memberId : "lot"}`).digest("hex").slice(0, 24),
+      memberRef: fromMember ? email : "",
+      memberName: name,
+      ...(group ? { memberGroup: group } : {}),
+      type: r.type,
+      start: r.start, end: r.end,
+      // Klint Planning ne gère pas les demi-journées (les phases sont des jours entiers) : champs réservés.
+      halfDayStart: false, halfDayEnd: false,
+      days: workingDays(r.start, r.end),
+    });
+  }
+  return out.sort((a, b) => a.start.localeCompare(b.start) || a.memberName.localeCompare(b.memberName, "fr"));
+}
+
+// ── Diagnostic : types de phase présents dans le planning (AUCUNE donnée personnelle) ──────────────────────
+export interface TypeSeen { code: string; label: string; count: number }
+export const MAX_TYPES_SEEN = 100;
+
+// Entrée : une ligne par type distinct (code, libellé du type s'il est défini, nombre de phases). Fusionne les codes
+// identiques à la casse près et trie par effectif décroissant puis code.
+export function buildTypesSeen(rows: { code: string; label?: string | null; count: number }[]): TypeSeen[] {
+  const m = new Map<string, TypeSeen>();
+  for (const r of rows) {
+    const code = clean(r.code, 40);
+    if (!code) continue;
+    const k = code.toLowerCase();
+    const n = Number.isFinite(Number(r.count)) ? Math.max(0, Math.floor(Number(r.count))) : 0;
+    const cur = m.get(k);
+    if (cur) { cur.count += n; if (!cur.label && r.label) cur.label = clean(r.label, 80); }
+    else m.set(k, { code, label: clean(r.label, 80), count: n });
+  }
+  return [...m.values()].sort((a, b) => b.count - a.count || a.code.localeCompare(b.code, "fr")).slice(0, MAX_TYPES_SEEN);
 }

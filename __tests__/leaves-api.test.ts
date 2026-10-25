@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  bearerMatches, frenchHolidays, isAllowedPlanning, parseAllowedIds, parseDefaultTypes, parseLeavesParams, toLeaves, workingDays,
+  bearerMatches, buildTypesSeen, frenchHolidays, isAllowedPlanning, parseAllowedIds, parseDefaultTypes, parseLeavesParams, toLeaves, workingDays,
 } from "../lib/leaves-api";
 
 const KEY = "k".repeat(40);
@@ -80,5 +80,43 @@ describe("forme de la réponse", () => {
     expect(s).not.toContain("secret"); expect(s).not.toContain("Maladie"); expect(s).not.toContain("p1"); expect(s).not.toContain("m1");
     expect(out[1].id).not.toBe(out[2].id); // deux membres de la même phase : deux congés distincts
     expect(Object.keys(out[0]).sort()).toEqual(["days", "end", "halfDayEnd", "halfDayStart", "id", "memberName", "memberRef", "start", "type"]);
+  });
+});
+
+describe("personne = nom du lot quand la phase n'est pas affectée", () => {
+  const out = toLeaves([
+    // phase non affectée : membre, e-mail et nom nuls ; le lot porte le prénom, le domaine sert de groupe
+    { phaseId: "p3", memberId: null, type: "cp", start: "2026-10-28", end: "2026-10-29", email: null, name: null, lotName: " Nicolas ", domainName: "Masao" },
+    { phaseId: "p4", memberId: null, type: "rtt", start: "2026-10-28", end: "2026-10-28", email: null, name: null, lotName: "Nicolas", domainName: "Almaviva CX" },
+    // phase affectée : le membre prime sur le lot
+    { phaseId: "p5", memberId: "m9", type: "cp", start: "2026-10-30", end: "2026-10-30", email: "Zoe@Example.test", name: "Zoé", lotName: "Autre", domainName: "KLINT" },
+    // ni membre ni lot exploitable : ignoré
+    { phaseId: "p6", memberId: null, type: "cp", start: "2026-10-30", end: "2026-10-30", email: null, name: null, lotName: "  ", domainName: "KLINT" },
+  ]);
+  it("retient le lot (sans e-mail, avec groupe) ou le membre, jamais les deux", () => {
+    expect(out).toHaveLength(3);
+    const nic = out.filter((l) => l.memberName === "Nicolas");
+    expect(nic.map((l) => l.memberGroup).sort()).toEqual(["Almaviva CX", "Masao"]);
+    expect(nic.every((l) => l.memberRef === "")).toBe(true);
+    expect(nic[0].id).not.toBe(nic[1].id);
+    const zoe = out.find((l) => l.memberName === "Zoé")!;
+    expect(zoe.memberRef).toBe("zoe@example.test");
+    expect(zoe.memberGroup).toBeUndefined();
+    expect(JSON.stringify(out)).not.toContain("Autre");
+  });
+});
+
+describe("diagnostic : types vus", () => {
+  it("fusionne à la casse près, trie par effectif, ne contient que code, libellé et effectif", () => {
+    const t = buildTypesSeen([
+      { code: "cp", label: "Congés payés", count: 12 }, { code: "CP", label: null, count: 3 },
+      { code: "rtt", label: "RTT", count: 4 }, { code: "Dev", label: null, count: 40 }, { code: "", label: "x", count: 9 },
+      { code: "bad\u0007code", label: "L", count: Number.NaN },
+    ]);
+    expect(t.map((x) => x.code)).toEqual(["Dev", "cp", "rtt", "bad code"]);
+    expect(t[1]).toEqual({ code: "cp", label: "Congés payés", count: 15 });
+    expect(t[3].count).toBe(0);
+    for (const x of t) expect(Object.keys(x).sort()).toEqual(["code", "count", "label"]);
+    expect(buildTypesSeen([])).toEqual([]);
   });
 });
