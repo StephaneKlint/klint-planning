@@ -436,6 +436,9 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
   const [importMode, setImportMode]         = useState<"create" | "update">("create");
   const [importTargetId, setImportTargetId] = useState<string>("");
 
+  // Filtre par année
+  const [yearFilter, setYearFilter] = useState<number | null>(() => new Date().getFullYear());
+
   const busy = (id: string, act: string) => { setLoadingId(id); setLoadingAction(act); };
   const notBusy = () => { setLoadingId(null); setLoadingAction(null); };
 
@@ -614,8 +617,14 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
     }
   };
 
+  // ── Year filter ──
+  const allYears = [...new Set([...active, ...archived, ...disabled].map((p) => p.year))].sort((a, b) => b - a);
+  const applyYearFilter = <T extends PlanningRow>(list: T[]) =>
+    yearFilter !== null ? list.filter((p) => p.year === yearFilter) : list;
+
   // ── Current list ──
-  const currentList = tab === "active" ? active : tab === "archived" ? archived : tab === "disabled" ? disabled : trashed;
+  const currentList = applyYearFilter(tab === "active" ? active : tab === "archived" ? archived : tab === "disabled" ? disabled : trashed);
+  const filteredActive = applyYearFilter(active);
 
   // Groupement par projet (onglet Actifs uniquement)
   const allProjects = [...new Set(active.map((p) => p.projectName).filter(Boolean) as string[])].sort();
@@ -624,7 +633,7 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
   const activeGroups: ProjectGroup[] = (() => {
     const byProject = new Map<string, PlanningRow[]>();
     const noProject: PlanningRow[] = [];
-    for (const p of active) {
+    for (const p of filteredActive) {
       if (p.projectName) {
         if (!byProject.has(p.projectName)) byProject.set(p.projectName, []);
         byProject.get(p.projectName)!.push(p);
@@ -695,13 +704,53 @@ export function PlanningListClient({ active, archived, disabled, trashed }: Prop
         )}
       </div>
 
+      {/* Filtre par année */}
+      {allYears.length > 1 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0 4px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "#6B7280", fontWeight: 500 }}>Année :</span>
+          <button
+            onClick={() => setYearFilter(null)}
+            style={{
+              padding: "3px 10px", borderRadius: 12, fontSize: 12, cursor: "pointer",
+              border: yearFilter === null ? "1.5px solid #2563EB" : "1px solid #D1D5DB",
+              background: yearFilter === null ? "#EFF6FF" : "transparent",
+              color: yearFilter === null ? "#2563EB" : "#374151",
+              fontWeight: yearFilter === null ? 600 : 400,
+            }}
+          >
+            Toutes
+          </button>
+          {allYears.map((y) => (
+            <button
+              key={y}
+              onClick={() => setYearFilter(y)}
+              style={{
+                padding: "3px 10px", borderRadius: 12, fontSize: 12, cursor: "pointer",
+                border: yearFilter === y ? "1.5px solid #2563EB" : "1px solid #D1D5DB",
+                background: yearFilter === y ? "#EFF6FF" : "transparent",
+                color: yearFilter === y ? "#2563EB" : "#374151",
+                fontWeight: yearFilter === y ? 600 : 400,
+              }}
+            >
+              {y}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Grid — Actifs groupés par projet, autres onglets = grille plate */}
       {currentList.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>
-            {tab === "active" ? "Aucun planning actif" : tab === "archived" ? "Aucun planning archivé" : tab === "disabled" ? "Aucun planning désactivé" : "La corbeille est vide"}
+            {tab === "active"
+              ? yearFilter !== null ? `Aucun planning actif en ${yearFilter}` : "Aucun planning actif"
+              : tab === "archived"
+              ? yearFilter !== null ? `Aucun planning archivé en ${yearFilter}` : "Aucun planning archivé"
+              : tab === "disabled"
+              ? yearFilter !== null ? `Aucun planning désactivé en ${yearFilter}` : "Aucun planning désactivé"
+              : "La corbeille est vide"}
           </p>
-          {tab === "active" && (
+          {tab === "active" && yearFilter === null && (
             <>
               <p className={styles.emptyDesc}>Créez votre premier planning pour démarrer ou importez un fichier JSON.</p>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>

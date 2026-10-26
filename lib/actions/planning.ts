@@ -71,16 +71,19 @@ export async function updatePhaseStatus(input: z.infer<typeof UpdatePhaseStatusS
   const data = UpdatePhaseStatusSchema.parse(input);
   await assertCanEdit(data.planningId);
 
+  // Cohérence status/progress : "done" → force 100%
+  const extraProgress = data.status === "done" ? { progress: 100 } : {};
+
   const [updated] = await db
     .update(phases)
-    .set({ status: data.status, version: sql<number>`${phases.version} + 1` })
+    .set({ status: data.status, ...extraProgress, version: sql<number>`${phases.version} + 1` })
     .where(eq(phases.id, data.phaseId))
-    .returning({ id: phases.id, status: phases.status });
+    .returning({ id: phases.id, status: phases.status, progress: phases.progress });
 
   await logActivity(data.planningId, "status_changed", "phase", data.phaseId,
     `Statut mis à jour → ${data.status ?? "auto"}`);
 
-  const affected = await propagatePhaseSyncGroup(data.phaseId, { status: data.status });
+  const affected = await propagatePhaseSyncGroup(data.phaseId, { status: data.status, ...extraProgress });
   for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
@@ -97,16 +100,19 @@ export async function updatePhaseProgress(input: z.infer<typeof UpdatePhaseProgr
   const data = UpdatePhaseProgressSchema.parse(input);
   await assertCanEdit(data.planningId);
 
+  // Cohérence status/progress : 100% → force "done"
+  const extraStatus = data.progress === 100 ? { status: "done" as const } : {};
+
   const [updated] = await db
     .update(phases)
-    .set({ progress: data.progress, version: sql<number>`${phases.version} + 1` })
+    .set({ progress: data.progress, ...extraStatus, version: sql<number>`${phases.version} + 1` })
     .where(eq(phases.id, data.phaseId))
-    .returning({ id: phases.id, progress: phases.progress });
+    .returning({ id: phases.id, progress: phases.progress, status: phases.status });
 
   await logActivity(data.planningId, "progress_updated", "phase", data.phaseId,
     `Avancement → ${data.progress}%`, { progress: data.progress });
 
-  const affected = await propagatePhaseSyncGroup(data.phaseId, { progress: data.progress });
+  const affected = await propagatePhaseSyncGroup(data.phaseId, { progress: data.progress, ...extraStatus });
   for (const pid of affected) revalidatePath(`/p/${pid}`);
 
   revalidatePath(`/p/${data.planningId}`);
