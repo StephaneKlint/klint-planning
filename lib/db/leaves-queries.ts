@@ -17,6 +17,8 @@ export async function planningIsReadable(planningId: string): Promise<boolean> {
 }
 
 // `types` : codes (ou libellés) de types de phase en minuscules. Période : toute phase qui chevauche [from, to].
+// Les affectations sont lues en jointure EXTERNE : un planning de suivi des congés porte souvent une personne par lot
+// et aucune affectation de phase ; la personne est alors le nom du lot (voir toLeaves).
 export async function listLeaves(planningId: string, from: string, to: string, types: string[]): Promise<LeaveRowInput[]> {
   const rows = await db
     .select({
@@ -27,14 +29,16 @@ export async function listLeaves(planningId: string, from: string, to: string, t
       end: phases.endDate,
       email: users.email,
       name: users.name,
+      lotName: lots.name,
+      domainName: domains.name,
     })
     .from(phases)
     .innerJoin(lots, eq(lots.id, phases.lotId))
     .innerJoin(domains, and(eq(domains.id, lots.domainId), eq(domains.planningId, lots.planningId)))
-    .innerJoin(phaseAssignees, eq(phaseAssignees.phaseId, phases.id))
+    .leftJoin(phaseAssignees, eq(phaseAssignees.phaseId, phases.id))
     // le membre doit appartenir au MÊME planning (jamais d'affectation croisée)
-    .innerJoin(planningMembers, and(eq(planningMembers.id, phaseAssignees.memberId), eq(planningMembers.planningId, lots.planningId)))
-    .innerJoin(users, eq(users.id, planningMembers.userId))
+    .leftJoin(planningMembers, and(eq(planningMembers.id, phaseAssignees.memberId), eq(planningMembers.planningId, lots.planningId)))
+    .leftJoin(users, eq(users.id, planningMembers.userId))
     .leftJoin(phaseTypes, and(eq(phaseTypes.planningId, lots.planningId), eq(phaseTypes.code, phases.type)))
     .where(and(
       eq(lots.planningId, planningId),
@@ -45,7 +49,26 @@ export async function listLeaves(planningId: string, from: string, to: string, t
         inArray(sql`lower(${phaseTypes.label})`, types),
       ),
     ))
-    .orderBy(asc(phases.startDate), asc(users.name))
+    .orderBy(asc(phases.startDate), asc(lots.name))
     .limit(2000);
   return rows;
+}
+
+// Diagnostic : types de phase présents dans TOUT le planning (code, libellé du type, nombre de phases) et nombre de
+// phases de n'importe quel type qui chevauchent la fenêtre. Aucune donnée personnelle, aucun libellé de phase.
+export async function typesSeenAndWindow(planningId: string, from: string, to: string): Promise<{ typeRows: { code: string; label: string | null; count: number }[]; phasesInWindow: number }> {
+  const typeRows = await db
+    .select({ code: phases.type, label: sql<string | null>`max(${phaseTypes.label})`, count: sql<number>`count(*)::int` })
+    .from(phases)
+    .innerJoin(lots, eq(lots.id, phases.lotId))
+    .leftJoin(phaseTypes, and(eq(phaseTypes.planningId, lots.planningId), eq(phaseTypes.code, phases.type)))
+    .where(eq(lots.planningId, planningId))
+    .groupBy(phases.type)
+    .limit(200);
+  const [w] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(phases)
+    .innerJoin(lots, eq(lots.id, phases.lotId))
+    .where(and(eq(lots.planningId, planningId), lte(phases.startDate, to), gte(phases.endDate, from)));
+  return { typeRows, phasesInWindow: w?.n ?? 0 };
 }
