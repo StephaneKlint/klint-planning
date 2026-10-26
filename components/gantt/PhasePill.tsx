@@ -56,7 +56,8 @@ export function PhasePill({
   const isPlanned = pillStyle === "solid" && status === "planned" && progress === 0 && !isDone;
 
   const showLabel = width >= 18 && label;
-  const showProgress = !isDone && !isPlanned && progress > 0 && progress < 100 && width >= 110;
+  // Barre de progression visible dès 30 px ; texte "— X%" affiché à partir de 110 px
+  const showProgress = !isDone && !isPlanned && progress > 0 && progress < 100 && width >= 30;
 
   // Shorten label for narrow pills
   const ABBREVS: Record<string, string> = {
@@ -70,6 +71,17 @@ export function PhasePill({
     if (width >= 36) return ABBREVS[l] ?? (l.length > 4 ? l.slice(0, 3) + "." : l);
     return ABBREVS[l] ?? l.slice(0, 1) + ".";
   };
+
+  // Contour coloré par statut (via box-shadow interne pour ne pas interférer avec outline selection/edit)
+  const STATUS_SHADOW: Record<string, string> = {
+    in_progress: "inset 0 0 0 2px rgba(255,255,255,0.45)",
+    review:      "inset 0 0 0 2px rgba(167,139,250,0.85)",
+    risk:        "inset 0 0 0 2px rgba(251,191,36,0.9)",
+    late:        "inset 0 0 0 2.5px rgba(239,68,68,0.95)",
+  };
+  const statusShadow = !editing && !selected && pillStyle === "solid" && !isDone && !isPlanned && status
+    ? STATUS_SHADOW[status]
+    : undefined;
 
   const pillStyles: React.CSSProperties = {
     position: "absolute",
@@ -92,6 +104,7 @@ export function PhasePill({
       ? "2px solid #F59E0B"
       : selected ? "2px solid var(--klint-navy, #001036)" : undefined,
     outlineOffset: (editing || selected) ? "1px" : undefined,
+    boxShadow: statusShadow,
     ...(pillStyle === "solid"
       ? isDone
         ? {
@@ -152,7 +165,7 @@ export function PhasePill({
           maxWidth: "100%",
         }}>
           {isDone ? `✓ ${displayLabel(label)}` : displayLabel(label)}
-          {showProgress && width >= 110 && ` — ${progress}%`}
+          {showProgress && width >= 110 && ` ${progress}%`}
         </span>
       )}
       {isSynced && (
