@@ -33,14 +33,15 @@ type PhaseRow = {
 };
 
 async function fetchPhases(planningId: string): Promise<PhaseRow[]> {
-  return sql`
+  const rows = await sql`
     SELECT ph.id, l.name as lot_name, ph.label as phase_label, ph.sort_order
     FROM phases ph
     JOIN lots l ON l.id = ph.lot_id
     JOIN domains d ON d.id = l.domain_id
     WHERE d.planning_id = ${planningId}
     ORDER BY d.sort_order, l.sort_order, ph.sort_order
-  ` as Promise<PhaseRow[]>;
+  `;
+  return rows as PhaseRow[];
 }
 
 async function run() {
