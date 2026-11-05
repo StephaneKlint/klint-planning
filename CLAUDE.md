@@ -169,6 +169,36 @@ Statut **non synchronisé** par défaut (champ `status` exclu des champs propag�
 
 Migration idempotente : `lib/db/migrate-planning-sync.ts` — déjà appliquée en prod Neon.
 
+## Fonctionnalités récentes — rappels techniques
+
+### Couplage statut/avancement (lib/actions/planning.ts)
+`updatePhaseStatus` : si `status === "done"` → force `progress: 100` dans le `.set()` et dans `propagatePhaseSyncGroup()`.
+`updatePhaseProgress` : si `progress === 100` → force `status: "done"` dans le `.set()` et dans `propagatePhaseSyncGroup()`.
+Les deux champs sont propagés en même temps via `propagatePhaseSyncGroup`.
+
+### Rendu visuel des phases (components/gantt/PhasePill.tsx)
+- **Terminée** (`status === "done"` OR `progress >= 100`) : stries diagonales + ✓.
+- **Planifiée à 0 %** (`status === "planned"` AND `progress === 0`) : contour pointillé, fond transparent.
+- **Autres statuts** : `box-shadow` interne par statut (pas `outline` — réservé à la sélection/édition) :
+  - `in_progress` : blanc semi-transparent ; `review` : violet ; `risk` : orange ; `late` : rouge.
+- **Barre de progression** : `rgba(255,255,255,0.25)`, seuil d'affichage `width >= 30px` (texte "X%" à 110px).
+
+### Filtre par année (app/(app)/plannings/PlanningListClient.tsx)
+`yearFilter` : `useState<number | null>(() => new Date().getFullYear())`. Pilules visibles dès que ≥ 2 années distinctes existent dans l'ensemble des plannings (actifs + archivés + désactivés). "Toutes" = null. Appliqué via `applyYearFilter()` sur l'onglet actif et sur `activeGroups`.
+
+### Scripts de sync one-shot (scripts/)
+**Règle critique** : toujours matcher par clé composite `lot_name::phase_label`, jamais par libellé seul — des dizaines de lots partagent des libellés génériques ("Cadrage", "Développement", "Recette").
+Mapping de noms de lots si les deux plannings utilisent des noms différents pour le même périmètre : `LOT_NAME_MAP = { "E-Facturation - SAP": "E-Facturation - AMO" }`.
+
+**⚠️ BUG TIMEZONE — ne jamais utiliser `toISOString().slice(0,10)` pour écrire des dates en DB.**
+Neon renvoie les colonnes `DATE` sous forme de `Date` JavaScript à minuit UTC. En Paris (UTC+1), `new Date("2026-01-04T00:00:00Z").toISOString().slice(0,10)` = `"2026-01-04"` correct en lecture. Mais passer cette chaîne à Neon en écriture (paramètre SQL) l'interprète en heure locale (UTC+1) → minuit local = UTC−1h → stocke "2026-01-03" (−1 jour).
+
+**Patterns sûrs :**
+- **Lecture** : `to_char(ph.start_date, 'YYYY-MM-DD')` côté SQL → Neon renvoie directement une chaîne "YYYY-MM-DD" sans objet Date.
+- **Copie DB→DB** : `UPDATE tgt SET start_date = src.start_date FROM phases src WHERE tgt.id = $t AND src.id = $s` — zero conversion JS, zéro risque de décalage.
+
+Phases sans libellé (null) : impossible à matcher par clé composite → recourir au match par `sort_order`.
+
 ## Points d'attention
 
 - Les migrations one-shot sont dans `lib/db/migrate-*.ts` — les exécuter manuellement si besoin avec `npx ts-node` ou via script npm.

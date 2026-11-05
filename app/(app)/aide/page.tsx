@@ -362,11 +362,11 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
-  { id: "plannings",    num: "1",  emoji: "📋", title: "Mes plannings",                       keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono modele vide renommer supprimer corbeille restaurer soft delete template bibliothèque projet dossier grouper regrouper portefeuille sections" },
+  { id: "plannings",    num: "1",  emoji: "📋", title: "Mes plannings",                       keywords: "plannings créer dupliquer archiver liste importer exporter json import export nouveau planning multi mono modele vide renommer supprimer corbeille restaurer soft delete template bibliothèque projet dossier grouper regrouper portefeuille sections filtre année an 2026 2027 multi-années" },
   { id: "structure",    num: "2",  emoji: "🏗️", title: "Structure d'un planning",             keywords: "domaine lot sous-projet phase jalon hiérarchie structure organisation créer ajouter type cadrage dev développement recette formation personnalisé ordre réordonner congés absences cp rtt arrêt" },
-  { id: "gantt",        num: "3",  emoji: "📊", title: "Vue Gantt — navigation et affichage", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter membre toolbar barre outils filtres vide empty état domaine créer supprimer tooltip survol dates stacking pile track hauteur week-end fermeture bandes baseline" },
+  { id: "gantt",        num: "3",  emoji: "📊", title: "Vue Gantt — navigation et affichage", keywords: "gantt domaine lot phase jalon navigation zoom coloration affichage filtrer période présence ajouter membre toolbar barre outils filtres vide empty état domaine créer supprimer tooltip survol dates stacking pile track hauteur week-end fermeture bandes baseline visuel statut rendu contour anneau stries planifiée" },
   { id: "drag",         num: "4",  emoji: "🖱️", title: "Glisser-déposer (drag & drop)",       keywords: "drag drop glisser déposer déplacer phase jalon inter-lot horizontale verticale date resize redimensionner bord gauche droit annuler undo ctrl z fantôme ghost" },
-  { id: "edit",         num: "5",  emoji: "✏️", title: "Édition phases et jalons",            keywords: "éditer phase jalon dates statut avancement couleur note assigné responsable sélection multiple recherche palette commandes ctrl k fermer overlay dupliquer duplication copier éléments items ateliers livrables tickets cas recette importer import bridge claude fichier json md csv statut todo doing done fait annulé avancement automatique progress" },
+  { id: "edit",         num: "5",  emoji: "✏️", title: "Édition phases et jalons",            keywords: "éditer phase jalon dates statut avancement couleur note assigné responsable sélection multiple recherche palette commandes ctrl k fermer overlay dupliquer duplication copier éléments items ateliers livrables tickets cas recette importer import bridge claude fichier json md csv statut todo doing done fait annulé avancement automatique progress couplage terminée 100 visuel contour anneau rendu stries planifiée barre progression" },
   { id: "bulkbar",      num: "6",  emoji: "☑️", title: "Sélection multiple et actions groupées", keywords: "sélection multiple phases jalons bulkbar barre actions groupées ctrl clic multi select statut dupliquer vers lot confirmer désélectionner" },
   { id: "raccourcis",   num: "7",  emoji: "⌨️", title: "Raccourcis clavier",                  keywords: "raccourcis clavier ctrl k esc flèches zoom selection escape undo annuler ctrl z" },
   { id: "baseline",     num: "8",  emoji: "📌", title: "Plans de référence (Baselines)",      keywords: "baseline plan référence multi plusieurs nommée comparaison barre bleue dates décalées snapshot toggle afficher masquer créer supprimer glissement retard raccourci écart kick-off copil avenant avant après liste dropdown" },
@@ -462,6 +462,11 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
           </div>
         ))}
       </Mock>
+      <How title="Filtrer par année">
+        <Step n={1}>Lorsque vous avez des plannings sur plusieurs années (2026, 2027…), des boutons-pilules apparaissent automatiquement sous les onglets Actifs / Archivés / Désactivés.</Step>
+        <Step n={2}>Cliquez sur une année pour n&apos;afficher que les plannings de cette année. Cliquez sur <UI>Toutes</UI> pour lever le filtre.</Step>
+        <Step n={3}>Par défaut, l&apos;année en cours est sélectionnée. Le filtre s&apos;applique à l&apos;onglet actif et aux groupes de synchronisation affichés.</Step>
+      </How>
       <Tip>Pour un démarrage rapide, dupliquez un planning existant de même nature — vous gardez la structure des domaines, les types de jalons et la cadence configurée.</Tip>
     </section>
   ),
@@ -570,6 +575,12 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
         <Step n={3}>Sélectionnez le contact dans la liste, choisissez un rôle (<strong>Responsable planning</strong>, <strong>Contributeur</strong> ou <strong>Observateur</strong>), puis cliquez sur <UI>Ajouter</UI>.</Step>
         <Step n={4}>Le nouveau membre apparaît dans les avatars et dans l&apos;onglet <UI>Répertoire</UI> des Paramètres.</Step>
       </How>
+      <How title="Rendu visuel des phases selon statut et avancement">
+        <Step n={1}><strong>Terminée</strong> (statut = Terminée ou avancement = 100 %) : la phase s&apos;affiche avec des <strong>stries diagonales</strong> et un ✓ devant le libellé.</Step>
+        <Step n={2}><strong>Planifiée à 0 %</strong> (statut = Planifiée, avancement = 0 %) : la phase s&apos;affiche en <strong>contour pointillé</strong>, fond transparent.</Step>
+        <Step n={3}><strong>Autres statuts</strong> : un <strong>anneau coloré interne</strong> distingue visuellement — blanc pour En cours, violet pour En revue, orange pour À risque, rouge pour En retard.</Step>
+        <Step n={4}><strong>Avancement en cours</strong> (0 % &lt; avancement &lt; 100 %) : une <strong>barre blanche translucide</strong> se superpose à la phase et indique la progression. Elle est visible dès que la phase fait au moins 30 px de large.</Step>
+      </How>
       <Tip>Sur un grand planning : combinez <UI>Projets</UI> (masquer les lots terminés) + zoom 12m pour une vue synthèse propre avant un COPIL ou un export PDF.</Tip>
     </section>
   ),
@@ -656,6 +667,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
           ))}
         </div>
       </Mock>
+      <Tip>Statut et avancement sont couplés : passer au statut <strong>Terminée</strong> force l&apos;avancement à <strong>100 %</strong>, et inversement mettre l&apos;avancement à 100 % bascule automatiquement au statut Terminée. Cette mise à jour se propage aux phases liées dans les plannings synchronisés.</Tip>
       <Tip>Le champ <strong>Type</strong> reste modifiable après la création de la phase, pas seulement au moment où on l&apos;ajoute.</Tip>
       <How title="Dupliquer une phase">
         <Step n={1}>Dans le footer du panneau, cliquez sur <UI>Dupliquer</UI>.</Step>
