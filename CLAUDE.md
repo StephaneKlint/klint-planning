@@ -194,8 +194,10 @@ Mapping de noms de lots si les deux plannings utilisent des noms différents pou
 Neon renvoie les colonnes `DATE` sous forme de `Date` JavaScript à minuit UTC. En Paris (UTC+1), `new Date("2026-01-04T00:00:00Z").toISOString().slice(0,10)` = `"2026-01-04"` correct en lecture. Mais passer cette chaîne à Neon en écriture (paramètre SQL) l'interprète en heure locale (UTC+1) → minuit local = UTC−1h → stocke "2026-01-03" (−1 jour).
 
 **Patterns sûrs :**
-- **Lecture** : `to_char(ph.start_date, 'YYYY-MM-DD')` côté SQL → Neon renvoie directement une chaîne "YYYY-MM-DD" sans objet Date.
+- **"Aujourd'hui" en Paris** : `new Date().toLocaleDateString("sv", { timeZone: "Europe/Paris" })` → renvoie "YYYY-MM-DD" en heure de Paris. Ne PAS utiliser `new Date().toISOString().slice(0,10)` qui donne l'heure UTC (= hier à Paris entre 00h00 et 01h00).
+- **Lecture dates DB** : `to_char(ph.start_date, 'YYYY-MM-DD')` côté SQL → Neon renvoie une chaîne "YYYY-MM-DD" sans objet Date.
 - **Copie DB→DB** : `UPDATE tgt SET start_date = src.start_date FROM phases src WHERE tgt.id = $t AND src.id = $s` — zero conversion JS, zéro risque de décalage.
+- **Calculs Gantt (ganttUtils.ts)** : toujours créer les Date avec `"T00:00:00Z"` et utiliser exclusivement `getUTC*` / `setUTC*`. Ne jamais mélanger local et UTC.
 
 Phases sans libellé (null) : impossible à matcher par clé composite → recourir au match par `sort_order`.
 

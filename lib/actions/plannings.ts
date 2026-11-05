@@ -51,7 +51,7 @@ export async function createPlanning(formData: FormData) {
     viewStart:     data.viewStart,
     viewEnd:       data.viewEnd,
     description:   data.description ?? null,
-    referenceDate: new Date().toISOString().split("T")[0],
+    referenceDate: new Date().toLocaleDateString("sv", { timeZone: "Europe/Paris" }),
   }).returning({ id: plannings.id });
 
   await db.insert(planningSettings).values({
@@ -326,7 +326,7 @@ export async function importPlanningFromJSON(jsonStr: string): Promise<string> {
     viewStart:     p.viewStart,
     viewEnd:       p.viewEnd,
     description:   p.description ?? null,
-    referenceDate: p.referenceDate ?? new Date().toISOString().slice(0, 10),
+    referenceDate: p.referenceDate ?? new Date().toLocaleDateString("sv", { timeZone: "Europe/Paris" }),
   }).returning({ id: plannings.id });
 
   const newId = newP.id;
