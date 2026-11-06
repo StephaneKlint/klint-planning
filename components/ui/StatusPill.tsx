@@ -8,7 +8,7 @@ export type StatusCode = "planned" | "in_progress" | "review" | "done" | "risk" 
 const STATUS_LABELS: Record<StatusCode, string> = {
   planned:     "Planifié",
   in_progress: "En cours",
-  review:      "En revue",
+  review:      "En attente validation QA",
   done:        "Terminé",
   risk:        "À risque",
   late:        "En retard",

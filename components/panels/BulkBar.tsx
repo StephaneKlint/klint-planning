@@ -18,7 +18,7 @@ import styles from "./BulkBar.module.css";
 const STATUS_OPTIONS: { value: StatusCode; label: string }[] = [
   { value: "planned",     label: "Planifié"   },
   { value: "in_progress", label: "En cours"   },
-  { value: "review",      label: "En revue"   },
+  { value: "review",      label: "En attente validation QA" },
   { value: "done",        label: "Terminé"    },
   { value: "risk",        label: "À risque"   },
   { value: "late",        label: "En retard"  },

@@ -28,7 +28,7 @@ import styles from "./EditPanel.module.css";
 const STATUS_OPTIONS: { value: StatusCode; label: string; color: string; bg: string }[] = [
   { value: "planned",     label: "Planifiée",  color: "#94A3B8", bg: "#F1F5F9" },
   { value: "in_progress", label: "En cours",   color: "#3B82F6", bg: "#E0EBFE" },
-  { value: "review",      label: "En revue",   color: "#EAB308", bg: "#FEF3C7" },
+  { value: "review",      label: "En attente validation QA", color: "#EAB308", bg: "#FEF3C7" },
   { value: "done",        label: "Terminée",   color: "#16A34A", bg: "#DCFCE7" },
   { value: "risk",        label: "À risque",   color: "#F59E0B", bg: "#FEF3C7" },
   { value: "late",        label: "En retard",  color: "#DC2626", bg: "#FEE2E2" },

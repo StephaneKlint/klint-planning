@@ -180,7 +180,7 @@ export default async function SynthesePage({ searchParams }: Props) {
         </div>
         <div className={`${styles.kpiCard} ${styles.kpiReview}`}>
           <span className={styles.kpiValue}>{counts.review}</span>
-          <span className={styles.kpiLabel}>En revue</span>
+          <span className={styles.kpiLabel}>En attente QA</span>
         </div>
         <div className={`${styles.kpiCard} ${styles.kpiRisk}`}>
           <span className={styles.kpiValue}>{counts.risk}</span>

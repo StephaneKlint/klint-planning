@@ -578,7 +578,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
       <How title="Rendu visuel des phases selon statut et avancement">
         <Step n={1}><strong>Terminée</strong> (statut = Terminée ou avancement = 100 %) : la phase s&apos;affiche avec des <strong>stries diagonales</strong> et un ✓ devant le libellé.</Step>
         <Step n={2}><strong>Planifiée à 0 %</strong> (statut = Planifiée, avancement = 0 %) : la phase s&apos;affiche en <strong>contour pointillé</strong>, fond transparent.</Step>
-        <Step n={3}><strong>Autres statuts</strong> : un <strong>anneau coloré interne</strong> distingue visuellement — blanc pour En cours, violet pour En revue, orange pour À risque, rouge pour En retard.</Step>
+        <Step n={3}><strong>Autres statuts</strong> : un <strong>anneau coloré interne</strong> distingue visuellement — blanc pour En cours, violet pour En attente validation QA, orange pour À risque, rouge pour En retard.</Step>
         <Step n={4}><strong>Avancement en cours</strong> (0 % &lt; avancement &lt; 100 %) : une <strong>barre blanche translucide</strong> se superpose à la phase et indique la progression. Elle est visible dès que la phase fait au moins 30 px de large.</Step>
       </How>
       <Tip>Sur un grand planning : combinez <UI>Projets</UI> (masquer les lots terminés) + zoom 12m pour une vue synthèse propre avant un COPIL ou un export PDF.</Tip>
@@ -654,7 +654,7 @@ const SECTION_BODIES: Record<string, React.ReactNode> = {
             ["Type", "Liste propre à ce planning (ex. Cadrage/Dev/Recette pour un projet ; CP/RTT/Formation pour un suivi de congés) — se configure dans Paramètres → Types de phases"],
             ["Libellé", "Nom libre (si vide, le type est affiché dans le Gantt)"],
             ["Dates début/fin", "Champs date ou via drag sur le Gantt"],
-            ["Statut", "Planifiée / En cours / En revue / Terminée / À risque / En retard"],
+            ["Statut", "Planifiée / En cours / En attente validation QA / Terminée / À risque / En retard"],
             ["Avancement", "0 – 100 %"],
             ["Responsables", "Membres du planning (multi-sélection)"],
             ["Note interne", "Champ texte libre"],

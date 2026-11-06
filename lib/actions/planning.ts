@@ -100,8 +100,20 @@ export async function updatePhaseProgress(input: z.infer<typeof UpdatePhaseProgr
   const data = UpdatePhaseProgressSchema.parse(input);
   await assertCanEdit(data.planningId);
 
-  // Cohérence status/progress : 100% → force "done"
-  const extraStatus = data.progress === 100 ? { status: "done" as const } : {};
+  // Lire le statut actuel pour décider de l'auto-transition
+  const [current] = await db
+    .select({ status: phases.status })
+    .from(phases)
+    .where(eq(phases.id, data.phaseId));
+
+  // Couplage avancement → statut :
+  //   100 %           → "done"       (toujours)
+  //   > 0 % + planifiée → "in_progress" (ne touche pas risk/late/review/done)
+  const autoStatus: "done" | "in_progress" | null =
+    data.progress === 100 ? "done" :
+    data.progress > 0 && current?.status === "planned" ? "in_progress" :
+    null;
+  const extraStatus = autoStatus ? { status: autoStatus as const } : {};
 
   const [updated] = await db
     .update(phases)
