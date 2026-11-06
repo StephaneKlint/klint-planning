@@ -113,7 +113,7 @@ export async function updatePhaseProgress(input: z.infer<typeof UpdatePhaseProgr
     data.progress === 100 ? "done" :
     data.progress > 0 && current?.status === "planned" ? "in_progress" :
     null;
-  const extraStatus = autoStatus ? { status: autoStatus as const } : {};
+  const extraStatus = autoStatus !== null ? { status: autoStatus } : {};
 
   const [updated] = await db
     .update(phases)
