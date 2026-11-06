@@ -172,9 +172,26 @@ Migration idempotente : `lib/db/migrate-planning-sync.ts` — déjà appliquée 
 ## Fonctionnalités récentes — rappels techniques
 
 ### Couplage statut/avancement (lib/actions/planning.ts)
-`updatePhaseStatus` : si `status === "done"` → force `progress: 100` dans le `.set()` et dans `propagatePhaseSyncGroup()`.
-`updatePhaseProgress` : si `progress === 100` → force `status: "done"` dans le `.set()` et dans `propagatePhaseSyncGroup()`.
-Les deux champs sont propagés en même temps via `propagatePhaseSyncGroup`.
+
+**Règle invariante** : `progress=100` ↔ `status="done"`. Ces deux champs sont toujours cohérents — ne jamais les écrire indépendamment en DB sans appliquer la règle.
+
+Implémentation dans **`lib/actions/planning.ts`** :
+
+| Action | Règle appliquée |
+|---|---|
+| `updatePhaseStatus` | `status=done` → force `progress=100` ; propagation inclut les deux |
+| `updatePhaseProgress` | `progress=100` → force `status=done` (toujours, même si risk/late) |
+| | `progress>0` + `status∈{planned,done}` → force `status=in_progress` |
+| | `progress=0` + `status=done` → force `status=planned` (réinitialisation) |
+| | `status∈{risk,late,review}` → non touché si progress < 100 |
+| `bulkUpdatePhaseStatus` | `status=done` → force `progress=100` pour toutes les phases ; propagation inclut les deux |
+| Import JSON (`plannings.ts`) | normalisation à l'écriture : `status=done→progress=100`, `progress≥100→status=done` |
+
+**Ce que PhasePill affiche** (ne pas modifier sans cohérence DB) :
+- Stries : `status === "done"` OU `progress >= 100` (fallback sécurité)
+- Tirets : `status === "planned"` ET `progress === 0`
+
+**Script de correction one-shot disponible** : `scripts/fix-done-status.ts` (58 phases corrigées le 2026-11-06) et `scripts/fix-done-zero-progress.ts` (4 phases corrigées le 2026-11-06).
 
 ### Rendu visuel des phases (components/gantt/PhasePill.tsx)
 - **Terminée** (`status === "done"` OR `progress >= 100`) : stries diagonales + ✓.

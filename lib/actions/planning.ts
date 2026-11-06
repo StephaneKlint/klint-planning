@@ -107,11 +107,14 @@ export async function updatePhaseProgress(input: z.infer<typeof UpdatePhaseProgr
     .where(eq(phases.id, data.phaseId));
 
   // Couplage avancement → statut :
-  //   100 %           → "done"       (toujours)
-  //   > 0 % + planifiée → "in_progress" (ne touche pas risk/late/review/done)
-  const autoStatus: "done" | "in_progress" | null =
+  //   100 %                       → "done"        (toujours, même si risk/late)
+  //   > 0 % + planifiée ou done   → "in_progress" (ne touche pas risk/late/review)
+  //   0 %  + done                 → "planned"     (réinitialisation si on revient à 0)
+  const currentStatus = current?.status ?? null;
+  const autoStatus: "done" | "in_progress" | "planned" | null =
     data.progress === 100 ? "done" :
-    data.progress > 0 && current?.status === "planned" ? "in_progress" :
+    data.progress > 0 && (currentStatus === "planned" || currentStatus === "done") ? "in_progress" :
+    data.progress === 0 && currentStatus === "done" ? "planned" :
     null;
   const extraStatus = autoStatus !== null ? { status: autoStatus } : {};
 
@@ -321,9 +324,12 @@ export async function bulkUpdatePhaseStatus(input: z.infer<typeof BulkUpdateStat
   const data = BulkUpdateStatusSchema.parse(input);
   await assertCanEdit(data.planningId);
 
+  // Cohérence status/progress : "done" → force 100%
+  const extraProgress = data.status === "done" ? { progress: 100 } : {};
+
   await db
     .update(phases)
-    .set({ status: data.status, version: sql<number>`${phases.version} + 1` })
+    .set({ status: data.status, ...extraProgress, version: sql<number>`${phases.version} + 1` })
     .where(inArray(phases.id, data.phaseIds));
 
   await logActivity(data.planningId, "bulk_status_changed", "phase", data.phaseIds[0],
@@ -332,7 +338,7 @@ export async function bulkUpdatePhaseStatus(input: z.infer<typeof BulkUpdateStat
 
   const allAffected = new Set<string>();
   for (const phaseId of data.phaseIds) {
-    const affected = await propagatePhaseSyncGroup(phaseId, { status: data.status });
+    const affected = await propagatePhaseSyncGroup(phaseId, { status: data.status, ...extraProgress });
     for (const pid of affected) allAffected.add(pid);
   }
   for (const pid of allAffected) revalidatePath(`/p/${pid}`);

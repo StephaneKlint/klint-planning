@@ -419,18 +419,25 @@ export async function importPlanningFromJSON(jsonStr: string): Promise<string> {
       if (phasesArr.length > 0) {
         await db.insert(phases).values(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          phasesArr.map((ph: any, idx: number) => ({
-            lotId:     newLot.id,
-            type:      String(ph.type ?? "custom"),
-            label:     String(ph.label ?? ""),
-            startDate: ph.startDate,
-            endDate:   ph.endDate,
-            status:    ph.status ?? null,
-            progress:  Number(ph.progress ?? 0),
-            color:     ph.color ?? null,
-            note:      ph.note ?? null,
-            sortOrder: Number(ph.sortOrder ?? idx),
-          }))
+          phasesArr.map((ph: any, idx: number) => {
+            const rawProgress = Number(ph.progress ?? 0);
+            const rawStatus   = ph.status ?? null;
+            // Normalisation : progress=100 → done ; done → progress=100
+            const progress = rawStatus === "done" ? 100 : rawProgress;
+            const status   = rawProgress >= 100 ? "done" : rawStatus;
+            return {
+              lotId:     newLot.id,
+              type:      String(ph.type ?? "custom"),
+              label:     String(ph.label ?? ""),
+              startDate: ph.startDate,
+              endDate:   ph.endDate,
+              status,
+              progress,
+              color:     ph.color ?? null,
+              note:      ph.note ?? null,
+              sortOrder: Number(ph.sortOrder ?? idx),
+            };
+          })
         );
       }
 
@@ -579,24 +586,34 @@ export async function updatePlanningFromJSON(planningId: string, jsonStr: string
 
         if (matchPh) {
           // Mise à jour des données modifiables
+          const updStatus   = ph.status   !== undefined ? ph.status   : matchPh.status;
+          const updProgress = ph.progress !== undefined ? Number(ph.progress) : matchPh.progress;
+          // Normalisation : progress=100 → done ; done → progress=100
+          const normProgress = updStatus === "done" ? 100 : updProgress;
+          const normStatus   = updProgress >= 100   ? "done" : updStatus;
           await db.update(phases).set({
             startDate: ph.startDate ?? matchPh.startDate,
             endDate:   ph.endDate   ?? matchPh.endDate,
-            status:    ph.status   !== undefined ? ph.status   : matchPh.status,
-            progress:  ph.progress !== undefined ? Number(ph.progress) : matchPh.progress,
+            status:    normStatus,
+            progress:  normProgress,
             color:     ph.color    !== undefined ? ph.color    : matchPh.color,
             note:      ph.note     !== undefined ? ph.note     : matchPh.note,
           }).where(eq(phases.id, matchPh.id));
         } else {
           // Création de la phase
+          const rawProgress = Number(ph.progress ?? 0);
+          const rawStatus   = ph.status ?? null;
+          // Normalisation : progress=100 → done ; done → progress=100
+          const normProgress = rawStatus === "done" ? 100 : rawProgress;
+          const normStatus   = rawProgress >= 100   ? "done" : rawStatus;
           await db.insert(phases).values({
             lotId,
             type:      phType,
             label:     phLabel,
             startDate: ph.startDate,
             endDate:   ph.endDate,
-            status:    ph.status    ?? null,
-            progress:  Number(ph.progress ?? 0),
+            status:    normStatus,
+            progress:  normProgress,
             color:     ph.color     ?? null,
             note:      ph.note      ?? null,
             sortOrder: Number(ph.sortOrder ?? 0),
@@ -749,16 +766,21 @@ export async function importLegacyPlanningJSON(planningId: string, jsonStr: stri
     if (phasesArr.length > 0) {
       await db.insert(phases).values(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        phasesArr.map((ph: any, idx: number) => ({
-          lotId:     newLot.id,
-          type:      String(ph.type ?? "custom"),
-          label:     ph.label ? String(ph.label) : null,
-          startDate: String(ph.start ?? ph.startDate),
-          endDate:   String(ph.end ?? ph.endDate),
-          status:    (ph.status ? (LEGACY_STATUS_MAP[ph.status] ?? null) : null) as "planned" | "in_progress" | "review" | "done" | "risk" | "late" | null,
-          progress:  0,
-          sortOrder: idx,
-        }))
+        phasesArr.map((ph: any, idx: number) => {
+          const rawStatus = (ph.status ? (LEGACY_STATUS_MAP[ph.status] ?? null) : null) as "planned" | "in_progress" | "review" | "done" | "risk" | "late" | null;
+          // Normalisation : si status=done on part à 100%, sinon 0%
+          const normProgress = rawStatus === "done" ? 100 : 0;
+          return {
+            lotId:     newLot.id,
+            type:      String(ph.type ?? "custom"),
+            label:     ph.label ? String(ph.label) : null,
+            startDate: String(ph.start ?? ph.startDate),
+            endDate:   String(ph.end ?? ph.endDate),
+            status:    rawStatus,
+            progress:  normProgress,
+            sortOrder: idx,
+          };
+        })
       );
     }
 
