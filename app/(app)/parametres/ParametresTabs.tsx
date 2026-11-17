@@ -123,6 +123,43 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
   const [calEnd, setCalEnd] = useState("");
   const [calColor, setCalColor] = useState("#FED7AA");
   const [calSeedMsg, setCalSeedMsg] = useState<string | null>(null);
+  // Edition inline + confirmation de suppression sans window.confirm()
+  const [editingPeriodId, setEditingPeriodId]   = useState<string | null>(null);
+  const [editData, setEditData]                 = useState<{ label: string; startDate: string; endDate: string; color: string } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
+
+  function startEditPeriod(cp: ClosurePeriodRow) {
+    setEditingPeriodId(cp.id);
+    setEditData({ label: cp.label, startDate: cp.startDate, endDate: cp.endDate, color: cp.color });
+    setConfirmDeleteId(null);
+  }
+  function cancelEditPeriod() {
+    setEditingPeriodId(null);
+    setEditData(null);
+  }
+  function saveEditPeriod(cp: ClosurePeriodRow) {
+    if (!editData || !editData.label.trim() || !editData.startDate || !editData.endDate) return;
+    if (editData.endDate < editData.startDate) { alert("La date de fin doit être après la date de début."); return; }
+    setCalPeriods((prev) => prev.map((p) => p.id === cp.id ? { ...p, ...editData, label: editData.label.trim() } : p));
+    cancelEditPeriod();
+    startTransition(async () => {
+      await updateClosurePeriod(cp.id, { label: editData.label.trim(), startDate: editData.startDate, endDate: editData.endDate, color: editData.color });
+      router.refresh();
+    });
+  }
+  function requestDeletePeriod(id: string) {
+    setConfirmDeleteId(id);
+    setEditingPeriodId(null);
+    setEditData(null);
+  }
+  function confirmDeletePeriod(cp: ClosurePeriodRow) {
+    setConfirmDeleteId(null);
+    setCalPeriods((prev) => prev.filter((p) => p.id !== cp.id));
+    startTransition(async () => {
+      await deleteClosurePeriod(cp.id, planning.id);
+      router.refresh();
+    });
+  }
 
   const CLOSURE_COLORS = [
     { hex: "#FEF3C7", label: "Jaune pâle" },
@@ -873,46 +910,111 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
           {calPeriods.filter((cp) => cp.type === "holiday").length > 0 && (
             <table className={styles.table} style={{ marginBottom: 24 }}>
               <thead>
-                <tr><th>Libellé</th><th>Date</th><th>Actif</th><th></th></tr>
+                <tr><th>Libellé</th><th>Date</th><th>Actif</th><th style={{ width: 60 }}></th></tr>
               </thead>
               <tbody>
-                {calPeriods.filter((cp) => cp.type === "holiday").map((cp) => (
-                  <tr key={cp.id}>
-                    <td>{cp.label}</td>
-                    <td className={styles.tdMuted}>{fmtDate(cp.startDate)}</td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={cp.active}
-                        disabled={isPending}
-                        onChange={(e) => {
-                          const next = calPeriods.map((p) => p.id === cp.id ? { ...p, active: e.target.checked } : p);
-                          setCalPeriods(next);
-                          startTransition(async () => {
-                            await updateClosurePeriod(cp.id, { active: e.target.checked });
-                            router.refresh();
-                          });
-                        }}
-                      />
-                    </td>
-                    <td>
-                      <button
-                        className={styles.deleteRowBtn}
-                        disabled={isPending}
-                        onClick={() => {
-                          if (!confirm(`Supprimer "${cp.label}" ?`)) return;
-                          setCalPeriods((prev) => prev.filter((p) => p.id !== cp.id));
-                          startTransition(async () => {
-                            await deleteClosurePeriod(cp.id, planning.id);
-                            router.refresh();
-                          });
-                        }}
-                      >
-                        ×
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {calPeriods.filter((cp) => cp.type === "holiday").map((cp) => {
+                  if (editingPeriodId === cp.id && editData) {
+                    return (
+                      <tr key={cp.id} style={{ background: "var(--klint-paper, #F6F7FB)" }}>
+                        <td>
+                          <input
+                            className={styles.addInput}
+                            value={editData.label}
+                            onChange={(e) => setEditData({ ...editData, label: e.target.value })}
+                            maxLength={100}
+                            style={{ width: "100%", minWidth: 120 }}
+                            autoFocus
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="date"
+                            className={styles.addInput}
+                            value={editData.startDate}
+                            onChange={(e) => setEditData({ ...editData, startDate: e.target.value, endDate: e.target.value })}
+                          />
+                        </td>
+                        <td />
+                        <td>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <button
+                              className={styles.addBtn}
+                              disabled={isPending || !editData.label.trim() || !editData.startDate}
+                              onClick={() => saveEditPeriod(cp)}
+                              style={{ padding: "0 10px", height: 26, fontSize: 11 }}
+                            >✓</button>
+                            <button
+                              className={styles.cancelBtn}
+                              onClick={cancelEditPeriod}
+                              style={{ padding: "0 8px", height: 26, fontSize: 11 }}
+                            >✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  if (confirmDeleteId === cp.id) {
+                    return (
+                      <tr key={cp.id} style={{ background: "#FEF2F2" }}>
+                        <td colSpan={4}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "2px 0" }}>
+                            <span style={{ fontSize: 12, color: "#DC2626", fontWeight: 600 }}>
+                              Supprimer &laquo;{cp.label}&raquo; ?
+                            </span>
+                            <button
+                              className={styles.deleteRowBtn}
+                              disabled={isPending}
+                              onClick={() => confirmDeletePeriod(cp)}
+                              style={{ width: "auto", padding: "0 10px", color: "#DC2626", borderColor: "#DC2626", fontSize: 12 }}
+                            >Oui, supprimer</button>
+                            <button
+                              className={styles.cancelBtn}
+                              onClick={() => setConfirmDeleteId(null)}
+                              style={{ padding: "0 8px", height: 22, fontSize: 11 }}
+                            >Annuler</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={cp.id}>
+                      <td>{cp.label}</td>
+                      <td className={styles.tdMuted}>{fmtDate(cp.startDate)}</td>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={cp.active}
+                          disabled={isPending}
+                          onChange={(e) => {
+                            setCalPeriods(calPeriods.map((p) => p.id === cp.id ? { ...p, active: e.target.checked } : p));
+                            startTransition(async () => {
+                              await updateClosurePeriod(cp.id, { active: e.target.checked });
+                              router.refresh();
+                            });
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button
+                            className={styles.editRowBtn}
+                            disabled={isPending}
+                            title="Modifier"
+                            onClick={() => startEditPeriod(cp)}
+                          >✎</button>
+                          <button
+                            className={styles.deleteRowBtn}
+                            disabled={isPending}
+                            title="Supprimer"
+                            onClick={() => requestDeletePeriod(cp.id)}
+                          >×</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -927,53 +1029,144 @@ export function ParametresTabs({ data, appCfg, userRole = "admin", permissions =
           {calPeriods.filter((cp) => cp.type === "custom").length > 0 && (
             <table className={styles.table} style={{ marginBottom: 16 }}>
               <thead>
-                <tr><th>Libellé</th><th>Début</th><th>Fin</th><th>Couleur</th><th>Actif</th><th></th></tr>
+                <tr><th>Libellé</th><th>Début</th><th>Fin</th><th>Couleur</th><th>Actif</th><th style={{ width: 60 }}></th></tr>
               </thead>
               <tbody>
-                {calPeriods.filter((cp) => cp.type === "custom").map((cp) => (
-                  <tr key={cp.id}>
-                    <td>{cp.label}</td>
-                    <td className={styles.tdMuted}>{fmtDate(cp.startDate)}</td>
-                    <td className={styles.tdMuted}>{fmtDate(cp.endDate)}</td>
-                    <td>
-                      <span
-                        className={styles.colorSwatch}
-                        style={{ background: cp.color, border: "1px solid #e5e7eb" }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={cp.active}
-                        disabled={isPending}
-                        onChange={(e) => {
-                          const next = calPeriods.map((p) => p.id === cp.id ? { ...p, active: e.target.checked } : p);
-                          setCalPeriods(next);
-                          startTransition(async () => {
-                            await updateClosurePeriod(cp.id, { active: e.target.checked });
-                            router.refresh();
-                          });
-                        }}
-                      />
-                    </td>
-                    <td>
-                      <button
-                        className={styles.deleteRowBtn}
-                        disabled={isPending}
-                        onClick={() => {
-                          if (!confirm(`Supprimer "${cp.label}" ?`)) return;
-                          setCalPeriods((prev) => prev.filter((p) => p.id !== cp.id));
-                          startTransition(async () => {
-                            await deleteClosurePeriod(cp.id, planning.id);
-                            router.refresh();
-                          });
-                        }}
-                      >
-                        ×
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {calPeriods.filter((cp) => cp.type === "custom").map((cp) => {
+                  if (editingPeriodId === cp.id && editData) {
+                    return (
+                      <tr key={cp.id} style={{ background: "var(--klint-paper, #F6F7FB)" }}>
+                        <td>
+                          <input
+                            className={styles.addInput}
+                            value={editData.label}
+                            onChange={(e) => setEditData({ ...editData, label: e.target.value })}
+                            maxLength={100}
+                            style={{ width: "100%", minWidth: 120 }}
+                            autoFocus
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="date"
+                            className={styles.addInput}
+                            value={editData.startDate}
+                            onChange={(e) => setEditData({ ...editData, startDate: e.target.value })}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="date"
+                            className={styles.addInput}
+                            value={editData.endDate}
+                            onChange={(e) => setEditData({ ...editData, endDate: e.target.value })}
+                          />
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: 3 }}>
+                            {CLOSURE_COLORS.map((c) => (
+                              <button
+                                key={c.hex}
+                                type="button"
+                                title={c.label}
+                                style={{
+                                  width: 18, height: 18, borderRadius: "50%",
+                                  background: c.hex,
+                                  border: editData.color === c.hex ? "2px solid #374151" : "1px solid #d1d5db",
+                                  cursor: "pointer", padding: 0,
+                                }}
+                                onClick={() => setEditData({ ...editData, color: c.hex })}
+                              />
+                            ))}
+                          </div>
+                        </td>
+                        <td />
+                        <td>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <button
+                              className={styles.addBtn}
+                              disabled={isPending || !editData.label.trim() || !editData.startDate || !editData.endDate}
+                              onClick={() => saveEditPeriod(cp)}
+                              style={{ padding: "0 10px", height: 26, fontSize: 11 }}
+                            >✓</button>
+                            <button
+                              className={styles.cancelBtn}
+                              onClick={cancelEditPeriod}
+                              style={{ padding: "0 8px", height: 26, fontSize: 11 }}
+                            >✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  if (confirmDeleteId === cp.id) {
+                    return (
+                      <tr key={cp.id} style={{ background: "#FEF2F2" }}>
+                        <td colSpan={6}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "2px 0" }}>
+                            <span style={{ fontSize: 12, color: "#DC2626", fontWeight: 600 }}>
+                              Supprimer &laquo;{cp.label}&raquo; ?
+                            </span>
+                            <button
+                              className={styles.deleteRowBtn}
+                              disabled={isPending}
+                              onClick={() => confirmDeletePeriod(cp)}
+                              style={{ width: "auto", padding: "0 10px", color: "#DC2626", borderColor: "#DC2626", fontSize: 12 }}
+                            >Oui, supprimer</button>
+                            <button
+                              className={styles.cancelBtn}
+                              onClick={() => setConfirmDeleteId(null)}
+                              style={{ padding: "0 8px", height: 22, fontSize: 11 }}
+                            >Annuler</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={cp.id}>
+                      <td>{cp.label}</td>
+                      <td className={styles.tdMuted}>{fmtDate(cp.startDate)}</td>
+                      <td className={styles.tdMuted}>{fmtDate(cp.endDate)}</td>
+                      <td>
+                        <span
+                          className={styles.colorSwatch}
+                          style={{ background: cp.color, border: "1px solid #e5e7eb" }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={cp.active}
+                          disabled={isPending}
+                          onChange={(e) => {
+                            setCalPeriods(calPeriods.map((p) => p.id === cp.id ? { ...p, active: e.target.checked } : p));
+                            startTransition(async () => {
+                              await updateClosurePeriod(cp.id, { active: e.target.checked });
+                              router.refresh();
+                            });
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button
+                            className={styles.editRowBtn}
+                            disabled={isPending}
+                            title="Modifier"
+                            onClick={() => startEditPeriod(cp)}
+                          >✎</button>
+                          <button
+                            className={styles.deleteRowBtn}
+                            disabled={isPending}
+                            title="Supprimer"
+                            onClick={() => requestDeletePeriod(cp.id)}
+                          >×</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
