@@ -35,9 +35,24 @@ const FRENCH_HOLIDAYS_2026 = [
   { label: "Noël",               date: "2026-12-25" },
 ];
 
+const FRENCH_HOLIDAYS_2027 = [
+  { label: "Jour de l'An",       date: "2027-01-01" },
+  { label: "Lundi de Pâques",    date: "2027-03-29" },
+  { label: "Fête du Travail",    date: "2027-05-01" },
+  { label: "Ascension",          date: "2027-05-06" },
+  { label: "Victoire 1945",      date: "2027-05-08" },
+  { label: "Lundi de Pentecôte", date: "2027-05-17" },
+  { label: "Fête Nationale",     date: "2027-07-14" },
+  { label: "Assomption",         date: "2027-08-15" },
+  { label: "Toussaint",          date: "2027-11-01" },
+  { label: "Armistice",          date: "2027-11-11" },
+  { label: "Noël",               date: "2027-12-25" },
+];
+
 function getHolidays(year: number) {
   if (year === 2025) return FRENCH_HOLIDAYS_2025;
   if (year === 2026) return FRENCH_HOLIDAYS_2026;
+  if (year === 2027) return FRENCH_HOLIDAYS_2027;
   // Fallback: 2025 dates as a base (fixed holidays only)
   return FRENCH_HOLIDAYS_2025;
 }
